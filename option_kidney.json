@@ -1,0 +1,176 @@
+{
+    "Version" : {
+        "Release" : "Common Pipeline v1.0",
+        "DESC": "Solution Common Pipeline"
+    },
+  
+    "DataRootPath" : "/Users/hutom/Desktop/solution/project/anaconda/Solution/Data/Kidney/sep_test",
+    "CL" : "processCL.sh",
+    
+    "ReconParamList" : {
+        "DefaultType" : {
+            "contour" : 127,
+            "param" : [0, 0.0, 0.0],
+            "gaussian" : 0,
+            "algorithm" : "Marching",
+            "resampling factor" : 1
+        },
+        "OrganType" : {
+            "contour" : 10,
+            "param" : [20, 0.5, 0.8],
+            "gaussian" : 1,
+            "algorithm" : "Marching",
+            "resampling factor" : 1
+        },
+        "VesselType" : {
+            "contour" : 10,
+            "param" : [16, 0.8, 0.01],
+            "gaussian" : 0,
+            "algorithm" : "Flying",
+            "resampling factor" : 1
+        },
+        "NewVesselType" : {
+            "contour" : 10,
+            "param" : [16, 0.9, 0.1],
+            "gaussian" : 0,
+            "algorithm" : "Marching",
+            "resampling factor" : 2
+        },
+        "SkelType" : {
+            "contour" : 127,
+            "param" : [100, 0.99, 0.0],
+            "gaussian" : 0,
+            "algorithm" : "Marching",
+            "resampling factor" : 2
+        }
+    },
+    "CenterlineParamList" : {
+        "CenterlineDefaultType" : {
+            "advancementRatio" : 1.01,
+            "resamplingLength" : 1.0,
+            "smoothingIter" : 10,
+            "smoothingFactor" : 0.1
+        }
+    },
+
+
+    "MaskInfo" : [
+        {"name":"Kidney_DR", "phase":"DP", "reconType":"OrganType", "strictureMode":0, "blenderName":"Kidney_DR"},
+        {"name":"Cyst_exo", "phase":"DP", "reconType":"OrganType", "strictureMode":0, "blenderName":"Cyst_exo"}
+    ],
+    "RegistrationInfo" : [
+        {"Target" : "MPV_PP", "Src" : "MPV_HVP", "RigidAABB" : 0}
+    ],
+    "CenterlineInfo" : [
+        {
+            "centerlineType" : "CenterlineDefaultType",
+            "inputKey" : "nifti",
+            "treeRootKey" : "axis",
+            "outputName" : "colon-MRCL",
+            "input" : {
+                "blenderName" : "colon-MR",
+                "reconType" : "SkelType"
+            },
+            "findCell" : "maxZ",
+            "treeRoot" : {
+                "maskName" : "",
+                "blenderName" : "",
+                "axis" : "maxZ",
+                "nnPos" : [0.0, 0.0, 0.0]
+            }
+        },
+        {
+            "centerlineType" : "CenterlineDefaultType",
+            "inputKey" : "nifti",
+            "treeRootKey" : "axis",
+            "outputName" : "colon-CTCL",
+            "input" : {
+                "blenderName" : "colon-CT",
+                "reconType" : "SkelType"
+            },
+            "findCell" : "maxZ",
+            "treeRoot" : {
+                "maskName" : "",
+                "blenderName" : "",
+                "axis" : "maxZ",
+                "nnPos" : [0.0, 0.0, 0.0]
+            }
+        }
+    ],
+    "SegmentInfo" : [
+        {
+            "type" : "mask",
+            "organ" : "Kidney",
+            "vesselInfo" : [
+                {
+                    "wholeVessel" : "RA",
+                    "childVessel" : [1, 10],
+                    "dilationIter" : 2,
+                    "noiseSegCnt" : 27 
+                }
+            ]
+        }
+    ],
+
+    "MeshLib" : {
+        "MeshHealing" : [
+            "01018ug_27_Whole_Artery",
+            "artery-all-005",
+            "vein-all",
+            "vein-extra"
+        ],
+        "MeshBoolean" : [
+            {"operator" : "subtraction", "blenderName0" : "blenderName0", "blenderName1" : "blenderName1", "fillHole" : 1, "blenderName" : "blenderNameB"},
+            {"operator" : "intersection", "blenderName0" : "blenderName0", "blenderName1" : "blenderName1", "fillHole" : 1, "blenderName" : "blenderNameB"},
+            {"operator" : "union", "blenderName0" : "blenderName0", "blenderName1" : "blenderName1", "fillHole" : 1, "blenderName" : "blenderNameB"},
+            {"operator" : "inside", "blenderName0" : "blenderName0", "blenderName1" : "blenderName1", "fillHole" : 1, "blenderName" : "blenderNameB"},
+            {"operator" : "outside", "blenderName0" : "blenderName0", "blenderName1" : "blenderName1", "fillHole" : 1, "blenderName" : "blenderNameB"}
+        ]
+    },
+
+    "MetricInfo" : [
+        {"type" : "CrossCheck", "anchorMaskName" : "colon-MR", "targetMaskName" : "levator-ani-MR"}
+    ],
+
+    "Blender" : {
+        "BlenderExe" : "/Applications/Blender.app/Contents/MacOS/Blender",
+        "Decimation" : {
+            "Liver_PP" : 20000,
+            "Liver_PP_PV[1,30]" : 500,
+            "PV" : 40000,
+            "PV[1,30]" : 500,
+            "HV" : 40000,
+            "HV[1,4]" : 500
+        },
+        "DecimationByRatio" : {
+            "blenderName3" : 4000,
+            "blenderName4" : 4000
+        },
+        "Remesh" : {
+            "VoxelSize" : 1,
+            "RemeshList" : {
+                "blenderName3" : 4000,
+                "blenderName4" : 4000
+            }
+        },
+        "MeshCleanUp" : [
+            "blenderName0",
+            "blenderName1"
+        ],
+        "MeshHealing" : [
+            "01018ug_27_Whole_Artery",
+            "artery-all-005",
+            "vein-all",
+            "vein-extra"
+        ],
+        "SmartUV" : [
+            "blenderName0",
+            "blenderName1",
+            "blenderName2",
+            "blenderName3",
+            "blenderName4"
+        ]
+    }
+}
+
+

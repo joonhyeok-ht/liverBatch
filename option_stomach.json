@@ -1,0 +1,266 @@
+{
+    "Version" : {
+        "Release" : "Common Pipeline v1.0",
+        "DESC": "Solution Common Pipeline"
+    },
+  
+    "DataRootPath" : "C:/Users/hutom/Desktop/jh_test/CommonPipelines/CommonPipeline_10_sco/CommonPipeline_10/output_stomach",
+    "CL" : "processCL.sh",
+    
+    "ReconParamList" : {
+        "ClassicOrganType" : {
+            "contour" : 10,
+            "param" : [20, 0.5, 0.87],
+            "gaussian" : 1,
+            "algorithm" : "Marching",
+            "resampling factor" : 1
+        },
+        "NewVesselType" : {
+            "contour" : 10,
+            "param" : [16, 0.8, 0.01],
+            "gaussian" : 0,
+            "algorithm" : "Flying",
+            "resampling factor" : 1
+        },
+        "TPType" : {
+            "contour" : 10,
+            "param" : [1, 0.1, 0.5],
+            "gaussian" : 0,
+            "algorithm" : "Marching",
+            "resampling factor" : 1
+        },
+        "SkelType" : {
+            "contour" : 10,
+            "param" : [20, 0.98, 0.0],
+            "gaussian" : 0,
+            "algorithm" : "Marching",
+            "resampling factor" : 2
+        }
+    },
+    "CenterlineParamList" : {
+        "CenterlineDefaultType" : {
+            "advancementRatio" : 1.01,
+            "resamplingLength" : 1.0,
+            "smoothingIter" : 10,
+            "smoothingFactor" : 0.1
+        }
+    },
+
+
+    "MaskInfo" : [
+        {"name":"Aorta", "phase":"EAP", "reconType":"NewVesselType", "strictureMode":1, "blenderName":"anatomy_artery_01_AORTA"},
+        {"name":"ASPDA", "phase":"EAP", "reconType":"NewVesselType", "strictureMode":1, "blenderName":"anatomy_artery_02_ASPDA"},
+        {"name":"CardiacBr", "phase":"EAP", "reconType":"NewVesselType", "strictureMode":1, "blenderName":"anatomy_artery_33_CardiacBr"},
+        {"name":"CHA", "phase":"EAP", "reconType":"NewVesselType", "strictureMode":1, "blenderName":"anatomy_artery_03_CHA"},
+        {"name":"CT", "phase":"EAP", "reconType":"NewVesselType", "strictureMode":1, "blenderName":"anatomy_artery_04_CT"},
+        {"name":"Extra_Artery", "phase":"EAP", "reconType":"NewVesselType", "strictureMode":1, "blenderName":"anatomy_artery_00_EXTRA_ARTERY"},
+        {"name":"GDA", "phase":"EAP", "reconType":"NewVesselType", "strictureMode":1, "blenderName":"anatomy_artery_05_GDA"},
+        {"name":"IPA", "phase":"EAP", "reconType":"NewVesselType", "strictureMode":1, "blenderName":"anatomy_artery_06_IPA"},
+        {"name":"IPA1", "phase":"EAP", "reconType":"NewVesselType", "strictureMode":1, "blenderName":"anatomy_artery_37_IPA1"},
+        {"name":"IPA2", "phase":"EAP", "reconType":"NewVesselType", "strictureMode":1, "blenderName":"anatomy_artery_38_IPA2"},
+        {"name":"LGA", "phase":"EAP", "reconType":"NewVesselType", "strictureMode":1, "blenderName":"anatomy_artery_07_LGA"},
+        {"name":"LGEA", "phase":"EAP", "reconType":"NewVesselType", "strictureMode":1, "blenderName":"anatomy_artery_08_LGEA"},
+        {"name":"LHA", "phase":"EAP", "reconType":"NewVesselType", "strictureMode":1, "blenderName":"anatomy_artery_09_LHA"},
+        {"name":"Main_Artery", "phase":"EAP", "reconType":"NewVesselType", "strictureMode":1, "blenderName":"anatomy_all_allartery"},
+        {"name":"OBOLGEA", "phase":"EAP", "reconType":"NewVesselType", "strictureMode":1, "blenderName":"anatomy_artery_16_OBOLGEA"},
+        {"name":"OmentalBr", "phase":"EAP", "reconType":"NewVesselType", "strictureMode":1, "blenderName":"anatomy_artery_36_OmentalBr"},
+        {"name":"PGA", "phase":"EAP", "reconType":"NewVesselType", "strictureMode":1, "blenderName":"anatomy_artery_27_PGA"},
+        {"name":"PHA", "phase":"EAP", "reconType":"NewVesselType", "strictureMode":1, "blenderName":"anatomy_artery_10_PHA"},
+        {"name":"RGA", "phase":"EAP", "reconType":"NewVesselType", "strictureMode":1, "blenderName":"anatomy_artery_11_RGA"},
+        {"name":"RGEA", "phase":"EAP", "reconType":"NewVesselType", "strictureMode":1, "blenderName":"anatomy_artery_12_RGEA"},
+        {"name":"RHA", "phase":"EAP", "reconType":"NewVesselType", "strictureMode":1, "blenderName":"anatomy_artery_13_RHA"},
+        {"name":"SA", "phase":"EAP", "reconType":"NewVesselType", "strictureMode":1, "blenderName":"anatomy_artery_14_SA"},
+        {"name":"SGA", "phase":"EAP", "reconType":"NewVesselType", "strictureMode":1, "blenderName":"anatomy_artery_15_SGA"}, 
+        {"name":"SMA", "phase":"EAP", "reconType":"NewVesselType", "strictureMode":1, "blenderName":"anatomy_artery_28_SMA"},
+        {"name":"ASPDA_TP", "phase":"EAP", "reconType":"NewVesselType", "strictureMode":1, "blenderName":"ASPDA_TPa"},
+        {"name":"IPA_TP", "phase":"EAP", "reconType":"NewVesselType", "strictureMode":1, "blenderName":"IPA_TPa"},
+        {"name":"LGA_TP", "phase":"EAP", "reconType":"NewVesselType", "strictureMode":1, "blenderName":"LGA_TPa"},
+        {"name":"LGEA_TP", "phase":"EAP", "reconType":"NewVesselType", "strictureMode":1, "blenderName":"LGEA_TPa"},
+        {"name":"LHA_TP", "phase":"EAP", "reconType":"NewVesselType", "strictureMode":1, "blenderName":"LHA_TPa"},
+        {"name":"Omental_Br_TP", "phase":"EAP", "reconType":"NewVesselType", "strictureMode":1, "blenderName":"Omental_Br_TPa"},
+        {"name":"PGA_TP", "phase":"EAP", "reconType":"NewVesselType", "strictureMode":1, "blenderName":"PGA_TPa"},
+        {"name":"RGA_TP", "phase":"EAP", "reconType":"NewVesselType", "strictureMode":1, "blenderName":"RGA_TPa"},
+        {"name":"RGEA_TP", "phase":"EAP", "reconType":"NewVesselType", "strictureMode":1, "blenderName":"RGEA_TPa"},
+        {"name":"RHA_TP", "phase":"EAP", "reconType":"NewVesselType", "strictureMode":1, "blenderName":"RHA_TPa"},
+        {"name":"SGA_TP", "phase":"EAP", "reconType":"NewVesselType", "strictureMode":1, "blenderName":"SGA_TPa"},
+        {"name":"SMA_TP", "phase":"EAP", "reconType":"NewVesselType", "strictureMode":1, "blenderName":"SMA_TPa"},
+        {"name":"SupPolarA_TP", "phase":"EAP", "reconType":"NewVesselType", "strictureMode":1, "blenderName":"SupPolarA_TPa"},
+
+        {"name":"TP_ASPDA_START", "phase":"EAP", "reconType":"TPType", "strictureMode":0, "blenderName":"anatomy_artery_35_TP_ASPDA_START"},
+        {"name":"TP_CHA_DISTAL", "phase":"EAP", "reconType":"TPType", "strictureMode":0, "blenderName":"anatomy_artery_32_TP_CHA_DISTAL"},
+        {"name":"TP_CSB", "phase":"EAP", "reconType":"TPType", "strictureMode":0, "blenderName":"anatomy_artery_17_TP_CSB_BRANCH"},
+        {"name":"TP_ETC_IPA", "phase":"EAP", "reconType":"TPType", "strictureMode":0, "blenderName":"anatomy_artery_30_TP_ETC_IPA"},
+        {"name":"TP_ETC_RGA", "phase":"EAP", "reconType":"TPType", "strictureMode":0, "blenderName":"anatomy_artery_31_TP_ETC_RGA"},
+        {"name":"TP_IPA_START", "phase":"EAP", "reconType":"TPType", "strictureMode":0, "blenderName":"anatomy_artery_19_TP_IPA_START"},
+        {"name":"TP_LGA_START", "phase":"EAP", "reconType":"TPType", "strictureMode":0, "blenderName":"anatomy_artery_20_TP_LGA_START"},
+        {"name":"TP_LGA1ST_BRANCH", "phase":"EAP", "reconType":"TPType", "strictureMode":0, "blenderName":"anatomy_artery_29_TP_LGA1ST_BRANCH"},
+        {"name":"TP_LGEA_START", "phase":"EAP", "reconType":"TPType", "strictureMode":0, "blenderName":"anatomy_artery_21_TP_LGEA_START"},
+        {"name":"TP_LHA_START", "phase":"EAP", "reconType":"TPType", "strictureMode":0, "blenderName":"anatomy_artery_22_TP_LHA_START"},
+        {"name":"TP_PHA_START", "phase":"EAP", "reconType":"TPType", "strictureMode":0, "blenderName":"anatomy_artery_34_TP_PHA_START"},
+        {"name":"TP_RGA_START", "phase":"EAP", "reconType":"TPType", "strictureMode":0, "blenderName":"anatomy_artery_23_TP_RGA_START"},
+        {"name":"TP_RGEA_START", "phase":"EAP", "reconType":"TPType", "strictureMode":0, "blenderName":"anatomy_artery_24_TP_RGEA_START"},
+        {"name":"TP_SA_START", "phase":"EAP", "reconType":"TPType", "strictureMode":0, "blenderName":"anatomy_artery_25_TP_SA_START"},
+        {"name":"Whole_Artery", "phase":"EAP", "reconType":"NewVesselType", "strictureMode":1, "blenderName":"Whole_Artery"},
+        {"name":"RIPA", "phase":"EAP", "reconType":"NewVesselType", "strictureMode":1, "blenderName":"anatomy_artery_43_RIPA"},
+
+
+        {"name":"AIPDV", "phase":"PP", "reconType":"NewVesselType", "strictureMode":1, "blenderName":"anatomy_vein_03_AIPDV"},
+        {"name":"ARCV", "phase":"PP", "reconType":"NewVesselType", "strictureMode":1, "blenderName":"anatomy_vein_02_ARCV"},
+        {"name":"ASPDV", "phase":"PP", "reconType":"NewVesselType", "strictureMode":1, "blenderName":"anatomy_vein_04_ASPDV"},
+        {"name":"Extra_Vein", "phase":"PP", "reconType":"NewVesselType", "strictureMode":1, "blenderName":"anatomy_vein_01_EXTRA_VEIN"},
+        {"name":"GCT", "phase":"PP", "reconType":"NewVesselType", "strictureMode":1, "blenderName":"anatomy_vein_05_GCT"},
+        {"name":"IPV", "phase":"PP", "reconType":"NewVesselType", "strictureMode":1, "blenderName":"anatomy_vein_06_IPV"},
+        {"name":"LGEV", "phase":"PP", "reconType":"NewVesselType", "strictureMode":1, "blenderName":"anatomy_vein_07_LGEV"},
+        {"name":"LGV", "phase":"PP", "reconType":"NewVesselType", "strictureMode":1, "blenderName":"anatomy_vein_08_LGV"},
+        {"name":"MCV", "phase":"PP", "reconType":"NewVesselType", "strictureMode":1, "blenderName":"anatomy_vein_09_MCV"},
+        {"name":"Main_Vein", "phase":"PP", "reconType":"NewVesselType", "strictureMode":1, "blenderName":"anatomy_all_allvein"},
+        {"name":"PV", "phase":"PP", "reconType":"NewVesselType", "strictureMode":1, "blenderName":"anatomy_vein_10_PV"},
+        {"name":"RGEV", "phase":"PP", "reconType":"NewVesselType", "strictureMode":1, "blenderName":"anatomy_vein_11_RGEV"},
+        {"name":"RGV", "phase":"PP", "reconType":"NewVesselType", "strictureMode":1, "blenderName":"anatomy_vein_17_RGV"},
+        {"name":"SGV", "phase":"PP", "reconType":"NewVesselType", "strictureMode":1, "blenderName":"SGV"}, 
+        {"name":"SMV", "phase":"PP", "reconType":"NewVesselType", "strictureMode":1, "blenderName":"anatomy_vein_12_SMV"},
+        {"name":"SV", "phase":"PP", "reconType":"NewVesselType", "strictureMode":1, "blenderName":"anatomy_vein_13_SV"},
+        {"name":"SupPolarV", "phase":"PP", "reconType":"NewVesselType", "strictureMode":1, "blenderName":"anatomy_vein_22_SupPolarV"},
+        {"name":"VA", "phase":"PP", "reconType":"NewVesselType", "strictureMode":1, "blenderName":"anatomy_vein_00_AORTA"},
+        {"name":"ARCV_TP", "phase":"PP", "reconType":"NewVesselType", "strictureMode":1, "blenderName":"ARCV_TPv"},
+        {"name":"ASPDV_TP", "phase":"PP", "reconType":"NewVesselType", "strictureMode":1, "blenderName":"ASPDV_TPv"},
+        {"name":"IPV_TP", "phase":"PP", "reconType":"NewVesselType", "strictureMode":1, "blenderName":"IPV_TPv"},
+        {"name":"LGEV_TP", "phase":"PP", "reconType":"NewVesselType", "strictureMode":1, "blenderName":"LGEV_TPv"},
+        {"name":"LGV_TP", "phase":"PP", "reconType":"NewVesselType", "strictureMode":1, "blenderName":"LGV_TPv"},
+        {"name":"RGEV_TP", "phase":"PP", "reconType":"NewVesselType", "strictureMode":1, "blenderName":"RGEV_TPv"},
+        {"name":"RGV_TP", "phase":"PP", "reconType":"NewVesselType", "strictureMode":1, "blenderName":"RGV_TPv"},
+        {"name":"SGV_TP", "phase":"PP", "reconType":"NewVesselType", "strictureMode":1, "blenderName":"SGV_TPv"},
+
+
+        {"name":"TP_ETC_LGV", "phase":"PP", "reconType":"TPType", "strictureMode":0, "blenderName":"anatomy_vein_21_TP_ETC_LGV"},
+        {"name":"TP_GCT_DRAINAGE", "phase":"PP", "reconType":"TPType", "strictureMode":0, "blenderName":"anatomy_vein_15_TP_GCT_DRAINAGE"},
+        {"name":"TP_LGV_DRAINAGE", "phase":"PP", "reconType":"TPType", "strictureMode":0, "blenderName":"anatomy_vein_18_TP_LGV_DRAINAGE"},
+        {"name":"Whole_Vein", "phase":"PP", "reconType":"NewVesselType", "strictureMode":1, "blenderName":"Whole_Vein"},
+
+        {"name":"Abdominal_wall", "phase":"PP", "reconType":"ClassicOrganType", "strictureMode":0, "blenderName":"anatomy_abdominal"},
+        {"name":"backfat", "phase":"PP", "reconType":"ClassicOrganType", "strictureMode":0, "blenderName":"backfat"},
+        {"name":"Gallbladder", "phase":"PP", "reconType":"ClassicOrganType", "strictureMode":0, "blenderName":"anatomy_gallbladder"},
+        {"name":"intestines", "phase":"PP", "reconType":"ClassicOrganType", "strictureMode":0, "blenderName":"intestines"},
+        {"name":"Liver", "phase":"PP", "reconType":"ClassicOrganType", "strictureMode":0, "blenderName":"anatomy_liver"},
+        {"name":"omentum", "phase":"PP", "reconType":"ClassicOrganType", "strictureMode":0, "blenderName":"omentum"},
+        {"name":"Pancreas", "phase":"PP", "reconType":"ClassicOrganType", "strictureMode":0, "blenderName":"anatomy_pancreas"},
+        {"name":"Rib", "phase":"PP", "reconType":"ClassicOrganType", "strictureMode":0, "blenderName":"anatomy_rib"},
+        {"name":"Skin", "phase":"PP", "reconType":"ClassicOrganType", "strictureMode":0, "blenderName":"anatomy_skin"},
+        {"name":"Spleen", "phase":"PP", "reconType":"ClassicOrganType", "strictureMode":0, "blenderName":"anatomy_spleen"},
+        {"name":"Stomach", "phase":"PP", "reconType":"ClassicOrganType", "strictureMode":0, "blenderName":"anatomy_stomach"},
+        {"name":"Diaphragm", "phase":"PP", "reconType":"ClassicOrganType", "strictureMode":0, "blenderName":"Diaphragm"}
+    ],
+    "RegistrationInfo" : [
+        {"Target" : "VA", "Src" : "CT", "RigidAABB" : 0}
+    ],
+    "CenterlineInfo" : [
+        {
+            "centerlineType" : "CenterlineDefaultType",
+            "inputKey" : "blenderName",
+            "treeRootKey" : "axis",
+            "outputName" : "Whole_Artery",
+            "input" : {
+                "blenderName" : "Whole_Artery",
+                "reconType" : "SkelType"
+            },
+            "findCell" : "maxZ",
+            "treeRoot" : {
+                "maskName" : "",
+                "blenderName" : "",
+                "axis" : "maxZ",
+                "nnPos" : [0.0, 0.0, 0.0]
+            }
+        },
+        {
+            "centerlineType" : "CenterlineDefaultType",
+            "inputKey" : "blenderName",
+            "treeRootKey" : "axis",
+            "outputName" : "Whole_Vein",
+            "input" : {
+                "blenderName" : "Whole_Vein",
+                "reconType" : "SkelType"
+            },
+            "findCell" : "maxZ",
+            "treeRoot" : {
+                "maskName" : "",
+                "blenderName" : "",
+                "axis" : "maxZ",
+                "nnPos" : [0.0, 0.0, 0.0]
+            }
+        }
+    ],
+    "SegmentInfo" : [
+        {
+            "type" : "blender",
+            "organ" : "Liver_PP",
+            "vesselInfo" : [
+                {
+                    "wholeVessel" : "PV",
+                    "childVessel" : [1, 30],
+                    "dilationIter" : 2,
+                    "noiseSegCnt" : 27 
+                }
+            ]
+        }
+    ],
+
+    "MeshLib" : {
+        "MeshHealing" : [
+            "01018ug_27_Whole_Artery",
+            "artery-all-005",
+            "vein-all",
+            "vein-extra"
+        ],
+        "MeshBoolean" : [
+            {"operator" : "subtraction", "blenderName0" : "blenderName0", "blenderName1" : "blenderName1", "fillHole" : 1, "blenderName" : "blenderNameB"},
+            {"operator" : "intersection", "blenderName0" : "blenderName0", "blenderName1" : "blenderName1", "fillHole" : 1, "blenderName" : "blenderNameB"},
+            {"operator" : "union", "blenderName0" : "blenderName0", "blenderName1" : "blenderName1", "fillHole" : 1, "blenderName" : "blenderNameB"},
+            {"operator" : "inside", "blenderName0" : "blenderName0", "blenderName1" : "blenderName1", "fillHole" : 1, "blenderName" : "blenderNameB"},
+            {"operator" : "outside", "blenderName0" : "blenderName0", "blenderName1" : "blenderName1", "fillHole" : 1, "blenderName" : "blenderNameB"}
+        ]
+    },
+
+    "MetricInfo" : [
+        {"type" : "CrossCheck", "anchorMaskName" : "colon-MR", "targetMaskName" : "levator-ani-MR"}
+    ],
+
+    "Blender" : {
+        "BlenderExe" : "Blender",
+        "Decimation" : {
+            "Liver_PP" : 20000,
+            "Liver_PP_PV[1,30]" : 500,
+            "PV" : 40000,
+            "PV[1,30]" : 500,
+            "HV" : 40000,
+            "HV[1,4]" : 500
+        },
+        "DecimationByRatio" : {
+            "blenderName3" : 4000,
+            "blenderName4" : 4000
+        },
+        "Remesh" : {
+            "VoxelSize" : 1,
+            "RemeshList" : {
+                "blenderName3" : 4000,
+                "blenderName4" : 4000
+            }
+        },
+        "MeshCleanUp" : [
+            "blenderName0",
+            "blenderName1"
+        ],
+        "MeshHealing" : [
+            "01018ug_27_Whole_Artery",
+            "artery-all-005",
+            "vein-all",
+            "vein-extra"
+        ],
+        "SmartUV" : [
+            "blenderName0",
+            "blenderName1",
+            "blenderName2",
+            "blenderName3",
+            "blenderName4"
+        ]
+    }
+}

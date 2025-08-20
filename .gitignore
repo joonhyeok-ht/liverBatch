@@ -1,0 +1,14 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+
+# Build directories
+build/
+dist/
+Tool/centerline/build/
+Tool/centerline/dist/
+
+# Ignore all __pycache__ recursively
+Algorithm/__pycache__/*
+AlgUtil/__pycache__/*
+Block/__pycache__/*

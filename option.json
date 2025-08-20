@@ -1,0 +1,196 @@
+{
+    "Version" : {
+        "Release" : "Common Pipeline v1.0",
+        "DESC": "Solution Common Pipeline"
+    },
+  
+    "DataRootPath" : "/Users/hutom/Desktop/solution/project/anaconda/Solution/Data/Colon/KNUCH_025_all",
+    "CL" : "processCL.sh",
+    
+    "ReconParamList" : {
+        "CTOrganType" : {
+            "contour" : 10,
+            "param" : [20, 0.5, 0.87],
+            "gaussian" : 1,
+            "algorithm" : "MarchingPro",
+            "resampling factor" : 1
+        },
+        "MROrganType" : {
+            "contour" : 10,
+            "param" : [20, 0.9, 0.0],
+            "gaussian" : 0,
+            "algorithm" : "MarchingPro",
+            "resampling factor" : 1
+        },
+        "UreterType" : {
+            "contour" : 10,
+            "param" : [20, 0.9, 0.0],
+            "gaussian" : 1,
+            "algorithm" : "MarchingPro",
+            "resampling factor" : 1
+        },
+        "VesselType" : {
+            "contour" : 10,
+            "param" : [16, 0.8, 0.01],
+            "gaussian" : 0,
+            "algorithm" : "Marching",
+            "resampling factor" : 1
+        },
+        "SkelType" : {
+            "contour" : 127,
+            "param" : [100, 0.99, 0.0],
+            "gaussian" : 0,
+            "algorithm" : "Marching",
+            "resampling factor" : 2
+        }
+    },
+    "CenterlineParamList" : {
+        "CenterlineDefaultType" : {
+            "advancementRatio" : 1.01,
+            "resamplingLength" : 1.0,
+            "smoothingIter" : 10,
+            "smoothingFactor" : 0.1
+        }
+    },
+
+
+    "MaskInfo" : [
+        {"name":"colon-0", "phase":"PP", "reconType":"CTOrganType", "strictureMode":0, "blenderName":"colon-0"},
+        {"name":"colon-MR", "phase":"MR", "reconType":"MROrganType", "strictureMode":0, "blenderName":"colon-MR"},
+        {"name":"artery-all", "phase":"AP", "reconType":"VesselType", "strictureMode":1, "blenderName":"artery-all"},
+        {"name":"sacrum-MR", "phase":"MR", "reconType":"MROrganType", "strictureMode":0, "blenderName":"sacrum-MR"},
+        {"name":"sacrum", "phase":"PP", "reconType":"CTOrganType", "strictureMode":0, "blenderName":"sacrum"},
+        {"name":"levator-ani", "phase":"MR", "reconType":"MROrganType", "strictureMode":0, "blenderName":"levator-ani"},
+        {"name":"ureter-MR", "phase":"MR", "reconType":"UreterType", "strictureMode":0, "blenderName":"ureter-MR"},
+        {"name":"closing", "phase":"MR", "reconType":"MROrganType", "strictureMode":0, "blenderName":"closing"}
+    ],
+    "RegistrationInfo" : [
+        {"Target" : "sacrum", "Src" : "sacrum-MR", "RigidAABB" : 1}
+    ],
+    "CenterlineInfo" : [
+        {
+            "centerlineType" : "CenterlineDefaultType",
+            "inputKey" : "blenderName",
+            "treeRootKey" : "axis",
+            "outputName" : "colon-0",
+            "input" : {
+                "blenderName" : "colon-0",
+                "reconType" : "SkelType"
+            },
+            "findCell" : "maxZ",
+            "treeRoot" : {
+                "maskName" : "",
+                "blenderName" : "",
+                "axis" : "maxZ",
+                "nnPos" : [0.0, 0.0, 0.0]
+            }
+        },
+        {
+            "centerlineType" : "CenterlineDefaultType",
+            "inputKey" : "blenderName",
+            "treeRootKey" : "axis",
+            "outputName" : "colon-MR",
+            "input" : {
+                "blenderName" : "colon-MR",
+                "reconType" : "SkelType"
+            },
+            "findCell" : "maxZ",
+            "treeRoot" : {
+                "maskName" : "",
+                "blenderName" : "",
+                "axis" : "maxZ",
+                "nnPos" : [0.0, 0.0, 0.0]
+            }
+        },
+        {
+            "centerlineType" : "CenterlineDefaultType",
+            "inputKey" : "blenderName",
+            "treeRootKey" : "axis",
+            "outputName" : "artery-all",
+            "input" : {
+                "blenderName" : "artery-all",
+                "reconType" : "SkelType"
+            },
+            "findCell" : "maxZ",
+            "treeRoot" : {
+                "maskName" : "",
+                "blenderName" : "",
+                "axis" : "maxZ",
+                "nnPos" : [0.0, 0.0, 0.0]
+            }
+        }
+    ],
+    "SegmentInfo" : [
+        {
+            "organ" : "Liver_PP",
+            "vesselInfo" : [
+                {
+                    "wholeVessel" : "PV",
+                    "childVessel" : [1, 30],
+                    "dilationIter" : 2,
+                    "noiseSegCnt" : 27 
+                }
+            ]
+        }
+    ],
+
+    "MeshLib" : {
+        "MeshHealing" : [
+            "01018ug_27_Whole_Artery",
+            "artery-all-005",
+            "vein-all",
+            "vein-extra"
+        ],
+        "MeshBoolean" : [
+            {"operator" : "subtraction", "blenderName0" : "levator-ani", "blenderName1" : "closing", "fillHole" : 0, "blenderName" : "leavator-ani-closing"},
+            {"operator" : "intersection", "blenderName0" : "blenderName0", "blenderName1" : "blenderName1", "fillHole" : 1, "blenderName" : "blenderNameB"},
+            {"operator" : "union", "blenderName0" : "blenderName0", "blenderName1" : "blenderName1", "fillHole" : 1, "blenderName" : "blenderNameB"},
+            {"operator" : "inside", "blenderName0" : "blenderName0", "blenderName1" : "blenderName1", "fillHole" : 1, "blenderName" : "blenderNameB"},
+            {"operator" : "outside", "blenderName0" : "blenderName0", "blenderName1" : "blenderName1", "fillHole" : 1, "blenderName" : "blenderNameB"}
+        ]
+    },
+
+    "MetricInfo" : [
+        {"type" : "CrossCheck", "anchorMaskName" : "colon-MR", "targetMaskName" : "levator-ani-MR"}
+    ],
+
+    "Blender" : {
+        "BlenderExe" : "/Applications/Blender.app/Contents/MacOS/Blender",
+        "Decimation" : {
+            "Liver_PP" : 20000,
+            "Liver_PP_PV[1,30]" : 500,
+            "PV" : 40000,
+            "PV[1,30]" : 500,
+            "HV" : 40000,
+            "HV[1,4]" : 500
+        },
+        "DecimationByRatio" : {
+            "blenderName3" : 4000,
+            "blenderName4" : 4000
+        },
+        "Remesh" : {
+            "VoxelSize" : 1,
+            "RemeshList" : {
+                "blenderName3" : 4000,
+                "blenderName4" : 4000
+            }
+        },
+        "MeshCleanUp" : [
+            "blenderName0",
+            "blenderName1"
+        ],
+        "MeshHealing" : [
+            "01018ug_27_Whole_Artery",
+            "artery-all-005",
+            "vein-all",
+            "vein-extra"
+        ],
+        "SmartUV" : [
+            "blenderName0",
+            "blenderName1",
+            "blenderName2",
+            "blenderName3",
+            "blenderName4"
+        ]
+    }
+}
