@@ -12,3 +12,5 @@ Tool/centerline/dist/
 Algorithm/__pycache__/*
 AlgUtil/__pycache__/*
 Block/__pycache__/*
+
+./processCL.exe

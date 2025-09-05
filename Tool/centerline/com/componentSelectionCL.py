@@ -35,7 +35,7 @@ import vtkObjInterface as vtkObjInterface
 import VtkObj.vtkObjText as vtkObjText
 
 import data as data
-import operation as operation
+import operationColored as operation
 import component as component
 # import territory as territory
 
@@ -441,8 +441,8 @@ class CComDragSelCLTP(CComDrag) :
     
     # event override 
     def ready(self) -> bool :
-        if self.get_tpinfo_count() == 0 :
-            return False
+        # if self.get_tpinfo_count() == 0 :
+        #     return False
         if self.m_comDragFindCL.ready() == False :
             return False
         return True

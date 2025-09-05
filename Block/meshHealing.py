@@ -11,7 +11,7 @@ sys.path.append(solutionPath)
 import AlgUtil.algMeshLib as algMeshLib
 
 import optionInfo as optionInfo
-   
+import sys
 
 
 class CMeshHealing() :
@@ -33,7 +33,7 @@ class CMeshHealing() :
         
         iHealingCnt = self.InputOptionInfo.get_mesh_healing_count()
         if iHealingCnt == 0 :
-            print("not found mesh healing list")
+            #print("not found mesh healing list")
             return
         
         for inx in range(0, iHealingCnt) :
@@ -41,7 +41,7 @@ class CMeshHealing() :
             stlFullPath = os.path.join(self.InputPath, f"{stlName}.stl")
 
             if os.path.exists(stlFullPath) == False :
-                print(f"not found stl file : {stlName}")
+                print(f"not found stl file : {stlName}", file=sys.__stdout__, flush=True)
                 continue
 
             mesh = algMeshLib.CMeshLib.meshlib_load_stl(stlFullPath)

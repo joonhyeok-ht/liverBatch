@@ -40,15 +40,6 @@ class CVTK :
         reader.SetFileName(objFullPath)
         reader.Update()
         return reader.GetOutput()
-    @staticmethod
-    def load_poly_data_vtp(vtpFullPath : str) -> vtk.vtkPolyData :
-        if os.path.exists(vtpFullPath) == False :
-            return None
-        
-        reader = vtk.vtkXMLPolyDataReader()
-        reader.SetFileName(vtpFullPath)
-        reader.Update()
-        return reader.GetOutput()
     @staticmethod 
     def save_poly_data_stl(stlFullPath : str, polyData : vtk.vtkPolyData) :
         writer = vtk.vtkSTLWriter()
@@ -61,12 +52,6 @@ class CVTK :
         writer = vtk.vtkOBJWriter()
         writer.SetFileName(objFullPath)
         writer.SetInputData(polyData)
-        writer.Write()
-    @staticmethod
-    def save_poly_data_vtp(vtpFullPath : str, polydata : vtk.vtkPolyData) :
-        writer = vtk.vtkXMLPolyDataWriter()
-        writer.SetInputData(polydata)
-        writer.SetFileName(vtpFullPath)
         writer.Write()
 
     @staticmethod 

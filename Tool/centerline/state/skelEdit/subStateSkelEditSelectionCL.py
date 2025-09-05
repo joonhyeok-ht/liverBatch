@@ -24,12 +24,11 @@ sys.path.append(fileCommonPipelinePath)
 
 import AlgUtil.algVTK as algVTK
 import AlgUtil.algLinearMath as algLinearMath
-import AlgUtil.algSkeletonGraph as algSkeletonGraph
 
 import VtkObj.vtkObjLine as vtkObjLine
 import VtkObj.vtkObjSphere as vtkObjSphere
+
 import vtkObjGuideCL as vtkObjGuideCL
-import vtkObjRadius as vtkObjRadius
 
 import data as data
 
@@ -41,9 +40,6 @@ import subStateSkelEdit as subStateSkelEdit
 
 
 class CSubStateSkelEditSelectionCL(subStateSkelEdit.CSubStateSkelEdit) :
-    s_radiusKeyType = "radius"
-
-
     def __init__(self, mediator):
         super().__init__(mediator)
         # input your code
@@ -60,37 +56,16 @@ class CSubStateSkelEditSelectionCL(subStateSkelEdit.CSubStateSkelEdit) :
     def process_end(self) :
         opSelectionCL = self._get_operator_selection_cl()
         opSelectionCL.process_reset()
-        self.App.remove_key_type(CSubStateSkelEditSelectionCL.s_radiusKeyType)
 
     def clicked_mouse_rb(self, clickX, clickY) :
         listExceptKeyType = [
             data.CData.s_vesselType,
-            CSubStateSkelEditSelectionCL.s_radiusKeyType,
         ]
 
         key = self.App.picking(clickX, clickY, listExceptKeyType)
         if key == "" or data.CData.get_type_from_key(key) != data.CData.s_skelTypeCenterline :
             key = ""
-            return
 
-        intersectedPt = self.App.picking_intersected_point(clickX, clickY, listExceptKeyType)
-        dataInst = self._get_data()
-        skeleton = self._get_skeleton()
-        clInx = data.CData.get_id_from_key(key)
-        cl = skeleton.get_centerline(clInx)
-        vertexIndex = self.__find_closest_vertex_index(skeleton.get_centerline(clInx), intersectedPt)
-
-        # radius obj
-        self.App.remove_key_type(CSubStateSkelEditSelectionCL.s_radiusKeyType)
-        radiusKey = data.CData.make_key(CSubStateSkelEditSelectionCL.s_radiusKeyType, 0, 0)
-        radiusObj = vtkObjRadius.CVTKObjRadius()
-        radiusObj.KeyType = CSubStateSkelEditSelectionCL.s_radiusKeyType
-        radiusObj.Key = radiusKey
-        radiusObj.set_cl(cl, vertexIndex, algLinearMath.CScoMath.to_vec3([1.0, 0.0, 1.0]))
-        radiusObj.Opacity = 0.3
-        dataInst.add_vtk_obj(radiusObj)
-        self.App.ref_key_type(CSubStateSkelEditSelectionCL.s_radiusKeyType)
-        
         operation.COperationSelectionCL.clicked(self._get_operator_selection_cl(), key)
         self.App.update_viewer()
     def clicked_mouse_rb_shift(self, clickX, clickY) :
@@ -171,16 +146,6 @@ class CSubStateSkelEditSelectionCL(subStateSkelEdit.CSubStateSkelEdit) :
         opSelectionCL.process_reset()
 
         self.App.update_viewer()
-
-    
-    # private
-    def __find_closest_vertex_index(self, cl : algSkeletonGraph.CSkeletonCenterline, pos : np.ndarray) -> int :
-        '''
-        desc : cl point들 중에 pos와 가장 가까운 cl point의 index를 리턴 
-        '''
-        pos = pos.reshape(-1)
-        dist = np.linalg.norm(cl.Vertex - pos, axis=1)
-        return np.argmin(dist)
 
 if __name__ == '__main__' :
     pass

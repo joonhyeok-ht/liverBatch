@@ -141,28 +141,28 @@ class CNiftiContainer() :
         self.m_inputOptionInfo = None
     def process(self) :
         if self.InputPath == "" :
-            print("niftiContainer : not setting input path")
+            #print("niftiContainer : not setting input path")
             return 
         if self.InputOptionInfo is None :
-            print("niftiContainer : not setting input option info")
+            #print("niftiContainer : not setting input option info")
             return 
 
         listTmp = []
         iMaskCnt = self.InputOptionInfo.get_maskinfo_count()
         if iMaskCnt == 0 :
-            print("not found mask info")
+            #print("not found mask info")
             return
 
         for inx in range(0, iMaskCnt) :
             maskInfo = self.InputOptionInfo.get_maskinfo(inx)
             niftiInfo = CNiftiInfo(maskInfo)
             niftiInfo.FullPath = os.path.join(self.InputPath, f"{maskInfo.Name}.nii.gz")
-
+            
             if os.path.exists(niftiInfo.FullPath) == True :
                 niftiInfo.Valid = True
             else :
                 niftiInfo.Valid = False
-                print(f"not found {niftiInfo.MaskInfo.Name}")
+                #print(f"not found {niftiInfo.MaskInfo.Name}")
 
             self.m_listNiftiInfo.append(niftiInfo)
             listTmp.append(niftiInfo.MaskInfo.Phase)
@@ -176,7 +176,7 @@ class CNiftiContainer() :
 
             listNiftiInfo = self.find_nifti_info_list_by_phase(phase)
             if len(listNiftiInfo) == 0 :
-                print(f"not found phaseInfo : {phaseInfo.Phase}")
+                #print(f"not found phaseInfo : {phaseInfo.Phase}")
                 continue
 
             bCheck = False
@@ -188,11 +188,12 @@ class CNiftiContainer() :
                     phaseInfo.Spacing = spacing
                     phaseInfo.Direction = direction
                     phaseInfo.Size = size
-                    print(f"setting phaseInfo : {phaseInfo.Phase} --> {phaseInfo.Origin}, {phaseInfo.Spacing}, {phaseInfo.Direction}, {phaseInfo.Size}")
+                    #print(f"setting phaseInfo : {phaseInfo.Phase} --> {phaseInfo.Origin}, {phaseInfo.Spacing}, {phaseInfo.Direction}, {phaseInfo.Size}")
                     bCheck = True
                     break
             if bCheck == False :
-                print(f"not found phaseInfo : {phaseInfo.Phase}")
+                #print(f"not found phaseInfo : {phaseInfo.Phase}")
+                pass
 
 
     def get_nifti_info_count(self) -> int :
@@ -272,10 +273,10 @@ class CNiftiContainerTerritory(CNiftiContainer) :
         super().clear()
     def process(self) :
         if self.InputPath == "" :
-            print("niftiContainer : not setting input path")
+            #print("niftiContainer : not setting input path")
             return 
         if self.InputOptionInfo is None :
-            print("niftiContainer : not setting input option info")
+            #print("niftiContainer : not setting input option info")
             return 
         super().process()
         # input your code
@@ -291,7 +292,7 @@ class CNiftiContainerTerritory(CNiftiContainer) :
         organName = segInfo.Organ
         organMaskInfo = self.InputOptionInfo.find_maskinfo_list_by_name(organName)
         if organMaskInfo is None :
-            print(f"not found organ : {organName}")
+            #print(f"not found organ : {organName}")
             return
         organMaskInfo = organMaskInfo[0]
 
@@ -302,7 +303,7 @@ class CNiftiContainerTerritory(CNiftiContainer) :
             childEndInx = segInfo.get_vesselinfo_child_end(inx)
             wholeVesselMaskInfo = self.InputOptionInfo.find_maskinfo_list_by_name(wholeVesselName)
             if wholeVesselMaskInfo is None :
-                print(f"not found whole vessel : {wholeVesselName}")
+                #print(f"not found whole vessel : {wholeVesselName}")
                 continue
             wholeVesselMaskInfo = wholeVesselMaskInfo[0]
 
@@ -324,11 +325,12 @@ class CNiftiContainerTerritory(CNiftiContainer) :
                 
                 niftiInfo = CNiftiInfo(maskInfo)
                 niftiInfo.FullPath = os.path.join(self.InputPath, f"{maskInfo.Name}.nii.gz")
+                
                 if os.path.exists(niftiInfo.FullPath) == True :
                     niftiInfo.Valid = True
                 else :
                     niftiInfo.Valid = False
-                    print(f"not found {niftiInfo.MaskInfo.Name}")
+                    #print(f"not found {niftiInfo.MaskInfo.Name}")
                 self.m_listNiftiInfo.append(niftiInfo)
 
                 # organ name
@@ -373,10 +375,10 @@ class CNiftiContainerRange(multiProcessTask.CMultiProcessTask) :
         super().clear()
     def process(self) :
         if self.InputPath == "" :
-            print("niftiContainer : not setting input path")
+            #print("niftiContainer : not setting input path")
             return 
         if self.InputOptionInfo is None :
-            print("niftiContainer : not setting input option info")
+            #print("niftiContainer : not setting input option info")
             return 
         
         self.m_niftiContainer.InputPath = self.InputPath
@@ -385,7 +387,7 @@ class CNiftiContainerRange(multiProcessTask.CMultiProcessTask) :
         listTmp = []
         iMaskCnt = self.InputOptionInfo.get_maskinfo_count()
         if iMaskCnt == 0 :
-            print("niftiContainer : not found mask info")
+            #print("niftiContainer : not found mask info")
             return
         
         for inx in range(0, iMaskCnt) :
@@ -397,7 +399,7 @@ class CNiftiContainerRange(multiProcessTask.CMultiProcessTask) :
                 niftiInfo.Valid = True
             else :
                 niftiInfo.Valid = False
-                print(f"not found {niftiInfo.MaskInfo.Name}")
+                #print(f"not found {niftiInfo.MaskInfo.Name}")
             
             self.OutputNiftiContainer.ListNiftiInfo.append(niftiInfo)
             listTmp.append(niftiInfo.MaskInfo.Phase)
@@ -410,7 +412,7 @@ class CNiftiContainerRange(multiProcessTask.CMultiProcessTask) :
 
             listNiftiInfo = self.OutputNiftiContainer.find_nifti_info_list_by_phase(phase)
             if len(listNiftiInfo) == 0 :
-                print(f"not found phaseInfo : {phaseInfo.Phase}")
+                #print(f"not found phaseInfo : {phaseInfo.Phase}")
                 continue
 
             bCheck = False
@@ -422,11 +424,12 @@ class CNiftiContainerRange(multiProcessTask.CMultiProcessTask) :
                     phaseInfo.Spacing = spacing
                     phaseInfo.Direction = direction
                     phaseInfo.Size = size
-                    print(f"setting phaseInfo : {phaseInfo.Phase} --> {phaseInfo.Origin}, {phaseInfo.Spacing}, {phaseInfo.Direction}, {phaseInfo.Size}")
+                    #print(f"setting phaseInfo : {phaseInfo.Phase} --> {phaseInfo.Origin}, {phaseInfo.Spacing}, {phaseInfo.Direction}, {phaseInfo.Size}")
                     bCheck = True
                     break
             if bCheck == False :
-                print(f"not found phaseInfo : {phaseInfo.Phase}")
+                #print(f"not found phaseInfo : {phaseInfo.Phase}")
+                pass
         
         listParam = []
         paramCnt = 0
@@ -437,10 +440,11 @@ class CNiftiContainerRange(multiProcessTask.CMultiProcessTask) :
                 self.add_target_index(targetInx)
                 paramCnt += 1
             else :
-                print(f"not found {niftiFullPath}")
+                pass
+                #print(f"not found {niftiFullPath}")
         
         if paramCnt == 0 :
-            print("not existing nifti files")
+            #print("not existing nifti files")
             return
         
         self._alloc_shared_list(self.get_target_index_count())
@@ -469,7 +473,7 @@ class CNiftiContainerRange(multiProcessTask.CMultiProcessTask) :
         vertex = algImage.CAlgImage.get_vertex_from_np(npImg, np.int32)
         maskCC = algImage.CAlgImage.get_cc(npImg, spacing)
         self.m_sharedList[inx] = [vertex, maskCC]
-        print(f"loaded nifti {niftiFullPath}")
+        #print(f"loaded nifti {niftiFullPath}")
 
 
     @property
@@ -502,12 +506,12 @@ class CFileSavePhaseInfo :
         self.m_outputFileName = ""
     def process(self) :
         if self.InputNiftiContainer is None :
-            print("file save phaseInfo : not setting niftiContainer")
+            #print("file save phaseInfo : not setting niftiContainer")
             return
          
         iPhaseCnt = self.InputNiftiContainer.get_phase_info_count()
         if iPhaseCnt == 0 :
-            print("file save phaseInfo : nonexistent phase")
+            #print("file save phaseInfo : nonexistent phase")
             return
         
         if os.path.exists(self.OutputSavePath) == False :
@@ -528,7 +532,7 @@ class CFileSavePhaseInfo :
         jsonFullPath = os.path.join(self.OutputSavePath, f"{self.OutputFileName}.json")
         with open(jsonFullPath, "w", encoding="utf-8") as fp:
             json.dump(retList, fp, ensure_ascii=False, indent=4)
-        print(f"file save phaseInfo : completed save {self.OutputFileName}")
+        #print(f"file save phaseInfo : completed save {self.OutputFileName}")
         
 
 
@@ -563,18 +567,18 @@ class CFileLoadPhaseInfo :
         self.m_inputFileName = ""
     def process(self) :
         if self.InputNiftiContainer is None :
-            print("file load phaseInfo : not setting niftiContainer")
+            #print("file load phaseInfo : not setting niftiContainer")
             return
         if self.InputPath == "" :
-            print("file load phaseInfo : not setting input path")
+            #print("file load phaseInfo : not setting input path")
             return
         if self.InputFileName == "" :
-            print("file load phaseInfo : not setting input filename")
+            #print("file load phaseInfo : not setting input filename")
             return
         
         jsonFullPath = os.path.join(self.InputPath, f"{self.InputFileName}.json")
         if os.path.exists(jsonFullPath) == False :
-            print(f"file load phaseInfo : not found {jsonFullPath}")
+            #print(f"file load phaseInfo : not found {jsonFullPath}")
             return
         
         jsonData = None
@@ -600,7 +604,7 @@ class CFileLoadPhaseInfo :
             phaseInfo.Size = size
             phaseInfo.Offset = algLinearMath.CScoMath.to_vec3([offset[0], offset[1], offset[2]])
             
-        print(f"file load phaseInfo : completed loading {self.InputFileName}")
+        #print(f"file load phaseInfo : completed loading {self.InputFileName}")
         
 
 
@@ -638,7 +642,7 @@ class CPhaseInfoContainer :
     def process(self) :
         jsonFullPath = self.InputFullPath
         if os.path.exists(jsonFullPath) == False :
-            print(f"file load phaseInfo : not found {jsonFullPath}")
+            #print(f"file load phaseInfo : not found {jsonFullPath}")
             return
         
         jsonData = None
@@ -685,5 +689,5 @@ if __name__ == '__main__' :
     pass
 
 
-# print ("ok ..")
+# #print ("ok ..")
 

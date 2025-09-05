@@ -37,10 +37,6 @@ class CMeshLib :
     def meshlib_save_stl(stlFullPath : str, mesh) :
         mrmesh.saveMesh(mesh, stlFullPath)
     @staticmethod
-    def meshlib_component_count(mesh) -> int :
-        components = mrmesh.getAllComponents(mesh)
-        return len(components)
-    @staticmethod
     def meshlib_decimation(mesh, targetTriCnt : int, cpuCnt = 12) :
         npFace = mrmeshnp.getNumpyFaces(mesh.topology)
         targetTriCnt = targetTriCnt

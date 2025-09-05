@@ -5,11 +5,9 @@ import shutil
 import vtk
 import subprocess
 
-from PySide6.QtCore import Qt, QItemSelectionModel, QModelIndex
-from PySide6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QHBoxLayout, QWidget, QPushButton, QLineEdit, QLabel, QSizePolicy, QListWidget, QFileDialog, QFrame, QCheckBox, QTabWidget, QComboBox, QTableView
-from PySide6.QtGui import QStandardItemModel, QStandardItem
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QHBoxLayout, QWidget, QPushButton, QLineEdit, QLabel, QSizePolicy, QListWidget, QFileDialog, QFrame, QCheckBox, QTabWidget, QComboBox
 from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
-
 
 fileAbsPath = os.path.abspath(os.path.dirname(__file__))
 fileAppPath = os.path.dirname(fileAbsPath)
@@ -37,8 +35,6 @@ import command.commandLoadingPatient as commandLoadingPatient
 import command.commandExtractionCL as commandExtractionCL
 import command.commandRecon as commandRecon
 
-import state.project.userData as userData
-
 import data as data
 import operation as op
 
@@ -59,7 +55,7 @@ class CTabStatePatient(tabState.CTabState) :
         "Clean",
     ]
     
-    def __init__(self, mediator) :
+    def __init__(self, mediator):
         self.m_bReady = False
         self.m_listStepBtnEvent = [
             self._on_btn_recon_all,
@@ -70,22 +66,16 @@ class CTabStatePatient(tabState.CTabState) :
 
         super().__init__(mediator)
         # input your code
-        self.m_outputPath = ""
         self.m_bReady = True
     def clear(self) :
         # input your code
-        self.m_btnCL = None
         self.m_outputPath = ""
         self.m_bReady = False
         super().clear()
 
 
     def process_init(self) :
-        dataInst = self.get_data()
-        if dataInst.Ready == False :
-            print("not setting patient path")
-            return
-        self._command_reset_clinfo_inx()
+        pass
     def process(self) :
         pass
     def process_end(self) :
@@ -97,7 +87,8 @@ class CTabStatePatient(tabState.CTabState) :
             self.m_optionFullPath = os.path.join(self.m_mediator.CommonPipelinePath, "option.json")
             if os.path.exists(self.m_optionFullPath) == False :
                 self.m_optionFullPath = ""
-        self._command_option_path(self.m_optionFullPath)
+        self._command_option_path()
+        self._command_patientID()
 
 
     def init_ui(self) :
@@ -136,7 +127,6 @@ class CTabStatePatient(tabState.CTabState) :
         for inx, stepName in enumerate(CTabStatePatient.s_listStepName) :
             btnList[inx].clicked.connect(self.m_listStepBtnEvent[inx])
         tabLayout.addLayout(layout)
-        self.m_btnCL = btnList[2]
 
 
         line = QFrame()
@@ -150,17 +140,9 @@ class CTabStatePatient(tabState.CTabState) :
         label.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
         tabLayout.addWidget(label)
 
-        self.m_modelCLInfo = QStandardItemModel()
-        self.m_modelCLInfo.setHorizontalHeaderLabels(["Index", "BlenderName", "Output"])
-        self.m_tvCLInfo = QTableView()
-        self.m_tvCLInfo.setModel(self.m_modelCLInfo)
-        self.m_tvCLInfo.setEditTriggers(QTableView.NoEditTriggers)
-        self.m_tvCLInfo.horizontalHeader().setStretchLastSection(True)
-        self.m_tvCLInfo.verticalHeader().setVisible(False)
-        self.m_tvCLInfo.setSelectionBehavior(QTableView.SelectRows)
-        self.m_tvCLInfo.clicked.connect(self._on_tv_clicked_clinfo)
-        tabLayout.addWidget(self.m_tvCLInfo)
-
+        layout, self.m_cbSkelIndex = self.m_mediator.create_layout_label_combobox("Centerline Index")
+        self.m_cbSkelIndex.currentIndexChanged.connect(self._on_cb_skel_index_changed)
+        tabLayout.addLayout(layout)
 
         btn = QPushButton("Extraction Centerline")
         btn.setStyleSheet(self.get_btn_stylesheet())
@@ -181,9 +163,6 @@ class CTabStatePatient(tabState.CTabState) :
         self.m_cbPatientID.blockSignals(True)
         self.m_cbPatientID.setCurrentIndex(inx)
         self.m_cbPatientID.blockSignals(False)
-
-        patientID = self.getui_patientID()
-        self.m_mediator.set_title(patientID)
     def setui_reset_patientID(self, listPatientID : str) :
         self.m_cbPatientID.blockSignals(True)
         self.m_cbPatientID.clear()
@@ -191,73 +170,38 @@ class CTabStatePatient(tabState.CTabState) :
             self.m_cbPatientID.addItem(f"{patientID}")
         self.m_cbPatientID.blockSignals(False)
         self.setui_patientID(0)
+    def setui_skelinfo_inx(self, inx : int) :
+        self.m_cbSkelIndex.blockSignals(True)
+        self.m_cbSkelIndex.setCurrentIndex(inx)
+        self.m_cbSkelIndex.blockSignals(False)
+        self.m_mediator.CLInfoIndex = inx
+    def setui_reset_skelinfo_inx(self) :
+        dataInst = self.get_data()
+        self.m_cbSkelIndex.blockSignals(True)
+        self.m_cbSkelIndex.clear()
+        for clInx in range(0, dataInst.DataInfo.get_info_count()) :
+            self.m_cbSkelIndex.addItem(f"{clInx}")
+        self.m_cbSkelIndex.blockSignals(False)
+        self.setui_skelinfo_inx(0)
     def setui_output_path(self, outputPath : str) :
         self.m_editOutputPath.setText(outputPath)
-    def setui_clinfo_inx(self, inx : int) :
-        QIndex = self.m_modelCLInfo.index(inx, 0)
-        if not QIndex.isValid() :
-            return
-        
-        self.m_tvCLInfo.blockSignals(True)
-        self.m_tvCLInfo.selectionModel().clearSelection()  # 기존 선택 지우기
-        self.m_tvCLInfo.selectionModel().select(
-            QIndex, 
-            QItemSelectionModel.Select | QItemSelectionModel.Rows
-        )
-        self.m_tvCLInfo.setCurrentIndex(QIndex)
-        self.m_tvCLInfo.blockSignals(False)
+
     def getui_patientID(self) -> str :
         return self.m_cbPatientID.currentText()
     def getui_output_path(self) -> str :
         return self.m_editOutputPath.text()
-    def getui_clinfo_inx(self) -> int :
-        '''
-        ret : clinfoInx
-                -1 : non-selection
-        '''
-        selectedIndex = self.m_tvCLInfo.selectionModel().selectedIndexes()
-        if selectedIndex :
-            row = selectedIndex[0].row()
-            index = int(self.m_modelCLInfo.item(row, 0).text())
-            return index
-        return -1
-    def getui_clinfo_blenderName(self) -> str :
-        '''
-        ret : clinfo blenderName
-                "" : non-selection
-        '''
-        selectedIndex = self.m_tvCLInfo.selectionModel().selectedIndexes()
-        if selectedIndex :
-            row = selectedIndex[0].row()
-            blenderName = self.m_modelCLInfo.item(row, 1).text()
-            return blenderName
-        return ""
-    def getui_clinfo_output(self) -> str :
-        '''
-        ret : clinfo output
-                "" : non-selection
-        '''
-        selectedIndex = self.m_tvCLInfo.selectionModel().selectedIndexes()
-        if selectedIndex :
-            row = selectedIndex[0].row()
-            output = self.m_modelCLInfo.item(row, 2).text()
-            return output
-        return ""
+    def getui_skelinfo_inx(self) -> int :
+        return self.m_cbSkelIndex.currentIndex()
+    
 
     # command
-    def _command_option_path(self, optionPath : str) :
+    def _command_option_path(self) :
         dataInst = self.get_data()
         self.m_mediator.remove_all_key()
         dataInst.clear_patient()
 
-        self.m_optionFullPath = optionPath
         self.m_editOptionPath.setText(self.m_optionFullPath)
-        if os.path.exists(self.m_optionFullPath) == False :
-            print("not existing option file")
-            self.setui_reset_patientID([])
-            self._command_reset_clinfo_inx()
-            self.setui_output_path("")
-            self.m_mediator.update_viewer()
+        if self.m_optionFullPath == "" :
             return
         
         optionFullPath = self.m_optionFullPath
@@ -273,70 +217,24 @@ class CTabStatePatient(tabState.CTabState) :
         dataInst.SelectionEPColor = algLinearMath.CScoMath.to_vec3([1.0, 0.0, 0.0])
         dataInst.EPSize = 0.5
 
-        self._command_reset_clinfo_inx()
-        self.setui_output_path("")
-        self.m_mediator.update_viewer()
-    def _command_output_path(self, outputPath : str) :
-        self.setui_output_path(outputPath)
-        self.m_outputPath = outputPath
-        self.m_mediator.remove_all_key()
-
-        # patient info refresh 
         retList = []
-
         optionInfoInst = self.get_optioninfo()
-        if os.path.exists(optionInfoInst.DataRootPath) : 
-            listTmp = os.listdir(optionInfoInst.DataRootPath)
-            for patientID in listTmp :
-                patientFullPath = os.path.join(optionInfoInst.DataRootPath, patientID)
-                patientMaskFullPath = os.path.join(patientFullPath, "Mask")
-                if os.path.exists(patientMaskFullPath) == True :
-                    retList.append(patientID)
-
-        if os.path.exists(self.m_outputPath) == True :
-            listTmp = os.listdir(self.m_outputPath)
-            for patientID in listTmp :
-                patientFullPath = os.path.join(self.m_outputPath, patientID)
-                reconBlendFullPath = os.path.join(patientFullPath, f"{patientID}_recon.blend")
-                if os.path.exists(reconBlendFullPath) == True :
-                    retList.append(patientID)
-
-        # 중복되지 않게 한다.
-        retList = list(set(retList))
+        listTmp = os.listdir(optionInfoInst.DataRootPath)
+        for patientID in listTmp :
+            patientFullPath = os.path.join(optionInfoInst.DataRootPath, patientID)
+            patientMaskFullPath = os.path.join(patientFullPath, "Mask")
+            if os.path.exists(patientMaskFullPath) == True :
+                retList.append(patientID)
         self.setui_reset_patientID(retList)
-
+        self.setui_reset_skelinfo_inx()
+        self.setui_output_path("")
         self.m_mediator.update_viewer()
     def _command_patientID(self) :
         dataInst = self.get_data()
         self.m_mediator.remove_all_key()
         dataInst.clear_patient()
-        
         self.m_outputPath = self.getui_output_path()
-
-        patientID = self.getui_patientID()
-        self.m_mediator.set_title(patientID)
         self.m_mediator.update_viewer()
-    def _command_reset_clinfo_inx(self) :
-        dataInst = self.get_data()
-
-        self.m_tvCLInfo.blockSignals(True)
-        self.m_modelCLInfo.removeRows(0, self.m_modelCLInfo.rowCount())
-        for dataInfoInx in range(0, dataInst.DataInfo.get_info_count()) :
-            clInfo = dataInst.DataInfo.get_clinfo(dataInfoInx)
-            blenderName = clInfo.get_input_blender_name()
-            outputName = clInfo.OutputName
-            self.m_modelCLInfo.appendRow([QStandardItem(f"{dataInfoInx}"), QStandardItem(blenderName), QStandardItem(outputName)])
-        self.m_tvCLInfo.blockSignals(False)
-
-        clinfoInx = dataInst.CLInfoIndex
-        if clinfoInx == -1 :
-            clinfoInx = 0
-        if clinfoInx > dataInst.DataInfo.get_info_count() :
-            dataInst.CLInfoIndex = -1
-            return
-
-        self.setui_clinfo_inx(clinfoInx)
-        self._command_clinfo_inx()
     def _command_centerline(self) :
         dataInst = self.get_data()
         self.m_mediator.remove_all_key()
@@ -346,26 +244,22 @@ class CTabStatePatient(tabState.CTabState) :
 
         cmd = commandLoadingPatient.CCommandLoadingPatient(self.m_mediator)
         cmd.InputData = dataInst
-        cmd.PatientBlenderFullPath = os.path.join(outputPatientPath, f"{self.getui_patientID()}_recon.blend")   
+        # cmd.PatientBlenderFullPath = os.path.join(outputPatientPath, self.get_data().ReconBlenderFileName)
+        cmd.PatientBlenderFullPath = os.path.join(outputPatientPath, f"{self.getui_patientID()}_recon.blend")
         cmd.process()
         self.m_mediator.load_userdata()
 
-        self._command_reset_clinfo_inx()
-        self.m_btnCL.setEnabled(False)
-    def _command_clinfo_inx(self) :
+        self._command_skelinfo_inx()
+    def _command_skelinfo_inx(self) :
         dataInst = self.get_data()
         self.m_mediator.unref_all_key()
 
-        if dataInst.get_skeleton_count() == 0 :
-            self.m_mediator.update_viewer()
-            return
-
-        clinfoInx = self.getui_clinfo_inx()
-        dataInst.CLInfoIndex = clinfoInx
-        self.m_mediator.ref_key_type_groupID(dataInst.s_vesselType, clinfoInx)
-        skeleton = dataInst.get_skeleton(clinfoInx)
+        skelinfoInx = self.getui_skelinfo_inx()
+        dataInst.CLInfoIndex = skelinfoInx
+        self.m_mediator.ref_key_type_groupID(dataInst.s_vesselType, skelinfoInx)
+        skeleton = dataInst.get_skeleton(skelinfoInx)
         if skeleton is not None :
-            self.m_mediator.ref_key_type_groupID(dataInst.s_skelTypeCenterline, clinfoInx)
+            self.m_mediator.ref_key_type_groupID(dataInst.s_skelTypeCenterline, skelinfoInx)
         
         self.m_mediator.update_viewer()
     def _command_extraction_cl(self) :
@@ -411,19 +305,16 @@ class CTabStatePatient(tabState.CTabState) :
     
     # ui event 
     def _on_btn_option_path(self) :
-        self.m_btnCL.setEnabled(True)
-
         optionPath, _ = QFileDialog.getOpenFileName(self.get_main_widget(), "Select Option File", "", "JSON Files (*.json)")
         if optionPath == "" :
             return
         
         self.m_optionFullPath = optionPath
-        self._command_option_path(optionPath)
+        self._command_option_path()
     def _on_btn_output_path(self) :
-        self.m_btnCL.setEnabled(True)
-
         outputPath = QFileDialog.getExistingDirectory(self.get_main_widget(), "Selection Output Path")
-        self._command_output_path(outputPath)
+        self.setui_output_path(outputPath)
+        self.m_outputPath = outputPath
     def _on_btn_recon_all(self) :
         pass
     def _on_btn_recon(self) :
@@ -434,17 +325,13 @@ class CTabStatePatient(tabState.CTabState) :
             print("not setting output path")
             return 
         
-        userData = self.m_mediator.ReconUserData
-        if userData is not None :
-            userData.override_recon(self.getui_patientID(), self.getui_output_path())
-        
-        # cmd = commandRecon.CCommandReconDevelopCommon(self.m_mediator)
-        # cmd.InputData = self.get_data()
-        # cmd.InputPatientID = self.getui_patientID()
-        # cmd.InputBlenderScritpFileName = "blenderScriptRecon"
-        # cmd.InputSaveBlenderName = f"{self.getui_patientID()}_recon"
-        # cmd.OutputPath = self.getui_output_path()
-        # cmd.process()
+        cmd = commandRecon.CCommandReconDevelopCommon(self.m_mediator)
+        cmd.InputData = self.get_data()
+        cmd.InputPatientID = self.getui_patientID()
+        cmd.InputBlenderScritpFileName = "blenderScriptRecon"
+        cmd.InputSaveBlenderName = f"{self.getui_patientID()}_recon"
+        cmd.OutputPath = self.getui_output_path()
+        cmd.process()
     def _on_btn_centerline(self) :
         patientID = self.getui_patientID()
         outputPatientPath = os.path.join(self.OutputPath, patientID)
@@ -467,49 +354,43 @@ class CTabStatePatient(tabState.CTabState) :
             print("not setting output path")
             return 
         
-        userData = self.m_mediator.ReconUserData
-        if userData is not None :
-            userData.override_clean(self.getui_patientID(), self.getui_output_path())
-        
-        # patientID = self.getui_patientID()
-        # blenderScritpFileName = "blenderScriptClean"
-        # saveBlenderName = f"{self.getui_patientID()}"
-        # outputPath = self.getui_output_path()
+        patientID = self.getui_patientID()
+        blenderScritpFileName = "blenderScriptClean"
+        saveBlenderName = f"{self.getui_patientID()}"
+        outputPath = self.getui_output_path()
 
-        # outputPatientPath = os.path.join(outputPath, patientID)
-        # saveBlenderFullPath = os.path.join(outputPatientPath, f"{saveBlenderName}.blend")
-        # srcBlenderFullPath = os.path.join(outputPatientPath, f"{self.getui_patientID()}_recon.blend")
+        outputPatientPath = os.path.join(outputPath, patientID)
+        saveBlenderFullPath = os.path.join(outputPatientPath, f"{saveBlenderName}.blend")
+        srcBlenderFullPath = os.path.join(outputPatientPath, f"{self.getui_patientID()}_recon.blend")
 
-        # if os.path.exists(srcBlenderFullPath) == False :
-        #     print("not found recon blender file")
-        #     return
+        if os.path.exists(srcBlenderFullPath) == False :
+            print("not found recon blender file")
+            return
 
-        # # 기존것은 지움
-        # if os.path.exists(saveBlenderFullPath) == True :
-        #     os.remove(saveBlenderFullPath)
-        # # 새롭게 생성 
-        # shutil.copy(srcBlenderFullPath, saveBlenderFullPath)
+        # 기존것은 지움
+        if os.path.exists(saveBlenderFullPath) == True :
+            os.remove(saveBlenderFullPath)
+        # 새롭게 생성 
+        shutil.copy(srcBlenderFullPath, saveBlenderFullPath)
 
-        # cmd = commandRecon.CCommandReconDevelopClean(self.m_mediator)
-        # cmd.InputData = self.get_data()
-        # cmd.InputPatientID = patientID
-        # cmd.InputBlenderScritpFileName = blenderScritpFileName
-        # cmd.InputSaveBlenderName = saveBlenderName
-        # cmd.OutputPath = self.getui_output_path()
-        # cmd.process()
+        cmd = commandRecon.CCommandReconDevelopClean(self.m_mediator)
+        cmd.InputData = self.get_data()
+        cmd.InputPatientID = patientID
+        cmd.InputBlenderScritpFileName = blenderScritpFileName
+        cmd.InputSaveBlenderName = saveBlenderName
+        cmd.OutputPath = self.getui_output_path()
+        cmd.process()
     def _on_cb_patientID_changed(self, index) :
-        self.m_btnCL.setEnabled(True)
-
         patientID = self.getui_patientID()
         if patientID == "" :
             print("not selection patientID")
             return
         self._command_patientID()
-    def _on_tv_clicked_clinfo(self, index) :
+    def _on_cb_skel_index_changed(self, index) :
         dataInst = self.get_data()
         if dataInst.Ready == False :
             return
-        self._command_clinfo_inx()
+        self._command_skelinfo_inx()
     def _on_btn_extraction_centerline(self) :
         self._command_extraction_cl()
 

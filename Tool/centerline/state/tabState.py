@@ -77,12 +77,6 @@ class CTabState :
 
 
     # mediator message
-    def clicked_mouse_lb(self, clickX, clickY) :
-        pass
-    def clicked_mouse_lb_shift(self, clickX, clickY) :
-        pass
-    def release_mouse_lb(self) :
-        pass
     def clicked_mouse_rb(self, clickX, clickY) :
         pass
     def clicked_mouse_rb_shift(self, clickX, clickY) :
@@ -90,8 +84,6 @@ class CTabState :
     def release_mouse_rb(self) :
         pass
     def mouse_move(self, clickX, clickY) :
-        pass
-    def mouse_move_lb(self, clickX, clickY) :
         pass
     def mouse_move_rb(self, clickX, clickY) :
         pass
@@ -246,13 +238,13 @@ class CTabState :
         dilatedPoly.SetPoints(newPoints)
         return dilatedPoly
 
-    # protected 
+    # protected
     def _init_cl_label(self) :
         dataInst = self.get_data()
         clinfoInx = self.get_clinfo_index()
         skeleton = dataInst.get_skeleton(clinfoInx)
 
-        labelColor = algLinearMath.CScoMath.to_vec3([1.0, 0.0, 0.0])
+        labelColor = algLinearMath.CScoMath.to_vec3([1.00, 1.00, 0.50]) #sally change color
         iCnt = skeleton.get_centerline_count()
         for inx in range(0, iCnt) :
             cl = skeleton.get_centerline(inx)

@@ -33,7 +33,6 @@ import Block.optionInfo as optionInfo
 import command.curveInfo as curveInfo
 import command.commandExport as commandExport
 import command.commandVesselKnife as commandVesselKnife
-import command.commandRecon as commandRecon
 
 import vtkObjInterface as vtkObjInterface
 
@@ -42,46 +41,46 @@ import data as data
 import userData as userData
 
 
-# class CTPVessel :
-#     s_tpVesselKeyType = "TPVessel"
-#     s_tpRadius = 2.0
+class CTPVessel :
+    s_tpVesselKeyType = "TPVessel"
+    s_tpRadius = 2.0
 
 
-#     def __init__(self, groupID : int, id : int, label : str, pos : np.ndarray, color : np.ndarray) :
-#         tpPolyData = algVTK.CVTK.create_poly_data_sphere(
-#         algLinearMath.CScoMath.to_vec3([0.0, 0.0, 0.0]), 
-#         CTPVessel.s_tpRadius
-#                 )
+    def __init__(self, groupID : int, id : int, label : str, pos : np.ndarray, color : np.ndarray) :
+        tpPolyData = algVTK.CVTK.create_poly_data_sphere(
+        algLinearMath.CScoMath.to_vec3([0.0, 0.0, 0.0]), 
+        CTPVessel.s_tpRadius
+                )
         
-#         keyType = CTPVessel.s_tpVesselKeyType
-#         key = data.CData.make_key(keyType, groupID, id)
+        keyType = CTPVessel.s_tpVesselKeyType
+        key = data.CData.make_key(keyType, groupID, id)
 
-#         self.m_tpVesselObj = vtkObjInterface.CVTKObjInterface()
-#         self.m_tpVesselObj.KeyType = keyType
-#         self.m_tpVesselObj.Key = key
-#         self.m_tpVesselObj.Color = color
-#         self.m_tpVesselObj.Opacity = 0.5
-#         self.m_tpVesselObj.PolyData = tpPolyData
-#         self.m_tpVesselObj.Pos = pos
+        self.m_tpVesselObj = vtkObjInterface.CVTKObjInterface()
+        self.m_tpVesselObj.KeyType = keyType
+        self.m_tpVesselObj.Key = key
+        self.m_tpVesselObj.Color = color
+        self.m_tpVesselObj.Opacity = 0.5
+        self.m_tpVesselObj.PolyData = tpPolyData
+        self.m_tpVesselObj.Pos = pos
 
-#         self.m_label = label
-#         self.m_id = id
-#     def clear(self) :
-#         self.m_label = ""
-#         self.m_tpVesselObj.clear()
-#         self.m_tpVesselObj = None
-#         self.m_id = -1
+        self.m_label = label
+        self.m_id = id
+    def clear(self) :
+        self.m_label = ""
+        self.m_tpVesselObj.clear()
+        self.m_tpVesselObj = None
+        self.m_id = -1
 
     
-#     @property
-#     def TPVesselObj(self) -> vtkObjInterface.CVTKObjInterface :
-#         return self.m_tpVesselObj
-#     @property
-#     def Label(self) -> str :
-#         return self.m_label
-#     @property
-#     def ID(self) -> int :
-#         return self.m_id
+    @property
+    def TPVesselObj(self) -> vtkObjInterface.CVTKObjInterface :
+        return self.m_tpVesselObj
+    @property
+    def Label(self) -> str :
+        return self.m_label
+    @property
+    def ID(self) -> int :
+        return self.m_id
 
 
 
@@ -89,6 +88,7 @@ import userData as userData
 class CUserDataStomach(userData.CUserData) :
     s_userDataKey = "Stomach"
     s_tpInfoPath = "TPInfo"
+    s_tpColorCnt = 100
 
 
     def __init__(self, data : data.CData, mediator) :
@@ -96,28 +96,27 @@ class CUserDataStomach(userData.CUserData) :
         # input your code
         self.m_mediator = mediator
 
+        # self.m_colors = np.array([cm.get_cmap("tab20", CUserDataStomach.s_tpColorCnt)(i)[:3] for i in range(CUserDataStomach.s_tpColorCnt)])
+        self.m_colors = np.array([cm.get_cmap("hsv", CUserDataStomach.s_tpColorCnt)(i)[:3] for i in range(CUserDataStomach.s_tpColorCnt)])
         self.m_listTPABlenderName = []
         self.m_listTPVBlenderName = []
         '''
-        value : {tpName, pos : np.ndarray}
+        inx : groupID or clinfoInx
+        value : dict 
+                    - key : tpObjKey
+                    - value : CVesselTP
         '''
-        self.m_listTPAInfo = []
-        self.m_listTPVInfo = []
-        '''
-        key : clID
-        value : label
-        '''
-        self.m_dicLabelCLA = {}
-        self.m_dicLabelCLV = {}
+        self.m_listTPVesselGroup = []
     def clear(self) :
         # input your code
         self.m_mediator = None
         self.m_listTPABlenderName.clear()
         self.m_listTPVBlenderName.clear()
-        self.m_listTPAInfo.clear()
-        self.m_listTPVInfo.clear()
-        self.m_dicLabelCLA.clear()
-        self.m_dicLabelCLV.clear()
+        for tpVesselGroup in self.m_listTPVesselGroup :
+            for key, tpVessel in tpVesselGroup.items() :
+                tpVessel.clear()
+            tpVesselGroup.clear()
+        self.m_listTPVesselGroup.clear()
         super().clear()
 
     def load_patient(self) -> bool :
@@ -134,14 +133,14 @@ class CUserDataStomach(userData.CUserData) :
 
         self._export_tp_vessel()
 
-        # iCnt = self.Data.get_skeleton_count()
-        # if iCnt == 0 :
-        #     return 
-        # for inx in range(0, iCnt) :
-        #     self.m_listTPVesselGroup.append({})
-
-        self._init_tpinfo(self.m_listTPAInfo, self.m_listTPABlenderName)
-        self._init_tpinfo(self.m_listTPVInfo, self.m_listTPVBlenderName)
+        iCnt = self.Data.get_skeleton_count()
+        if iCnt == 0 :
+            return 
+        for inx in range(0, iCnt) :
+            self.m_listTPVesselGroup.append({})
+        
+        self._create_tp_vessel_obj(0, self.m_listTPABlenderName)
+        self._create_tp_vessel_obj(1, self.m_listTPVBlenderName)
         
         return True
     
@@ -158,109 +157,32 @@ class CUserDataStomach(userData.CUserData) :
         tpInfoOutPath = os.path.join(self.get_tpinfo_path(), "out")
         return tpInfoOutPath
     
-    def get_tpinfo_count(self, clinfoinx : int) -> int :
-        '''
-        clinfoinx : 0 -> ap
-                    1 -> pp
-        '''
-        if clinfoinx == 0 :
-            return len(self.m_listTPAInfo)
-        else :
-            return len(self.m_listTPVInfo)
-    def get_tpinfo_name(self, clinfoinx : int, inx : int) -> str :
-        if clinfoinx == 0 :
-            dic = self.m_listTPAInfo[inx]
-        else :
-            dic = self.m_listTPVInfo[inx]
-        tpName = list(dic.keys())[0]
-        return tpName
-    def get_tpinfo_pos(self, clinfoinx : int, inx : int) -> np.ndarray :
-        if clinfoinx == 0 :
-            dic = self.m_listTPAInfo[inx]
-        else :
-            dic = self.m_listTPVInfo[inx]
-        pos = list(dic.values())[0]
-        return pos
-    def get_tpinfo(self, clinfoinx : int, inx : int) -> tuple :
-        '''
-        ret : (name, pos : np.dnarray)
-        '''
-        if clinfoinx == 0 :
-            dic = self.m_listTPAInfo[inx]
-        else :
-            dic = self.m_listTPVInfo[inx]
-        tpName = list(dic.keys())[0]
-        pos = list(dic.values())[0]
-        return (tpName, pos)
-    def set_tpinfo(self, clinfoinx : int, inx : int, name : str, pos : np.ndarray) :
-        '''
-        ret : (name, pos : np.dnarray)
-        '''
-        if clinfoinx == 0 :
-            dic = self.m_listTPAInfo[inx]
-        else :
-            dic = self.m_listTPVInfo[inx]
-        dic[name] = pos.copy()
+    def get_color(self, index : int) -> np.ndarray :
+        mappedIndex = index % CUserDataStomach.s_tpColorCnt
+        return self.m_colors[mappedIndex].reshape(-1, 3)
     
-    def clear_label_cl(self, clinfoinx : int) :
-        if clinfoinx == 0 :
-            dic = self.m_dicLabelCLA
-        else :
-            dic = self.m_dicLabelCLV
-        dic.clear()
-    def add_label_cl(self, clinfoinx : int, cl : algSkeletonGraph.CSkeletonCenterline) :
-        if clinfoinx == 0 :
-            dic = self.m_dicLabelCLA
-        else :
-            dic = self.m_dicLabelCLV
-        dic[cl.ID] = cl.Name
-    def get_label_cl(self, clinfoinx : int, cl : algSkeletonGraph.CSkeletonCenterline) -> str :
-        if clinfoinx == 0 :
-            dic = self.m_dicLabelCLA
-        else :
-            dic = self.m_dicLabelCLV
-        if cl.ID in dic :
-            return dic[cl.ID]
-        else :
-            return ""
-        
-    
-
-    # override
-    def override_recon(self, patientID : str, outputPath : str) :
-        cmd = commandRecon.CCommandReconDevelopCommon(self.m_mediator)
-        cmd.InputData = self.Data
-        cmd.InputPatientID = patientID
-        cmd.InputBlenderScritpFileName = "blenderScriptRecon"
-        cmd.InputSaveBlenderName = f"{patientID}_recon"
-        cmd.OutputPath = outputPath
-        cmd.process()
-    def override_clean(self, patientID : str, outputPath : str) :
-        blenderScritpFileName = "blenderScriptClean"
-        saveBlenderName = f"{patientID}"
-
-        outputPatientPath = os.path.join(outputPath, patientID)
-        saveBlenderFullPath = os.path.join(outputPatientPath, f"{saveBlenderName}.blend")
-        srcBlenderFullPath = os.path.join(outputPatientPath, f"{patientID}_recon.blend")
-
-        if os.path.exists(srcBlenderFullPath) == False :
-            print("not found recon blender file")
-            return
-
-        # 기존것은 지움
-        if os.path.exists(saveBlenderFullPath) == True :
-            os.remove(saveBlenderFullPath)
-        # 새롭게 생성 
-        shutil.copy(srcBlenderFullPath, saveBlenderFullPath)
-
-        cmd = commandRecon.CCommandReconDevelopClean(self.m_mediator)
-        cmd.InputData = self.Data
-        cmd.InputPatientID = patientID
-        cmd.InputBlenderScritpFileName = blenderScritpFileName
-        cmd.InputSaveBlenderName = saveBlenderName
-        cmd.OutputPath = outputPath
-        cmd.process()
-    
+    def add_tp_vessel(self, groupID : int, index : int, label : str, pos : np.ndarray, color : np.ndarray) -> CTPVessel : 
+        tpVesselGroup = self.m_listTPVesselGroup[groupID]
+        tpVessel = CTPVessel(groupID, index, label, pos, color)
+        key = tpVessel.TPVesselObj.Key
+        tpVesselGroup[key] = tpVessel
+        self.Data.add_vtk_obj(tpVessel.TPVesselObj)
+        return tpVessel
+    def get_tp_vessel_group(self, groupID : int) -> dict :
+        '''
+        key : tpObjKey
+        value : CTPVessel
+        '''
+        return self.m_listTPVesselGroup[groupID]
+    def get_tp_vessel_count(self, groupID : int) -> int :
+        tpVesselGroup = self.get_tp_vessel_group(groupID)
+        return len(tpVesselGroup)
+    def find_tp_vessel_by_key(self, groupID : int, tpVesselObjKey : str) -> CTPVessel :
+        tpVesselGroup = self.get_tp_vessel_group(groupID)
+        for key, tpVessel in tpVesselGroup.items() :
+            if key == tpVesselObjKey :
+                return tpVessel
+        return None
     
 
     # protected
@@ -300,8 +222,10 @@ class CUserDataStomach(userData.CUserData) :
         center_z = (bounds[4] + bounds[5]) / 2.0
         center = algLinearMath.CScoMath.to_vec3([center_x, center_y, center_z])
         return center
-    def _init_tpinfo(self, outListTPInfo : list, listTPBlenderName : list) :
+    def _create_tp_vessel_obj(self, groupID : int, listTPBlenderName : str) :
         tpInfoInPath = self.get_tpinfo_in_path()
+        index = 0
+
         for tpBlenderName in listTPBlenderName :
             tpFullPath = os.path.join(tpInfoInPath, f"{tpBlenderName}.stl")
             if os.path.exists(tpFullPath) == False :
@@ -313,9 +237,9 @@ class CUserDataStomach(userData.CUserData) :
 
             for subPolyData in listPolyData :
                 pos = self._get_polydata_center(subPolyData)
-                dic = {}
-                dic[label] = pos
-                outListTPInfo.append(dic)
+                color = self.get_color(index)
+                self.add_tp_vessel(groupID, index, label, pos, color)
+                index += 1
     
 
     @property

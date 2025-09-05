@@ -1,44 +1,44 @@
 {
     "Version" : {
-        "Release" : "Common Pipeline v1.0",
+        "Release" : "HuLiverOption_v1.0.0",
         "DESC": "Solution Common Pipeline"
     },
   
-    "DataRootPath" : "/Users/hutom/Desktop/solution/project/anaconda/Solution/Data/Colon/KNUCH_025_all",
-    "CL" : "processCL.sh",
+	"DataRootPath" : "C:\\Users\\hutom\\Desktop\\jh_test\\data\\liver\\LIVER0227\\dataRoot_liver_0902_150559",
+    "CL" : "processCL.exe",
     
     "ReconParamList" : {
-        "CTOrganType" : {
+        "ClassicOrganType" : {
             "contour" : 10,
             "param" : [20, 0.5, 0.87],
             "gaussian" : 1,
-            "algorithm" : "MarchingPro",
+            "algorithm" : "Marching",
             "resampling factor" : 1
         },
-        "MROrganType" : {
-            "contour" : 10,
-            "param" : [20, 0.9, 0.0],
+        "DefaultType" : {
+            "contour" : 127,
+            "param" : [6, 0.0, 0.0],
             "gaussian" : 0,
-            "algorithm" : "MarchingPro",
+            "algorithm" : "Marching",
             "resampling factor" : 1
         },
-        "UreterType" : {
-            "contour" : 10,
-            "param" : [20, 0.9, 0.0],
-            "gaussian" : 1,
-            "algorithm" : "MarchingPro",
+        "OrganType" : {
+            "contour" : 127,
+            "param" : [6, 0.9, 0.0],
+            "gaussian" : 0,
+            "algorithm" : "Marching",
             "resampling factor" : 1
         },
         "VesselType" : {
             "contour" : 10,
-            "param" : [16, 0.8, 0.01],
+            "param" : [16, 0.8, 0.0],
             "gaussian" : 0,
             "algorithm" : "Marching",
             "resampling factor" : 1
         },
         "SkelType" : {
-            "contour" : 127,
-            "param" : [100, 0.99, 0.0],
+            "contour" : 10,
+            "param" : [20, 0.98, 0.0],
             "gaussian" : 0,
             "algorithm" : "Marching",
             "resampling factor" : 2
@@ -46,7 +46,7 @@
     },
     "CenterlineParamList" : {
         "CenterlineDefaultType" : {
-            "advancementRatio" : 1.01,
+            "advancementRatio" : 1.0,
             "resamplingLength" : 1.0,
             "smoothingIter" : 10,
             "smoothingFactor" : 0.1
@@ -55,26 +55,38 @@
 
 
     "MaskInfo" : [
-        {"name":"colon-0", "phase":"PP", "reconType":"CTOrganType", "strictureMode":0, "blenderName":"colon-0"},
-        {"name":"colon-MR", "phase":"MR", "reconType":"MROrganType", "strictureMode":0, "blenderName":"colon-MR"},
-        {"name":"artery-all", "phase":"AP", "reconType":"VesselType", "strictureMode":1, "blenderName":"artery-all"},
-        {"name":"sacrum-MR", "phase":"MR", "reconType":"MROrganType", "strictureMode":0, "blenderName":"sacrum-MR"},
-        {"name":"sacrum", "phase":"PP", "reconType":"CTOrganType", "strictureMode":0, "blenderName":"sacrum"},
-        {"name":"levator-ani", "phase":"MR", "reconType":"MROrganType", "strictureMode":0, "blenderName":"levator-ani"},
-        {"name":"ureter-MR", "phase":"MR", "reconType":"UreterType", "strictureMode":0, "blenderName":"ureter-MR"},
-        {"name":"closing", "phase":"MR", "reconType":"MROrganType", "strictureMode":0, "blenderName":"closing"}
+        {"name":"Artery", "phase":"AP", "reconType":"VesselType", "strictureMode":1, "blenderName":"Artery"},
+        {"name":"MPV_AP", "phase":"AP", "reconType":"VesselType", "strictureMode":1, "blenderName":"MPV_AP"},
+
+        {"name":"Liver", "phase":"PP", "reconType":"ClassicOrganType", "strictureMode":0, "blenderName":"Liver"},
+        {"name":"Adrenal", "phase":"PP", "reconType":"ClassicOrganType", "strictureMode":0, "blenderName":"Adrenal"},
+        {"name":"Gallbladder", "phase":"PP", "reconType":"ClassicOrganType", "strictureMode":0, "blenderName":"Gallbladder"},
+        {"name":"MPV_PP", "phase":"PP", "reconType":"VesselType", "strictureMode":1, "blenderName":"MPV_PP"},
+        {"name":"Portal", "phase":"PP", "reconType":"VesselType", "strictureMode":1, "blenderName":"Portal"},
+        {"name":"Tumor", "phase":"PP", "reconType":"ClassicOrganType", "strictureMode":0, "blenderName":"Tumor"},
+        
+        {"name":"Abdominal_wall", "phase":"HVP", "reconType":"ClassicOrganType", "strictureMode":0, "blenderName":"Abdominal_wall"},
+        {"name":"Skin", "phase":"HVP", "reconType":"ClassicOrganType", "strictureMode":0, "blenderName":"Skin"},
+        {"name":"Rib", "phase":"HVP", "reconType":"ClassicOrganType", "strictureMode":0, "blenderName":"Rib"},
+        {"name":"Vein", "phase":"HVP", "reconType":"VesselType", "strictureMode":1, "blenderName":"Vein"},
+        {"name":"MPV_HVP", "phase":"HVP", "reconType":"VesselType", "strictureMode":1, "blenderName":"MPV_HVP"},  
+        
+        {"name":"Duct", "phase":"MR", "reconType":"VesselType", "strictureMode":1, "blenderName":"Duct"},
+        {"name":"MPV_MR", "phase":"MR", "reconType":"VesselType", "strictureMode":1, "blenderName":"MPV_MR"}
     ],
     "RegistrationInfo" : [
-        {"Target" : "sacrum", "Src" : "sacrum-MR", "RigidAABB" : 1}
+        {"Target" : "MPV_PP", "Src" : "MPV_AP", "RigidAABB" : 0},
+        {"Target" : "MPV_PP", "Src" : "MPV_HVP", "RigidAABB" : 0},
+        {"Target" : "MPV_PP", "Src" : "MPV_MR", "RigidAABB" : 1}
     ],
     "CenterlineInfo" : [
         {
             "centerlineType" : "CenterlineDefaultType",
             "inputKey" : "blenderName",
             "treeRootKey" : "axis",
-            "outputName" : "colon-0",
+            "outputName" : "Portal",
             "input" : {
-                "blenderName" : "colon-0",
+                "blenderName" : "Portal",
                 "reconType" : "SkelType"
             },
             "findCell" : "maxZ",
@@ -85,13 +97,13 @@
                 "nnPos" : [0.0, 0.0, 0.0]
             }
         },
-        {
+                {
             "centerlineType" : "CenterlineDefaultType",
             "inputKey" : "blenderName",
             "treeRootKey" : "axis",
-            "outputName" : "colon-MR",
+            "outputName" : "Artery",
             "input" : {
-                "blenderName" : "colon-MR",
+                "blenderName" : "Artery",
                 "reconType" : "SkelType"
             },
             "findCell" : "maxZ",
@@ -102,13 +114,30 @@
                 "nnPos" : [0.0, 0.0, 0.0]
             }
         },
-        {
+                        {
             "centerlineType" : "CenterlineDefaultType",
             "inputKey" : "blenderName",
             "treeRootKey" : "axis",
-            "outputName" : "artery-all",
+            "outputName" : "Vein",
             "input" : {
-                "blenderName" : "artery-all",
+                "blenderName" : "Vein",
+                "reconType" : "SkelType"
+            },
+            "findCell" : "maxZ",
+            "treeRoot" : {
+                "maskName" : "",
+                "blenderName" : "",
+                "axis" : "maxZ",
+                "nnPos" : [0.0, 0.0, 0.0]
+            }
+        },
+                                {
+            "centerlineType" : "CenterlineDefaultType",
+            "inputKey" : "blenderName",
+            "treeRootKey" : "axis",
+            "outputName" : "Duct",
+            "input" : {
+                "blenderName" : "Duct",
                 "reconType" : "SkelType"
             },
             "findCell" : "maxZ",
@@ -122,10 +151,11 @@
     ],
     "SegmentInfo" : [
         {
-            "organ" : "Liver_PP",
+            "type" : "blender",
+            "organ" : "Liver",
             "vesselInfo" : [
                 {
-                    "wholeVessel" : "PV",
+                    "wholeVessel" : "Portal",
                     "childVessel" : [1, 30],
                     "dilationIter" : 2,
                     "noiseSegCnt" : 27 
@@ -142,7 +172,7 @@
             "vein-extra"
         ],
         "MeshBoolean" : [
-            {"operator" : "subtraction", "blenderName0" : "levator-ani", "blenderName1" : "closing", "fillHole" : 0, "blenderName" : "leavator-ani-closing"},
+            {"operator" : "subtraction", "blenderName0" : "blenderName0", "blenderName1" : "blenderName1", "fillHole" : 1, "blenderName" : "blenderNameB"},
             {"operator" : "intersection", "blenderName0" : "blenderName0", "blenderName1" : "blenderName1", "fillHole" : 1, "blenderName" : "blenderNameB"},
             {"operator" : "union", "blenderName0" : "blenderName0", "blenderName1" : "blenderName1", "fillHole" : 1, "blenderName" : "blenderNameB"},
             {"operator" : "inside", "blenderName0" : "blenderName0", "blenderName1" : "blenderName1", "fillHole" : 1, "blenderName" : "blenderNameB"},
@@ -155,19 +185,27 @@
     ],
 
     "Blender" : {
-        "BlenderExe" : "/Applications/Blender.app/Contents/MacOS/Blender",
+        "BlenderExe" : "Blender",
+        "DESC" : "Set the target number of vertices in Decimation. Decimation is not performed on items not defined in Decimation.",
+        "PatientID" : "",
+        "NotImport" : [
+            ""
+        ],
         "Decimation" : {
-            "Liver_PP" : 20000,
+            "Liver" : 20000,
             "Liver_PP_PV[1,30]" : 500,
-            "PV" : 40000,
+            "Portal" : 40000,
             "PV[1,30]" : 500,
-            "HV" : 40000,
+            "Vein" : 40000,
             "HV[1,4]" : 500
         },
         "DecimationByRatio" : {
+            "DESC":"input target percentage",
+            "List":{
             "blenderName3" : 4000,
             "blenderName4" : 4000
-        },
+        }
+    },
         "Remesh" : {
             "VoxelSize" : 1,
             "RemeshList" : {
@@ -176,21 +214,35 @@
             }
         },
         "MeshCleanUp" : [
-            "blenderName0",
-            "blenderName1"
+            "Liver",
+            "Adrenal",
+            "Gallbladder",
+            "Portal",
+            "Vein",
+            "Artery",
+            "Duct",
+            "MPV_AP",
+            "MPV_PP",
+            "MPV_HVP",
+            "MPV_MR"
         ],
         "MeshHealing" : [
-            "01018ug_27_Whole_Artery",
-            "artery-all-005",
-            "vein-all",
-            "vein-extra"
+            "blenderName"
         ],
-        "SmartUV" : [
-            "blenderName0",
-            "blenderName1",
-            "blenderName2",
-            "blenderName3",
-            "blenderName4"
+        "SaveBlenderName" : "",
+        "SmartUV" : {
+        "DESC" : "Creates UVMap of stl files set in IncludedList.",
+        "IncludedList" : [
+            "Abdominal_wall",
+            "Gallbladder",
+            "Liver",
+            "Diaphragm"
         ]
+
+    },
+        "ProjectUV" : [
+            "blendername"
+        ]
+
     }
 }

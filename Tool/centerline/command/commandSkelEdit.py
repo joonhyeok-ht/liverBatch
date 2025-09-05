@@ -97,7 +97,7 @@ class CCommandSkelEdit(commandInterface.CCommand) :
                 return idx
         return -1
     def _find_index_last_active_br(self) -> int :
-        for idx in range(len(self.InputSkeleton.ListBranch) - 1, -1, -1) :
+        for idx in range(len(self.InputSkeleton.ListBranch) - 1, 0, -1) :
             if self.InputSkeleton.ListBranch[idx].Active == True :
                 return idx
         return -1
@@ -124,7 +124,7 @@ class CCommandSkelEdit(commandInterface.CCommand) :
             del self.InputSkeleton.ListBranch[brInx : ]
     def _refresh_changed_cl_data(self, clID : int) :
         dataInst = self.InputData
-        groupID = dataInst.CLInfoIndex
+        groupID = self.m_mediator.get_clinfo_index()
         skeleton = dataInst.get_skeleton(groupID)
 
         key = data.CData.make_key(data.CData.s_skelTypeCenterline, groupID, clID)
@@ -395,7 +395,7 @@ class CCommandRemoveCL(CCommandSkelEdit) :
 
     def _refresh_changed_cl_id(self, srcID : int, dstID : int) :
         dataInst = self.InputData
-        groupID = dataInst.CLInfoIndex
+        groupID = self.m_mediator.get_clinfo_index()
 
         srcKey = data.CData.make_key(data.CData.s_skelTypeCenterline, groupID, srcID)
         dstKey = data.CData.make_key(data.CData.s_skelTypeCenterline, groupID, dstID)
@@ -465,8 +465,7 @@ class CCommandRemoveCL(CCommandSkelEdit) :
             if bFlag == True :
                 self.m_mediator.ref_key(listEPObj[inx].Key)
     def _remove_cl_id(self, clID) :
-        dataInst = self.InputData
-        groupID = dataInst.CLInfoIndex
+        groupID = self.m_mediator.get_clinfo_index()
         clKey = data.CData.make_key(data.CData.s_skelTypeCenterline, groupID, clID)
         epKey = data.CData.make_key(data.CData.s_skelTypeEndPoint, groupID, clID)
         self.m_mediator.remove_key(clKey)
@@ -521,7 +520,7 @@ class CCommandRemoveBr(CCommandSkelEdit) :
         
         if src_br_id == dst_br_idx :
             self.InputSkeleton.ListBranch[src_br_id].Active = False
-            groupID = self.InputData.CLInfoIndex
+            groupID = self.m_mediator.get_clinfo_index()
             srcKey = data.CData.make_key(data.CData.s_skelTypeBranch, groupID, src_br_id)
             self.m_mediator.remove_key(srcKey)
         else :
@@ -537,12 +536,12 @@ class CCommandRemoveBr(CCommandSkelEdit) :
 
             # swap refresh & remove
             self._refresh_changed_br_id(src_br_id, dst_br_idx)
-            groupID = self.InputData.CLInfoIndex
+            groupID = self.m_mediator.get_clinfo_index()
             srcKey = data.CData.make_key(data.CData.s_skelTypeBranch, groupID, dst_br_idx)
             self.m_mediator.remove_key(srcKey)
     def _refresh_changed_br_id(self, srcID : int, dstID : int) :
         dataInst = self.InputData
-        groupID = dataInst.CLInfoIndex
+        groupID = self.m_mediator.get_clinfo_index()
 
         srcKey = data.CData.make_key(data.CData.s_skelTypeBranch, groupID, srcID)
         dstKey = data.CData.make_key(data.CData.s_skelTypeBranch, groupID, dstID)
@@ -662,7 +661,7 @@ class CCommandMergeCL(CCommandSkelEdit) :
         dst_cl.Vertex = concat_vertex
         dst_cl.Radius = concat_radius
 
-        groupID = self.InputData.CLInfoIndex
+        groupID = self.m_mediator.get_clinfo_index()
         self._refresh_changed_cl_data(dst_cl.ID)
 
         # removed src_cl
@@ -831,9 +830,8 @@ class CCommandUpdateCL(CCommandSkelEdit) :
         
         clVertex = cl.Vertex.copy()
         clVertex[startInx : endInx] = reverseVertex[ : ].copy()
-        # refinedVertex = CCommandSkelEdit.gaussian_smoothing(clVertex, sigma=5)
-        # refinedVertex = CCommandSkelEdit.resample_points(refinedVertex)
-        refinedVertex = CCommandSkelEdit.resample_points(clVertex)
+        refinedVertex = CCommandSkelEdit.gaussian_smoothing(clVertex, sigma=5)
+        refinedVertex = CCommandSkelEdit.resample_points(refinedVertex)
 
         # 나중에 radius도 고려해야 함 
         cl.Vertex = refinedVertex
@@ -915,7 +913,7 @@ class CCommandUpdateBr(CCommandSkelEdit) :
     # protected
     def _refresh_changed_br_data(self, brID : int) :
         dataInst = self.InputData
-        groupID = dataInst.CLInfoIndex
+        groupID = self.m_mediator.get_clinfo_index()
 
         key = data.CData.make_key(data.CData.s_skelTypeBranch, groupID, brID)
         obj = self.InputData.find_obj_by_key(key)

@@ -25,10 +25,12 @@ import AlgUtil.algSkeletonGraph as algSkeletonGraph
 import AlgUtil.algLinearMath as algLinearMath
 import AlgUtil.algMeshLib as algMeshLib
 import AlgUtil.algVTK as algVTK
+import subSkelEditLiver
+from collections import deque
 
 import data as data
 
-import operation as operation
+import operationColored as operation
 
 import command.commandTerritory as commandTerritory
 import command.commandTerritoryVessel as commandTerritoryVessel
@@ -41,6 +43,10 @@ import VtkObj.vtkObjText as vtkObjText
 import vtkObjGuideMeshBound as vtkObjGuideMeshBound
 import vtkObjGuideCLBound as vtkObjGuideCLBound
 import vtkObjInterface as vtkObjInterface
+from PySide6.QtWidgets import QDialog, QMessageBox
+import com.componentTreeVessel as componentTreeVessel
+
+import progressWindow as PW
 
 
 class CTabStateSkelLabelingLiver(tabState.CTabState) :
@@ -75,7 +81,6 @@ class CTabStateSkelLabelingLiver(tabState.CTabState) :
         opSelectionCL.Skeleton = skeleton
 
         self.m_skelCircle = curveInfo.CSkelCircle(skeleton, 30)
-
         # labeling obj
         # labelColor = algLinearMath.CScoMath.to_vec3([1.0, 0.647, 0.0])
         # labelColor = algLinearMath.CScoMath.to_vec3([0.53, 0.81, 0.92])
@@ -109,7 +114,6 @@ class CTabStateSkelLabelingLiver(tabState.CTabState) :
         self.m_mediator.remove_key_type(data.CData.s_territoryType)
         self.m_mediator.remove_key_type(data.CData.s_textType)
         self.m_mediator.update_viewer()
-
     def init_ui(self) :
         tabLayout = QVBoxLayout()
         self.Tab.setLayout(tabLayout)
@@ -144,7 +148,7 @@ class CTabStateSkelLabelingLiver(tabState.CTabState) :
         tabLayout.addLayout(layout)
 
         layout, self.m_editCLName = self.m_mediator.create_layout_label_editbox("Centerline Label", False)
-        self.m_editCLName.returnPressed.connect(self._on_return_pressed_clname)
+        self.m_editCLName.returnPressed.connect(self._on_btn_return_pressed_clname)
         tabLayout.addLayout(layout)
 
         layout, self.m_editCLPtCnt = self.m_mediator.create_layout_label_editbox("Centerline Point Count", True)
@@ -152,15 +156,28 @@ class CTabStateSkelLabelingLiver(tabState.CTabState) :
 
         layout, self.m_editCLLength = self.m_mediator.create_layout_label_editbox("Centerline Length(mm)", True)
         tabLayout.addLayout(layout)
+        
+        layout, self.m_separatedDepath = self.m_mediator.create_layout_label_editbox("Threshold Depth for Main", False)
+        tabLayout.addLayout(layout)
 
         line = QFrame()
         line.setFrameShape(QFrame.Shape.HLine)
         line.setFrameShadow(QFrame.Shadow.Sunken)
         tabLayout.addWidget(line)
 
-        btn = QPushButton("Test Separation")
+        # btn = QPushButton("Test Separation")
+        # btn.setStyleSheet(self.get_btn_stylesheet())
+        # btn.clicked.connect(self._on_btn_test_separation)
+        # tabLayout.addWidget(btn)
+
+        btn = QPushButton("Set Labeling")
         btn.setStyleSheet(self.get_btn_stylesheet())
-        btn.clicked.connect(self._on_btn_test_separation)
+        btn.clicked.connect(self._on_btn_return_pressed_clname)
+        tabLayout.addWidget(btn)
+        
+        btn = QPushButton("Separate Main/Extra")
+        btn.setStyleSheet(self.get_btn_stylesheet())
+        btn.clicked.connect(self._on_btn_separate_main_extra)
         tabLayout.addWidget(btn)
 
         btn = QPushButton("Save Separation")
@@ -170,9 +187,14 @@ class CTabStateSkelLabelingLiver(tabState.CTabState) :
         
         btn = QPushButton("Save (Graphics)")
         btn.setStyleSheet(self.get_btn_stylesheet())
-        btn.clicked.connect(self._on_btn_save_graphics)
+        btn.clicked.connect(self._on_btn_save_for_graphics)
         tabLayout.addWidget(btn)
-
+        
+        btn = QPushButton("Clear All Labeling")
+        btn.setStyleSheet(self.get_btn_stylesheet())
+        btn.clicked.connect(self._on_btn_clear)
+        tabLayout.addWidget(btn)
+        
         line = QFrame()
         line.setFrameShape(QFrame.Shape.HLine)
         line.setFrameShadow(QFrame.Shadow.Sunken)
@@ -215,6 +237,10 @@ class CTabStateSkelLabelingLiver(tabState.CTabState) :
                 self.m_mediator.remove_key_type(data.CData.s_territoryType)
                 self.m_guideBoundKey = ""
                 self.m_mediator.update_viewer()
+    def key_press_with_ctrl(self, keyCode : str) : 
+        if keyCode == "z" :
+            print("test")
+            #self._undo()
 
 
     # protected   
@@ -229,6 +255,7 @@ class CTabStateSkelLabelingLiver(tabState.CTabState) :
         self.m_editCLName.setText("")
         self.m_editCLPtCnt.setText("0")
         self.m_editCLLength.setText("0")
+        self.m_separatedDepath.setText("0")
 
         opSelectionCL = self.m_opSelectionCL
         iCnt = opSelectionCL.get_selection_key_count()
@@ -244,7 +271,7 @@ class CTabStateSkelLabelingLiver(tabState.CTabState) :
         cl = skeleton.get_centerline(id)
         length = float(algSpline.CCurveInfo.get_curve_len(cl.Vertex))
         self.m_editCLID.setText(f"{cl.ID}")
-        self.m_editCLName.setText(f"{cl.Name}")
+        self.m_editCLName.setText(f"{(cl.Name).split('_')[0]}")
         self.m_editCLPtCnt.setText(f"{cl.Vertex.shape[0]}")
         self.m_editCLLength.setText(f"{length}")
     def _update_clname(self, clName : str) :
@@ -290,10 +317,45 @@ class CTabStateSkelLabelingLiver(tabState.CTabState) :
         else :
             bCheck = False
         self._check_cl_ancestor(bCheck)
-    def _on_return_pressed_clname(self) :
+    def _on_btn_return_pressed_clname(self) :
         # Enter키를 누르면 호출되는 함수
         clName = self.m_editCLName.text()  # QLineEdit에 입력된 텍스트를 가져옴
         self._update_clname(clName)
+        
+    def _on_btn_separate_main_extra(self) :
+        dataInst = self.get_data()
+        clinfoInx = self.get_clinfo_index()
+        skeleton = dataInst.get_skeleton(clinfoInx)
+        
+        iCnt = skeleton.get_centerline_count()
+        for inx in range(0, iCnt) :
+            cl = skeleton.get_centerline(inx)
+            if "extra" not in cl.Name:
+                cl.Name = "main"
+            
+                textKey = data.CData.make_key(data.CData.s_textType, 0, cl.ID)
+                textObj = dataInst.find_obj_by_key(textKey)
+                if textObj is not None :
+                    textObj.Text = "main"
+                
+        ketList = dataInst.find_key_list_by_type_groupID(dataInst.s_skelTypeCenterline, clinfoInx)
+        self.m_opSelectionCL._color_setting(ketList, dataInst.RootCLColor, dataInst.CLColor)
+        self.m_mediator.update_viewer()
+
+
+        
+    def _generate_progress_window(self, instance):
+        dialog = PW.ProgressWindow(self.m_mediator, instance)
+        result = dialog.exec()
+
+        if result == QDialog.Accepted:
+            QMessageBox.information(self.m_mediator, "Done", "작업이 완료되었습니다!")
+            return True
+        elif result == QDialog.Rejected:
+            QMessageBox.warning(self.m_mediator, "Canceled", "작업이 취소되었습니다.")
+            return False
+        
+        
     def _on_btn_test_separation(self) :
         dataInst = self.get_data()
         clinfoInx = self.get_clinfo_index()
@@ -394,23 +456,31 @@ class CTabStateSkelLabelingLiver(tabState.CTabState) :
         self.m_mediator.ref_key(key)
 
         self.m_mediator.update_viewer()
-    def _on_btn_save_graphics(self) :
-        # polydata 가져오기
+    def _on_btn_save_for_graphics(self) :
         dataInst = self.get_data()
-        
-        print("test !~!")
-        # vessel_key = data.CData.make_key(dataInst.s_vesselType, dataInst.CLInfoIndex, 0) # CLInfoIndex는 tabStatePatientLung에서 셋팅됨       
-        # # skeleton = dataInst.get_skeleton(skelinfoInx)
-        # vessel_obj = dataInst.find_obj_by_key(vessel_key)
+
+        clOutPath = dataInst.get_cl_out_path()
+        clInPath = dataInst.get_cl_in_path()
+        clInfo = dataInst.OptionInfo.get_centerlineinfo(dataInst.CLInfoIndex)
+        blenderName = clInfo.get_input_blender_name() # "Artery", "Bronchus", "Vein"
+        outputFileName = clInfo.OutputName
+        outputFullPath = os.path.join(clOutPath, f"Centerline_{outputFileName}.json")
+
+        vessel_key = data.CData.make_key(dataInst.s_vesselType, dataInst.CLInfoIndex, 0) # CLInfoIndex는 tabStatePatientLung에서 셋팅됨       
+        vessel_obj = dataInst.find_obj_by_key(vessel_key)
         # polydata = vessel_obj.PolyData
-        # if polydata != None :
-        #     editInst = subSkelEditLiver.CSubSkelEditLung(polydata)
-        #     outside_list = editInst.check_outside_centerline_point(skeleton=self.m_skeleton, polydata=polydata)
-        #     #TODO : outside_list 를 화면에 표시하기
-        # else :
-        #     print(f"check_outside_ERROR : polydata is None!")
-        
-        
+        skeleton = dataInst.get_skeleton(dataInst.CLInfoIndex)
+        # if polydata != None and skeleton != None :
+        if skeleton != None :
+            editInst = subSkelEditLiver.CSubSkelEditLiver(blenderName, skeleton, clInPath)
+            if editInst.init(outputFullPath) :
+                self._generate_progress_window(editInst)
+                # editInst.process()
+                # self.m_mediator.show_dialog("Save Info Done!" ) 
+        else :
+            print(f"_on_btn_save_centerline_info_for_graphics() : skeleton is None!")
+            
+                    
     def _on_btn_save_separation(self) :
         dataInst = self.get_data()
         key = data.CData.make_key(data.CData.s_territoryType, 0, 1)
@@ -438,26 +508,117 @@ class CTabStateSkelLabelingLiver(tabState.CTabState) :
         savePath = os.path.join(stlPath, "whole.stl")
         algVTK.CVTK.save_poly_data_stl(savePath, polyData)
         print("whole vessel saved successfully.")
-
         
-
+    def _on_btn_clear(self):
+        dataInst = self.get_data()
+        clinfoInx = self.get_clinfo_index()
+        skeleton = dataInst.get_skeleton(clinfoInx)
         
+        iCnt = skeleton.get_centerline_count()
+        for inx in range(0, iCnt) :
+            cl = skeleton.get_centerline(inx)
+            cl.Name = ""
+            
+            textKey = data.CData.make_key(data.CData.s_textType, 0, cl.ID)
+            textObj = dataInst.find_obj_by_key(textKey)
+            if textObj is not None :
+                textObj.Text = ""
+                
+        ketList = dataInst.find_key_list_by_type_groupID(dataInst.s_skelTypeCenterline, clinfoInx)
+        self.m_opSelectionCL._color_setting(ketList, dataInst.RootCLColor, dataInst.CLColor)
+        self.m_mediator.update_viewer()
 
 
     # private
     def __update_clname_with_key(self, skeleton : algSkeletonGraph.CSkeleton, listKey : list, clName : str) :
         dataInst = self.get_data()
 
-        for clKey in listKey :
-            keyType, groupID, id = data.CData.get_keyinfo(clKey)
+        if self.m_separatedDepath.text() == "0":
+            for clKey in listKey :
+                keyType, groupID, id = data.CData.get_keyinfo(clKey)
+                cl = skeleton.get_centerline(id)
+                cl.Name = clName
+
+                textKey = data.CData.make_key(data.CData.s_textType, 0, cl.ID)
+                textObj = dataInst.find_obj_by_key(textKey)
+                if textObj is not None :
+                    textObj.Text = clName
+        else:
+            if len(listKey) > 1:
+                keyType, groupID, id = data.CData.get_keyinfo(listKey[0])
+                self._separate_leaf_with_bfs(skeleton, id, int(self.m_separatedDepath.text()), clName)
+                #self._update_clname_with_bfs(skeleton, id, int(self.m_separatedDepath.text()), clName)
+            else:
+                keyType, groupID, id = data.CData.get_keyinfo(listKey[0])
+                cl = skeleton.get_centerline(id)
+                cl.Name = clName
+
+                textKey = data.CData.make_key(data.CData.s_textType, 0, cl.ID)
+                textObj = dataInst.find_obj_by_key(textKey)
+                if textObj is not None :
+                    textObj.Text = clName
+
+            
+    def _update_clname_with_bfs(self, skeleton, clickRootID, maxDepth, clName):
+        dataInst = self.get_data()
+        
+        
+        depth = 0
+        queue = deque([(clickRootID, depth, "main")])
+        
+        while queue:
+            id, d, depthClass = queue.popleft()
             cl = skeleton.get_centerline(id)
-            cl.Name = clName
+            cl.Name = str(clName) + "_" + depthClass
 
             textKey = data.CData.make_key(data.CData.s_textType, 0, cl.ID)
             textObj = dataInst.find_obj_by_key(textKey)
             if textObj is not None :
-                textObj.Text = clName
+                textObj.Text = str(clName) + "_" + depthClass
+            
+            parentCLID, listChildCLID = skeleton.get_conn_centerline_id(id)
+            
+            if cl.is_leaf():
+                continue
+            
+            for CID in listChildCLID:
+                if d < maxDepth:
+                    queue.append((CID, d+1, "main"))
+                else:
+                    queue.append((CID, d, "extra"))
+                    
+                    
+    def _separate_leaf_with_bfs(self, skeleton, clickRootID, maxDepth, clName):
+        dataInst = self.get_data()
 
+        
+        depth = 0
+        queue = deque([(clickRootID, depth, "main")])
+        
+        while queue:
+            id, d, depthClass = queue.popleft()
+            cl = skeleton.get_centerline(id)
+            cl.Name = str(clName) + "_" + depthClass
+
+            textKey = data.CData.make_key(data.CData.s_textType, 0, cl.ID)
+            textObj = dataInst.find_obj_by_key(textKey)
+            if textObj is not None :
+                textObj.Text = str(clName) + "_" + depthClass
+            
+            parentCLID, listChildCLID = skeleton.get_conn_centerline_id(id)
+            
+            if cl.is_leaf():
+                continue
+            
+            for CID in listChildCLID:
+                
+                childCL = skeleton.get_centerline(CID)
+                if childCL.is_leaf() and (d >= maxDepth):
+                    queue.append((CID, d+1, "extra"))
+                else:
+                    queue.append((CID, d+1, "main"))
+        
+        
 
 if __name__ == '__main__' :
     pass

@@ -5,7 +5,6 @@ import shutil
 import vtk
 import subprocess
 import math
-import copy
 
 from scipy.spatial import KDTree
 from scipy.ndimage import label, generate_binary_structure
@@ -76,11 +75,6 @@ class CTabStateColonMerge(tabState.CTabState) :
         self.m_endMy = -1
         self.m_bActiveKnife = False
 
-        self.m_targetVertex = None
-        self.m_srcVertex = None
-        self.m_ctVertex = None
-        self.m_mrVertex = None
-
         self.m_knifeKey = ""
     def clear(self) :
         # input your code
@@ -89,11 +83,6 @@ class CTabStateColonMerge(tabState.CTabState) :
         self.m_endMx = -1
         self.m_endMy = -1
         self.m_bActiveKnife = False
-
-        self.m_targetVertex = None
-        self.m_srcVertex = None
-        self.m_ctVertex = None
-        self.m_mrVertex = None
 
         self.m_knifeKey = ""
         self.m_tangent = None
@@ -107,16 +96,49 @@ class CTabStateColonMerge(tabState.CTabState) :
         userData = self._get_userdata()
         if userData is None :
             return
-        if userData.MergeTargetInx == -1 :
+        if userData.ColonMRInfoInx == -1 :
             return
-        if userData.MergeSrcInx == -1 :
+        if userData.ColonCLInfoInx == -1 :
             return
         
         # 이 부분은 수정이 필요해 보임.. 다른 상태에서 ref 된 것은 그 상태에서 unref 시켜야 된다. 
         self.m_mediator.unref_key_type(data.CData.s_skelTypeCenterline)
         self.m_mediator.unref_key_type(data.CData.s_vesselType)
 
-        self._command_changed_merge_mesh()
+        # ct vessel
+        vesselKey = data.CData.make_key(data.CData.s_vesselType, userData.ColonCLInfoInx, 0)
+        self.m_mediator.ref_key(vesselKey)
+        self.m_mediator.ref_key_type_groupID(data.CData.s_skelTypeCenterline, userData.ColonCLInfoInx)
+        obj = dataInst.find_obj_by_key(vesselKey)
+        obj.Color = CTabStateColonMerge.s_ctColor
+
+        # mr vessel
+        vesselKey = data.CData.make_key(data.CData.s_vesselType, userData.ColonMRInfoInx, 0)
+        self.m_mediator.ref_key(vesselKey)
+        self.m_mediator.ref_key_type_groupID(data.CData.s_skelTypeCenterline, userData.ColonMRInfoInx)
+        obj = dataInst.find_obj_by_key(vesselKey)
+        obj.Color = CTabStateColonMerge.s_mrColor
+
+        ctVertex = userData.ColonCTVertex
+        self.m_ctVertex = algLinearMath.CScoMath.mul_mat4_vec3(userData.ColonPhyMat, ctVertex)
+        mrVertex = userData.ColonMRVertex
+        self.m_mrVertex = algLinearMath.CScoMath.mul_mat4_vec3(userData.ColonPhyMat, mrVertex)
+
+        vertexKey = data.CData.make_key(CTabStateColonMerge.s_vertexKeyType, 0, 0)
+        obj = vtkObjVertex.CVTKObjVertex(self.m_ctVertex, 1.0)
+        obj.KeyType = CTabStateColonMerge.s_vertexKeyType
+        obj.Key = vertexKey
+        obj.Color = CTabStateColonMerge.s_ctColor
+        dataInst.add_vtk_obj(obj)
+        self.m_mediator.ref_key(vertexKey)
+
+        vertexKey = data.CData.make_key(CTabStateColonMerge.s_vertexKeyType, 0, 1)
+        obj = vtkObjVertex.CVTKObjVertex(self.m_mrVertex, 1.0)
+        obj.KeyType = CTabStateColonMerge.s_vertexKeyType
+        obj.Key = vertexKey
+        obj.Color = CTabStateColonMerge.s_mrColor
+        dataInst.add_vtk_obj(obj)
+        self.m_mediator.ref_key(vertexKey)
 
         self.m_startMx = -1
         self.m_startMy = -1
@@ -181,9 +203,9 @@ class CTabStateColonMerge(tabState.CTabState) :
         self.m_bActiveKnife = True
         self.m_mediator.remove_key_type(CTabStateColonMerge.s_colonKeyType)
         self.m_mediator.remove_key_type(CTabStateColonMerge.s_knifeKeyType)
-        vesselKey = data.CData.make_key(data.CData.s_vesselType, userData.MergeTargetInx, 0)
+        vesselKey = data.CData.make_key(data.CData.s_vesselType, userData.ColonCLInfoInx, 0)
         self.m_mediator.ref_key(vesselKey)
-        vesselKey = data.CData.make_key(data.CData.s_vesselType, userData.MergeSrcInx, 0)
+        vesselKey = data.CData.make_key(data.CData.s_vesselType, userData.ColonMRInfoInx, 0)
         self.m_mediator.ref_key(vesselKey)
 
         worldStart, pNearStart, pFarStart= self.m_mediator.get_world_from_mouse(self.m_startMx, self.m_startMy, CTabStateColonMerge.s_pickingDepth)
@@ -209,7 +231,7 @@ class CTabStateColonMerge(tabState.CTabState) :
         if self.m_bActiveKnife == False :
             return
         
-        self.m_mediator.remove_key_type(CTabStateColonMerge.s_knifeKeyType)
+        # self.m_mediator.remove_key_type(CTabStateColonMerge.s_knifeKeyType)
 
         # drag 영역이 너무 작을 경우 무시
         dx = self.m_endMx - self.m_startMx
@@ -248,9 +270,9 @@ class CTabStateColonMerge(tabState.CTabState) :
             self.m_bActiveKnife = False
             self.m_mediator.remove_key_type(CTabStateColonMerge.s_colonKeyType)
             self.m_mediator.remove_key_type(CTabStateColonMerge.s_knifeKeyType)
-            vesselKey = data.CData.make_key(data.CData.s_vesselType, userData.MergeTargetInx, 0)
+            vesselKey = data.CData.make_key(data.CData.s_vesselType, userData.ColonCLInfoInx, 0)
             self.m_mediator.ref_key(vesselKey)
-            vesselKey = data.CData.make_key(data.CData.s_vesselType, userData.MergeSrcInx, 0)
+            vesselKey = data.CData.make_key(data.CData.s_vesselType, userData.ColonMRInfoInx, 0)
             self.m_mediator.ref_key(vesselKey)
             self.m_mediator.update_viewer()
 
@@ -258,66 +280,6 @@ class CTabStateColonMerge(tabState.CTabState) :
     def _get_userdata(self) -> userDataColon.CUserDataColon :
         return self.get_data().find_userdata(userDataColon.CUserDataColon.s_userDataKey)
     
-    def _command_changed_merge_mesh(self) :
-        dataInst = self.get_data()
-        userData = self._get_userdata()
-
-        targetInx = userData.MergeTargetInx
-        srcInx = userData.MergeSrcInx
-
-        if targetInx == -1 or srcInx == -1 :
-            return
-        if targetInx == srcInx :
-            print("invalidate setting target and src")
-            return
-        
-        self.m_mediator.unref_key_type(data.CData.s_vesselType)
-        self.m_mediator.unref_key_type(data.CData.s_skelTypeCenterline)
-        self.m_mediator.remove_key_type(CTabStateColonMerge.s_vertexKeyType)
-        self._command_changed_target()
-        self._command_changed_src()
-    def _command_changed_target(self) :
-        dataInst = self.get_data()
-        userData = self._get_userdata()
-
-        self.m_targetVertex = userData.get_mergeinfo_vertex(userData.MergeTargetInx)
-        mat = userData.get_mergeinfo_physical_mat(userData.MergeTargetInx)
-        self.m_ctVertex = algLinearMath.CScoMath.mul_mat4_vec3(mat, self.m_targetVertex)
-
-        vesselKey = data.CData.make_key(data.CData.s_vesselType, userData.MergeTargetInx, 0)
-        self.m_mediator.ref_key(vesselKey)
-        self.m_mediator.ref_key_type_groupID(data.CData.s_skelTypeCenterline, userData.MergeTargetInx)
-        obj = dataInst.find_obj_by_key(vesselKey)
-        obj.Color = CTabStateColonMerge.s_ctColor
-
-        vertexKey = data.CData.make_key(CTabStateColonMerge.s_vertexKeyType, 0, userData.MergeTargetInx)
-        obj = vtkObjVertex.CVTKObjVertex(self.m_ctVertex, 1.0)
-        obj.KeyType = CTabStateColonMerge.s_vertexKeyType
-        obj.Key = vertexKey
-        obj.Color = CTabStateColonMerge.s_ctColor
-        dataInst.add_vtk_obj(obj)
-        self.m_mediator.ref_key(vertexKey)
-    def _command_changed_src(self) :
-        dataInst = self.get_data()
-        userData = self._get_userdata()
-
-        self.m_srcVertex = userData.get_mergeinfo_resampling_vertex(userData.MergeTargetInx, userData.MergeSrcInx)
-        mat = userData.get_mergeinfo_physical_mat(userData.MergeTargetInx)
-        self.m_mrVertex = algLinearMath.CScoMath.mul_mat4_vec3(mat, self.m_srcVertex)
-
-        vesselKey = data.CData.make_key(data.CData.s_vesselType, userData.MergeSrcInx, 0)
-        self.m_mediator.ref_key(vesselKey)
-        self.m_mediator.ref_key_type_groupID(data.CData.s_skelTypeCenterline, userData.MergeSrcInx)
-        obj = dataInst.find_obj_by_key(vesselKey)
-        obj.Color = CTabStateColonMerge.s_mrColor
-
-        vertexKey = data.CData.make_key(CTabStateColonMerge.s_vertexKeyType, 0, userData.MergeSrcInx)
-        obj = vtkObjVertex.CVTKObjVertex(self.m_mrVertex, 1.0)
-        obj.KeyType = CTabStateColonMerge.s_vertexKeyType
-        obj.Key = vertexKey
-        obj.Color = CTabStateColonMerge.s_mrColor
-        dataInst.add_vtk_obj(obj)
-        self.m_mediator.ref_key(vertexKey)
     def _command_knife(self, startMx, startMy, endMx, endMy) :
         dataInst = self.get_data()
 
@@ -350,20 +312,16 @@ class CTabStateColonMerge(tabState.CTabState) :
             mrValidInx = np.where(dist < 0)[0]
 
         userData = self._get_userdata()
-        targetInx = userData.MergeTargetInx
-        if targetInx == -1 :
-            return
-        
-        tmpImg = userData.get_mergeinfo_npimg(targetInx)
+        tmpImg = userData.ImgColon.copy()
 
         # ct segment
-        vertex = self.m_targetVertex[ctValidInx]
+        vertex = userData.ColonCTVertex[ctValidInx]
         seedInx = np.argmax(vertex[ : , 1])
         seedV = vertex[seedInx].reshape(-1, 3)
         ctVertex = self.__find_segment_vertex(tmpImg, vertex, seedV)
 
         # mr segment
-        vertex = self.m_srcVertex[mrValidInx]
+        vertex = userData.ColonMRVertex[mrValidInx]
         seedInx = np.argmax(vertex[ : , 1])
         seedV = vertex[seedInx].reshape(-1, 3)
         mrVertex = self.__find_segment_vertex(tmpImg, vertex, seedV)
@@ -372,9 +330,9 @@ class CTabStateColonMerge(tabState.CTabState) :
         retColonPolyData = self.__recon_merged_colon(tmpImg, ctVertex, mrVertex)
         
         
-        vesselKey = data.CData.make_key(data.CData.s_vesselType, userData.MergeTargetInx, 0)
+        vesselKey = data.CData.make_key(data.CData.s_vesselType, userData.ColonCLInfoInx, 0)
         self.m_mediator.unref_key(vesselKey)
-        vesselKey = data.CData.make_key(data.CData.s_vesselType, userData.MergeSrcInx, 0)
+        vesselKey = data.CData.make_key(data.CData.s_vesselType, userData.ColonMRInfoInx, 0)
         self.m_mediator.unref_key(vesselKey)
         
         key = data.CData.make_key(CTabStateColonMerge.s_colonKeyType, 0, 0)
@@ -396,27 +354,19 @@ class CTabStateColonMerge(tabState.CTabState) :
         userData = self._get_userdata()
         if userData is None :
             return
-        if userData.MergeTargetInx == -1 :
+        if userData.ColonMRInfoInx == -1 :
             return
-        if userData.MergeSrcInx == -1 :
+        if userData.ColonCLInfoInx == -1 :
             return
         
-        # savePath, _ = QFileDialog.getSaveFileName(
-        #     self.get_main_widget(),
-        #     "Save Mesh File", 
-        #     "", 
-        #     "STL Files (*.stl)"
-        # )
-        # if savePath == "" :
-        #     return
-
-        mergeColonName = "colonMerge"
-        mergeColonFileName = f"{mergeColonName}.stl"
-
-        if os.path.exists(userData.get_merge_in_path()) == False :
-            os.makedirs(userData.get_merge_in_path())
-        if os.path.exists(userData.get_merge_out_path()) == False :
-            os.makedirs(userData.get_merge_out_path())
+        savePath, _ = QFileDialog.getSaveFileName(
+            self.get_main_widget(),
+            "Save Mesh File", 
+            "", 
+            "STL Files (*.stl)"
+        )
+        if savePath == "" :
+            return
         
         key = data.CData.make_key(CTabStateColonMerge.s_colonKeyType, 0, 0)
         obj = dataInst.find_obj_by_key(key)
@@ -424,34 +374,8 @@ class CTabStateColonMerge(tabState.CTabState) :
             print("not found merged colon")
             return
         polyData = obj.PolyData
-
-        savePath = os.path.join(userData.get_merge_out_path(), f"{mergeColonFileName}")
-        algVTK.CVTK.save_poly_data_stl(savePath, polyData)
-
-        savePath = os.path.join(dataInst.get_cl_in_path(), f"{mergeColonFileName}")
         algVTK.CVTK.save_poly_data_stl(savePath, polyData)
         print("vessel file saved successfully.")
-
-        if userData.MergeClinfoInx >= dataInst.DataInfo.get_info_count() :
-            clInfo = copy.deepcopy(dataInst.OptionInfo.get_centerlineinfo(userData.MergeTargetInx))
-            clParam = dataInst.OptionInfo.find_centerline_param(clInfo.CenterlineType)
-            reconType = clInfo.get_input_recon_type()
-            reconParam = dataInst.OptionInfo.find_recon_param(reconType)
-
-            clInfo.InputKey = "blenderName"
-            clInfo.Input["blenderName"] = mergeColonName
-            clInfo.OutputName = mergeColonName
-
-            dataInst.DataInfo.add_info(clInfo, clParam, reconParam)
-            dataInst.attach_skeleton()
-
-        mergeGroupInx = userData.MergeClinfoInx
-        vesselKey = dataInst.make_key(data.CData.s_vesselType, mergeGroupInx, 0)
-        self.m_mediator.remove_key(vesselKey)
-        self.m_mediator.remove_key_type_groupID(data.CData.s_skelTypeCenterline, mergeGroupInx)
-        self.m_mediator.remove_key_type_groupID(data.CData.s_skelTypeBranch, mergeGroupInx)
-        self.m_mediator.remove_key_type_groupID(data.CData.s_skelTypeEndPoint, mergeGroupInx)
-        self.m_mediator.load_vessel_key(mergeGroupInx, 0)
 
 
     # private
@@ -471,22 +395,22 @@ class CTabStateColonMerge(tabState.CTabState) :
         userData = self._get_userdata()
 
         algImage.CAlgImage.set_clear(npImg, 0)
-        algImage.CAlgImage.set_value(npImg, self.m_targetVertex, 255)
+        algImage.CAlgImage.set_value(npImg, userData.ColonCTVertex, 255)
         algImage.CAlgImage.set_value(npImg, ctVertex, 0)
         algImage.CAlgImage.set_value(npImg, mrVertex, 255)
 
-        reconParam = userData.get_mergeinfo_reconparam(userData.MergeTargetInx)
+        reconParam = userData.ColonReconParam
         contour = reconParam.Contour
         algorithm = reconParam.Algorithm
         param = reconParam.Param
         gaussian = reconParam.Gaussian
         resampling = reconParam.ResamplingFactor
 
-        phaseInfo = userData.get_mergeinfo_phaseinfo(userData.MergeTargetInx)
-        origin = phaseInfo.Origin
-        spacing = phaseInfo.Spacing
-        direction = phaseInfo.Direction
-        phaseOffset = phaseInfo.Offset
+        origin = userData.ColonOrigin
+        spacing = userData.ColonScaling
+        direction = userData.ColonDirection
+        size = userData.ColonImgSize
+        phaseOffset = userData.ColonOffset
 
         niftiPath = "colonTmp.nii.gz"
         algImage.CAlgImage.save_nifti_from_np(niftiPath, npImg, origin, spacing, direction, (2, 1, 0))

@@ -204,7 +204,7 @@ class CData :
         self.m_selectionEPColor = algLinearMath.CScoMath.to_vec3([0.0, 0.0, 0.0])
     def clear_patient(self) :
         for skel in self.m_listSkel :
-            if skel is not None :
+            if skel != None : #sally
                 skel.clear()
         self.m_listSkel.clear()
         for key, obj in self.m_dicObj.items() :
@@ -220,8 +220,8 @@ class CData :
         for key, userData in self.m_dicUserData.items() :
             userData.clear()
         self.m_dicUserData.clear()
+
         self.DataInfo.PatientPath = ""
-        self.m_clinfoIndex = -1
 
     def load_optioninfo(self, fullPath) :
         self.clear()
@@ -232,7 +232,7 @@ class CData :
 
         clCnt = self.OptionInfo.get_centerlineinfo_count()
         if clCnt == 0 :
-            print("not found centerline info")
+            #print("not found centerline info")
             return
         for clInx in range(0, clCnt) :
             clInfo = self.OptionInfo.get_centerlineinfo(clInx)
@@ -378,8 +378,6 @@ class CData :
                 skel.clear()
         self.m_listSkel.clear()
         self.m_listSkel = [None for i in range(0, skelCnt)]
-    def attach_skeleton(self) :
-        self.m_listSkel.append(None)
     def set_skeleton(self, inx : int, fullPath : str) :
         skeleton = self.m_listSkel[inx]
         if skeleton is not None :
@@ -424,7 +422,7 @@ class CData :
         iCnt = self.OptionInfo.get_segmentinfo_count()
         for inx in range(0, iCnt) :
             segInfo = self.OptionInfo.get_segmentinfo(inx)
-            blenderName = segInfo.Organ
+            blenderName = segInfo.Organ #ex. Lung_LUL_L
 
             terriInfo = self.find_terriinfo_by_blender_name(blenderName)
             if terriInfo is not None :

@@ -1,6 +1,6 @@
 {
     "Version" : {
-        "Release" : "Common Pipeline v1.0",
+        "Release" : "HuLiverOption_v1.0.0",
         "DESC": "Solution Common Pipeline"
     },
   
@@ -48,19 +48,19 @@
 
 
     "MaskInfo" : [
-        {"name":"Liver_PP", "phase":"PP", "reconType":"OrganType", "strictureMode":0, "blenderName":"Liver_PP"},
-        {"name":"PV", "phase":"PP", "reconType":"VesselType", "strictureMode":1, "blenderName":"PV"},
-        {"name":"HV", "phase":"HVP", "reconType":"VesselType", "strictureMode":1, "blenderName":"HV"},
-        {"name":"HV1", "phase":"HVP", "reconType":"VesselType", "strictureMode":1, "blenderName":"HV1"},
-        {"name":"HV2", "phase":"HVP", "reconType":"VesselType", "strictureMode":1, "blenderName":"HV2"},
-        {"name":"HV3", "phase":"HVP", "reconType":"VesselType", "strictureMode":1, "blenderName":"HV3"},
-        {"name":"HV4", "phase":"HVP", "reconType":"VesselType", "strictureMode":1, "blenderName":"HV4"},
-        {"name":"HV5", "phase":"HVP", "reconType":"VesselType", "strictureMode":1, "blenderName":"HV5"},
-        {"name":"HV_IVC", "phase":"HVP", "reconType":"VesselType", "strictureMode":1, "blenderName":"HV_IVC"},
-        {"name":"MPV_EAP", "phase":"EAP", "reconType":"VesselType", "strictureMode":1, "blenderName":"MPV_EAP"},
-        {"name":"MPV_PP", "phase":"PP", "reconType":"VesselType", "strictureMode":1, "blenderName":"MPV_PP"},
-        {"name":"MPV_HVP", "phase":"HVP", "reconType":"VesselType", "strictureMode":1, "blenderName":"MPV_HVP"},  
-        {"name":"MPV_MR", "phase":"MR", "reconType":"VesselType", "strictureMode":1, "blenderName":"MPV_MR"}
+        {"name":"Liver", "phase":"PP", "reconType":"OrganType", "strictureMode":0, "blenderName":"Liver"},
+        {"name":"Adrenal", "phase":"PP", "reconType":"OrganType", "strictureMode":0, "blenderName":"Adrenal"},
+        {"name":"Abdominal_wall", "phase":"HVP", "reconType":"VesselType", "strictureMode":1, "blenderName":"Abdominal_wall"},
+        {"name":"Skin", "phase":"HVP", "reconType":"VesselType", "strictureMode":1, "blenderName":"Skin"},
+        {"name":"Rib", "phase":"HVP", "reconType":"VesselType", "strictureMode":1, "blenderName":"Rib"},
+        {"name":"Portal", "phase":"PP", "reconType":"VesselType", "strictureMode":1, "blenderName":"Portal"},
+        {"name":"Vein", "phase":"HVP", "reconType":"VesselType", "strictureMode":1, "blenderName":"Vein"},
+        {"name":"Artery", "phase":"EAP", "reconType":"VesselType", "strictureMode":1, "blenderName":"Artery"},
+        {"name":"Duct", "phase":"MR", "reconType":"VesselType", "strictureMode":1, "blenderName":"Duct"},
+        {"name":"HVP_HA", "phase":"HVP", "reconType":"VesselType", "strictureMode":1, "blenderName":"HVP_HA"},
+        {"name":"HVP_HV", "phase":"HVP", "reconType":"VesselType", "strictureMode":1, "blenderName":"HVP_HV"},
+        {"name":"HVP_PV", "phase":"HVP", "reconType":"VesselType", "strictureMode":1, "blenderName":"HVP_PV"},
+        {"name":"HVP_BD", "phase":"HVP", "reconType":"VesselType", "strictureMode":1, "blenderName":"HVP_BD"}
     ],
     "RegistrationInfo" : [
         {"Target" : "MPV_PP", "Src" : "MPV_EAP", "RigidAABB" : 0},
@@ -160,14 +160,22 @@
             }
         },
         "MeshCleanUp" : [
-            "blenderName0",
-            "blenderName1"
+            "Liver_PP",
+            "PV",
+            "HV",
+            "HV1",
+            "HV2",
+            "HV3",
+            "HV4",
+            "HV5",
+            "HV_IVC", 
+            "MPV_EAP",
+            "MPV_PP", 
+            "MPV_HVP",
+            "MPV_MR"
         ],
         "MeshHealing" : [
-            "01018ug_27_Whole_Artery",
-            "artery-all-005",
-            "vein-all",
-            "vein-extra"
+            "blenderName"
         ],
         "SmartUV" : [
             "blenderName0",

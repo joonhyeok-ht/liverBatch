@@ -16,6 +16,41 @@ import AlgUtil.algLinearMath as algLinearMath
 import json
 
 '''
+Pass
+'''
+class CPass :
+    def __init__(self):
+        self.m_name = ""
+        self.m_in = ""
+        self.m_triOpt = 0
+    def clear(self) :
+        self.m_name = ""
+        self.m_in = ""
+        self.m_triOpt = 0
+
+    @property
+    def Name(self) -> str :
+        return self.m_name
+    @Name.setter
+    def Name(self, name : str) :
+        self.m_name = name
+    @property
+    def In(self) -> str :
+        return self.m_in
+    @In.setter
+    def In(self, _in : str) :
+        self.m_in = _in
+    @property
+    def TriOpt(self) -> int :
+        return self.m_triOpt
+    @TriOpt.setter
+    def TriOpt(self, triOpt : int) :
+        self.m_triOpt = triOpt
+
+
+
+
+'''
 recon param 
 CReconParam <- CReconParamSingle
             <- CReconParamRange
@@ -591,8 +626,11 @@ class COptionInfo() :
         
         # param info
         self.m_dataRootPath = self.m_jsonData["DataRootPath"]
-        self.m_cl = self.m_jsonData["CL"]
-
+        if "CL" in self.m_jsonData.keys():
+            self.m_cl = self.m_jsonData["CL"]
+        else:
+            self.m_cl = ""
+            
         self.m_reconParamList = self.m_jsonData["ReconParamList"]
         if "CenterlineParamList" in self.m_jsonData :
             self.m_centerlineParamList = self.m_jsonData["CenterlineParamList"]
@@ -905,9 +943,6 @@ class COptionInfo() :
     @property
     def BlenderExe(self) -> str :
         return self.m_blenderExe
-    @property
-    def JsonData(self) -> dict :
-        return self.m_jsonData
 class COptionInfoSingle(COptionInfo) :
     def __init__(self, jsonPath):
         super().__init__(jsonPath)
@@ -1000,11 +1035,6 @@ class CCLDataInfo :
             self.m_list.append((copy.deepcopy(clInfo), copy.deepcopy(clParam), copy.deepcopy(reconParam)))
         else :
             self.m_list.append((None, None, None))
-    def set_info(self, inx : int, clInfo : CCenterlineInfo, clParam : CCenterlineParam, reconParam : CReconParamSingle) :
-        if clInfo is not None :
-            self.m_list[inx] = (copy.deepcopy(clInfo), copy.deepcopy(clParam), copy.deepcopy(reconParam))
-        else :
-            self.m_list[inx] = (None, None, None)
     def get_info_count(self) -> int :
         return len(self.m_list)
     def get_clinfo(self, inx : int) -> CCenterlineInfo :

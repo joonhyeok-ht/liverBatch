@@ -24,7 +24,7 @@ import AlgUtil.algLinearMath as algLinearMath
 import AlgUtil.algSkeletonGraph as algSkeletonGraph
 
 import data as data
-import operation as operation
+import operationColored as operation
 import component as component
 import treeVessel as treeVessel
 
@@ -50,8 +50,8 @@ class CComTreeVessel(component.CCom) :
     
     # override 
     def ready(self) -> bool :
-        if self.InputUITVVessel is None :
-            return False
+        # if self.InputUITVVessel is None :
+        #     return False
         return True
     def process_init(self) :
         super().process_init()
@@ -65,6 +65,7 @@ class CComTreeVessel(component.CCom) :
             self.m_treeVessel.clear()
         self.m_treeVessel = None
         
+        #if self.InputUITVVessel:
         if self.InputUITVVessel.model() is not None :
             self.InputUITVVessel.model().clear()
 
@@ -100,9 +101,10 @@ class CComTreeVessel(component.CCom) :
 
         # 모델에 루트 아이템 추가
         model.appendRow(parentItem)
-        self.InputUITVVessel.setModel(model)
-        self.InputUITVVessel.selectionModel().selectionChanged.connect(self._on_tv_vessel_selection_changed)
-        self.InputUITVVessel.expandAll()
+        if self.InputUITVVessel:
+            self.InputUITVVessel.setModel(model)
+            self.InputUITVVessel.selectionModel().selectionChanged.connect(self._on_tv_vessel_selection_changed)
+            self.InputUITVVessel.expandAll()
 
         return True
     def command_clear_selection(self) -> bool :

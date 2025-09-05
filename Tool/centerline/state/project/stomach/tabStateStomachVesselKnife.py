@@ -53,59 +53,114 @@ import command.commandTerritory as commandTerritory
 import command.commandKnife as commandKnife
 import command.commandVesselKnife as commandVesselKnife
 
-import com.componentSelectionCL as componentSelectionCL
-import com.componentTreeVessel as componentTreeVessel
-import com.componentVesselCutting as componentVesselCutting
 
+class CSeparatedVessel :
+    def __init__(self, mediator, dataInst : data.CData) :
+        self.m_mediator = mediator
+        self.m_dataInst = dataInst
+        self.m_listInvalidNode = []
+    def clear(self) :
+        self.m_mediator = None
+        self.m_dataInst = None
+        self.m_listInvalidNode.clear()
+    def process(self, treeVessel : treeVessel.CTreeVessel, firstNodeVessel : vtk.vtkPolyData) :
+        self.m_treeVessel = treeVessel
+        firstRootNode = self.m_treeVessel.get_first_root_node()
+        if firstRootNode is None :
+            return
+        firstRootNode.clear_vessel()
+        firstRootNode.Vessel = firstNodeVessel
+
+        iCnt = firstRootNode.get_child_node_count()
+        for inx in range(0, iCnt) :
+            node = firstRootNode.get_child_node(inx)
+            self._process_sub(node)
+    
+
+    # protected
+    def _process_sub(self, node : treeVessel.CNodeVesselHier) :
+        wholeVessel = node.get_whole_vessel()
+        if wholeVessel is None :
+            print("not found whole vessel mesh")
+        
+        meshLibVessel = commandVesselKnife.CCommandSepVessel.get_meshlib(wholeVessel)
+        meshLibVessel = algMeshLib.CMeshLib.meshlib_healing(meshLibVessel)
+        clID = node.get_clID(0)
+
+        cmd = commandVesselKnife.CCommandSepVesselPick(self.m_mediator)
+        cmd.m_inputData = self.m_dataInst
+        cmd.m_inputSkeleton = self.m_treeVessel.Skeleton
+        cmd.m_inputMeshLibWholeVessel = meshLibVessel
+        cmd.m_inputCLID = clID
+        cmd.process()
+
+        if cmd.OutputWhole is None or cmd.OutputSub is None :
+            self.m_listInvalidNode.append(node)
+        else :
+            node.set_whole_vessel(cmd.OutputWhole)
+            node.Vessel = cmd.OutputSub
+
+        iCnt = node.get_child_node_count()
+        for inx in range(0, iCnt) :
+            childNode = node.get_child_node(inx)
+            self._process_sub(childNode)
+    
+
+    @property
+    def ListInvalidNode(self) -> list :
+        return self.m_listInvalidNode
 
 
 class CTabStateStomachVesselKnife(tabState.CTabState) :
+    s_knifeKeyType = "knife"
+
+    s_pickingDepth = 1000.0
+    s_minDragDist = 10
+
+
     def __init__(self, mediator):
         super().__init__(mediator)
         # input your code
         self.m_opSelectionCL = operation.COperationSelectionCL(mediator)
-        self.m_comTreeVessel = None
-        self.m_comVesselCutting = None
+        self.m_treeVessel = None
+        self.m_startMx = 0
+        self.m_startMy = 0
+        self.m_endMx = 0
+        self.m_endMy = 0
+        self.m_bActiveKnife = False
     def clear(self) :
         # input your code
-        self.m_opSelectionCL = None
-        if self.m_comTreeVessel is not None :
-            self.m_comTreeVessel.clear()
-        if self.m_comVesselCutting is not None :
-            self.m_comVesselCutting.clear()
+        self.m_startMx = 0
+        self.m_startMy = 0
+        self.m_endMx = 0
+        self.m_endMy = 0
+        self.m_bActiveKnife = False
+        self.__clear_tree_vessel()
         super().clear()
 
     def process_init(self) :
         dataInst = self.get_data()
         if dataInst.Ready == False :
             return
-        userData = self._get_userdata()
-        if userData is None :
-            return
+        # userData = self._get_userdata()
+        # if userData is None :
+        #     return
+        
         clinfoinx = self.get_clinfo_index()
         skeleton = dataInst.get_skeleton(clinfoinx)
-        if skeleton is None :
-            return
-
         self.m_opSelectionCL.Skeleton = skeleton
         self.m_opSelectionCL.ChildSelectionMode = False
         self.m_opSelectionCL.ParentSelectionMode = False
-        self.m_opSelectionCL.process_reset()
 
         self._init_cl_label()
+        self.__init_tree_vessel()
         self.__init_vessel_territory()
 
-        self.m_comTreeVessel = componentTreeVessel.CComTreeVessel(self)
-        self.m_comTreeVessel.InputUITVVessel = self.m_tvVessel
-        self.m_comTreeVessel.signal_vessel_hierarchy_node = self.slot_vessel_hierarchy_node
-        self.m_comTreeVessel.process_init()
-
-        self.m_comVesselCutting = componentVesselCutting.CComVesselCutting(self)
-        self.m_comVesselCutting.InputTreeVessel = self.m_comTreeVessel.TreeVessel
-        self.m_comVesselCutting.InputUILVInvalidVessel = self.m_lvInvalidNode
-        self.m_comVesselCutting.signal_invalid_node = self.slot_invalid_node
-        self.m_comVesselCutting.signal_finished_knife = self.slot_finished_knife
-        self.m_comVesselCutting.process_init()
+        self.m_startMx = 0
+        self.m_startMy = 0
+        self.m_endMx = 0
+        self.m_endMy = 0
+        self.m_bActiveKnife = False
         
         self.m_mediator.update_viewer()
     def process(self) :
@@ -114,20 +169,18 @@ class CTabStateStomachVesselKnife(tabState.CTabState) :
         dataInst = self.get_data()
         if dataInst.Ready == False :
             return
-        userData = self._get_userdata()
-        if userData is None :
-            return
-        clinfoinx = self.get_clinfo_index()
-        skeleton = dataInst.get_skeleton(clinfoinx)
-        if skeleton is None :
-            return
+        # userData = self._get_userdata()
+        # if userData is None :
+        #     return
         
-        if self.m_comTreeVessel is not None :
-            self.m_comTreeVessel.process_end()
-        if self.m_comVesselCutting is not None :
-            self.m_comVesselCutting.process_end()
+        self.m_startMx = 0
+        self.m_startMy = 0
+        self.m_endMx = 0
+        self.m_endMy = 0
+        self.m_bActiveKnife = False
         
         self.m_opSelectionCL.process_reset()
+        self.__clear_tree_vessel()
         self._clear_cl_label()
         self.__clear_vessel_territory()
         self.m_mediator.update_viewer()
@@ -142,9 +195,11 @@ class CTabStateStomachVesselKnife(tabState.CTabState) :
         tabLayout.addWidget(label)
 
         self.m_tvVessel = QTreeView()
+        self.m_tvVessel.clicked.connect(self._on_tv_vessel_item_clicked)
         tabLayout.addWidget(self.m_tvVessel)
 
         self.m_lvInvalidNode = QListWidget()
+        self.m_lvInvalidNode.itemClicked.connect(self.on_lb_invalid_node)
         tabLayout.addWidget(self.m_lvInvalidNode)
 
         btn = QPushButton("View Separated Vessel")
@@ -167,30 +222,88 @@ class CTabStateStomachVesselKnife(tabState.CTabState) :
 
 
     def clicked_mouse_rb(self, clickX, clickY) :
-        if self.m_comVesselCutting is not None :
-            self.m_comVesselCutting.click(clickX, clickY)
+        dataInst = self.get_data()
+
+        self.m_startMx = clickX
+        self.m_startMy = clickY
+        self.m_endMx = clickX
+        self.m_endMy = clickY
+        self.m_bActiveKnife = True
+
+        worldStart, pNearStart, pFarStart= self.m_mediator.get_world_from_mouse(self.m_startMx, self.m_startMy, CTabStateStomachVesselKnife.s_pickingDepth)
+        worldEnd, pNearEnd, pFarEnd = self.m_mediator.get_world_from_mouse(self.m_endMx, self.m_endMy, CTabStateStomachVesselKnife.s_pickingDepth)
+
+        self.m_knifeKey = data.CData.make_key(CTabStateStomachVesselKnife.s_knifeKeyType, 0, 0)
+        inst = vtkObjLine.CVTKObjLine()
+        inst.KeyType = CTabStateStomachVesselKnife.s_knifeKeyType
+        inst.Key = self.m_knifeKey
+        inst.set_line_width(2.0)
+        inst.set_pos(pFarStart, pFarEnd)
+        inst.Color = algLinearMath.CScoMath.to_vec3([1.0, 0.0, 0.0])
+        dataInst.add_vtk_obj(inst)
+
+        self.m_mediator.ref_key_type(CTabStateStomachVesselKnife.s_knifeKeyType)
+
         self.m_mediator.update_viewer()
     def clicked_mouse_rb_shift(self, clickX, clickY) :
         self.m_mediator.update_viewer()
     def release_mouse_rb(self) :
-        if self.m_comVesselCutting is not None :
-            self.m_comVesselCutting.release(0, 0)
+        if self.m_bActiveKnife == False :
+            return
+        
+        self.m_bActiveKnife = False
+        self.m_mediator.remove_key_type(CTabStateStomachVesselKnife.s_knifeKeyType)
+
+        # drag 영역이 너무 작을 경우 무시
+        dx = self.m_endMx - self.m_startMx
+        dy = self.m_endMy - self.m_startMy
+        dist = math.hypot(dx, dy)
+        if dist < CTabStateStomachVesselKnife.s_minDragDist :
+            self.m_mediator.update_viewer()
+            return
+
+        self._command_knife_vessel(self.m_startMx, self.m_startMy, self.m_endMx, self.m_endMy)
         self.m_mediator.update_viewer()
     def mouse_move_rb(self, clickX, clickY) :
-        if self.m_comVesselCutting is not None :
-            self.m_comVesselCutting.move(clickX, clickY)
+        if self.m_bActiveKnife == False :
+            return
+        
+        dataInst = self.get_data()
+        
+        self.m_endMx = clickX
+        self.m_endMy = clickY
+        worldStart, pNearStart, pFarStart = self.m_mediator.get_world_from_mouse(self.m_startMx, self.m_startMy, CTabStateStomachVesselKnife.s_pickingDepth)
+        worldEnd, pNearEnd, pFarEnd = self.m_mediator.get_world_from_mouse(self.m_endMx, self.m_endMy, CTabStateStomachVesselKnife.s_pickingDepth)
+
+        inst = dataInst.find_obj_by_key(self.m_knifeKey)
+        inst.set_pos(pFarStart, pFarEnd)
         self.m_mediator.update_viewer()
     def key_press(self, keyCode : str) :
         if keyCode == "Escape" :
             self.m_opSelectionCL.process_reset()
             self.__clear_vessel_territory()
-            if self.m_comTreeVessel is not None :
-                self.m_comTreeVessel.command_clear_selection()
-            if self.m_comVesselCutting is not None :
-                self.m_comVesselCutting.command_clear_selection()
+            self.m_tvVessel.clearSelection()
+            self.m_lvInvalidNode.clearSelection()
             self.m_mediator.update_viewer()
         elif keyCode == "m" :
-            pass
+            node = self._getui_tree_vessel_node()
+            if node is None :
+                print("not selection node")
+                return
+            
+            # nodeVessel = node.get_valid_vessel()
+            # parentNodeVessel = node.get_whole_vessel()
+            # if nodeVessel == parentNodeVessel :
+            #     print("parent-child is same")
+            #     return
+
+            # mergedVessel = commandVesselKnife.CCommandSepVessel.merge_vtkmesh(parentNodeVessel, nodeVessel, 0.001)
+            # mergedVessel = commandVesselKnife.CCommandSepVessel.remove_duplicate_faces(mergedVessel)
+            # node.set_whole_vessel(mergedVessel)
+            # node.Vessel = None
+            # self.__add_vessel_territory(node)
+            # self._setui_list_add_node(node)
+            # self.m_mediator.update_viewer()
 
 
     # protected
@@ -198,57 +311,248 @@ class CTabStateStomachVesselKnife(tabState.CTabState) :
         return self.get_data().find_userdata(userDataStomach.CUserDataStomach.s_userDataKey)
     
     # ui setting
-    
+    def _setui_tree_vessel(self, node : treeVessel.CNodeVesselHier, item : QStandardItem) :
+        iCnt = node.get_child_node_count()
+        for inx in range(0, iCnt) :
+            childNode = node.get_child_node(inx)
+            clLabel = self.m_treeVessel.get_cl_label(childNode)
+
+            childItem = QStandardItem(clLabel)
+            childItem.setData(childNode, Qt.UserRole)
+            item.appendRow(childItem)
+            self._setui_tree_vessel(childNode, childItem)
+    def _getui_tree_vessel_node(self) :
+        selectedIndex = self.m_tvVessel.selectedIndexes()
+        if not selectedIndex :
+            return None
+        if selectedIndex :
+            index = selectedIndex[0]
+            model = self.m_tvVessel.model()
+            item = model.itemFromIndex(index)
+            node = item.data(Qt.UserRole)
+            if node :
+                return node
+        return None
+    def _setui_list_add_node(self, node : treeVessel.CNodeVesselHier) :
+        self.m_lvInvalidNode.blockSignals(True)
+
+        clLabel = self.m_treeVessel.get_cl_label(node)
+        item = QListWidgetItem(f"{clLabel}")
+        item.setData(Qt.UserRole, node)
+        self.m_lvInvalidNode.addItem(item)
+
+        self.m_lvInvalidNode.blockSignals(False)
+    def _setui_list_add_listnode(self, listNode : list) :
+        self.m_lvInvalidNode.blockSignals(True)
+        self.m_lvInvalidNode.clear()
+
+        for node in listNode :
+            clLabel = self.m_treeVessel.get_cl_label(node)
+            item = QListWidgetItem(f"{clLabel}")
+            item.setData(Qt.UserRole, node)
+            self.m_lvInvalidNode.addItem(item)
+
+        self.m_lvInvalidNode.blockSignals(False)
+    def _setui_list_remove_node(self, targetNode : treeVessel.CNodeVesselHier) :
+        self.m_lvInvalidNode.blockSignals(True)
+
+        # current_item = self.m_lvInvalidNode.currentItem()
+        self.m_lvInvalidNode.setCurrentItem(None)
+        self.m_lvInvalidNode.clearSelection()
+
+        count = self.m_lvInvalidNode.count()
+        for i in reversed(range(count)):
+            item = self.m_lvInvalidNode.item(i)
+            node = item.data(Qt.UserRole)
+            if node == targetNode :
+                self.m_lvInvalidNode.takeItem(i)
+                del item
+                break
+        
+        self.m_lvInvalidNode.blockSignals(False)
+    def _getui_list_selected_node(self) -> treeVessel.CNodeVesselHier :
+        selectedItems = self.m_lvInvalidNode.selectedItems()
+        if not selectedItems :
+            return None
+        
+        item = selectedItems[0]
+        text = item.text()
+        node = item.data(Qt.UserRole) 
+        
+        return node
     
     # command
-    def _command_save_vessel(self) :
-        if self.m_comTreeVessel is None :
-            return 
-        
-        dataInst = self.get_data()
-        patientPath = dataInst.DataInfo.PatientPath
-        tpinfoPath = os.path.join(patientPath, userDataStomach.CUserDataStomach.s_tpInfoPath)
-        tpinfoOutPath = os.path.join(tpinfoPath, "out")
-        
-        if os.path.exists(tpinfoOutPath) == False :
-            os.makedirs(tpinfoOutPath)
-        # else : 
-        #     for filename in os.listdir(tpinfoOutPath):
-        #         fullPath = os.path.join(tpinfoOutPath, filename)
-        #         try:
-        #             if os.path.isfile(fullPath) or os.path.islink(fullPath):
-        #                 os.remove(fullPath)
-        #             elif os.path.isdir(fullPath):
-        #                 shutil.rmtree(fullPath)
-        #         except Exception as e:
-        #             print(f'파일 삭제 중 오류 발생: {fullPath} -> {e}')
-        
-        mergeCmd = treeVessel.CMergePolyData()
-        mergeCmd.process(self.m_comTreeVessel.TreeVessel)
+    def _command_clicked_clID(self, clID : int) :
+        self.m_treeVessel.clear_node()
+        self.m_treeVessel.build_tree_with_label(clID)
 
-        for label, polyData in mergeCmd.OutDicPolyData.items() :
-            fullPath = os.path.join(tpinfoOutPath, f"{label}.stl")
-            algVTK.CVTK.save_poly_data_stl(fullPath, polyData)
-
-
-    # ui event 
-    def _on_btn_view_separated_vessel(self) :
-        if self.m_comVesselCutting is None :
+        firstRootNode = self.m_treeVessel.get_first_root_node()
+        if firstRootNode is None :
             return
+        
+        clLabel = self.m_treeVessel.get_cl_label(firstRootNode)
+        
+        # 빈 모델 생성
+        model = QStandardItemModel()
+        model.setHorizontalHeaderLabels(['Vessel Hierarchy'])
+
+        # 항목 추가
+        parentItem = QStandardItem(clLabel)
+        parentItem.setData(firstRootNode, Qt.UserRole)
+        self._setui_tree_vessel(firstRootNode, parentItem)
+
+        # 모델에 루트 아이템 추가
+        model.appendRow(parentItem)
+        self.m_tvVessel.setModel(model)
+        self.m_tvVessel.expandAll()
+    def _command_clicked_vessel_hierarchy(self, item : QStandardItem) :
         dataInst = self.get_data()
         clinfoInx = self.get_clinfo_index()
+        self.m_opSelectionCL.process_reset()
+
+        if item is None :
+            self.m_mediator.update_viewer()
+            return
+        
+        node = item.data(Qt.UserRole)
+
+        iCnt = node.get_clID_count()
+        for inx in range(0, iCnt) :
+            clID = node.get_clID(inx)
+            key = data.CData.make_key(data.CData.s_skelTypeCenterline, clinfoInx, clID)
+            self.m_opSelectionCL.add_selection_key(key)
+        self.m_opSelectionCL.process()
+
+        self.__add_vessel_territory(node)
+        self.m_mediator.update_viewer()
+    def _command_clicked_invalid_node(self, item : QListWidgetItem) :
+        node = item.data(Qt.UserRole)
+        if node is None :
+            print("not found node")
+            return
+        self.__add_vessel_territory(node)
+        self.m_mediator.update_viewer()
+    def _command_separate_vessel(self) :
+        dataInst = self.get_data()
+        clinfoInx = self.get_clinfo_index()
+
         vesselKey = data.CData.make_key(data.CData.s_vesselType, clinfoInx, 0)
         vesselObj = dataInst.find_obj_by_key(vesselKey)
         if vesselObj is None :
             return
-        self.m_comVesselCutting.command_separate_vessel(vesselObj.PolyData)
+
+        cmd = CSeparatedVessel(self.m_mediator, dataInst)
+        cmd.process(self.m_treeVessel, vesselObj.PolyData)
+        if len(cmd.ListInvalidNode) > 0 :
+            self._setui_list_add_listnode(cmd.ListInvalidNode)
+
+        cmd.clear()
+    def _command_knife_vessel(self, startMx, startMy, endMx, endMy) :
+        dataInst = self.get_data()
+        clinfoInx = self.get_clinfo_index()
+        skeleton = dataInst.get_skeleton(clinfoInx)
+
+        worldStart, pNearStart, pFarStart = self.m_mediator.get_world_from_mouse(startMx, startMy, CTabStateStomachVesselKnife.s_pickingDepth)
+        worldEnd, pNearEnd, pFarEnd = self.m_mediator.get_world_from_mouse(endMx, endMy, CTabStateStomachVesselKnife.s_pickingDepth)
+        cameraInfo = self.m_mediator.get_active_camerainfo()
+        cameraPos = cameraInfo[3]
+
+        knifeCL = commandKnife.CCommandKnifeCL(self.m_mediator)
+        knifeCL.InputData = dataInst
+        knifeCL.InputSkeleton = skeleton
+        knifeCL.InputWorldA = worldStart
+        knifeCL.InputWorldB = worldEnd
+        knifeCL.InputWorldC = cameraPos
+        knifeCL.process()
+
+        if knifeCL.OutputKnifedCLID == -1 :
+            print("not intersected cl")
+            return
+        
+        node = self._getui_list_selected_node()
+        if node is None :
+            print("not selected invalid node")
+            return
+        
+        # 현재는 혈관의 root cl만 가능하게 한다.
+        selectedCLID = node.get_clID(0)
+        if selectedCLID != knifeCL.OutputKnifedCLID :
+            print("not selected invalid node")
+            return 
+        
+
+        wholeVessel = node.get_whole_vessel()
+        if wholeVessel is None :
+            print("not found whole vessel mesh")
+            return
+        
+        meshLibVessel = commandVesselKnife.CCommandSepVessel.get_meshlib(wholeVessel)
+        meshLibVessel = algMeshLib.CMeshLib.meshlib_healing(meshLibVessel)
+
+        knifeCL.InputWorldA = worldStart
+        knifeCL.InputWorldB = worldEnd
+        knifeCL.InputWorldC = cameraPos
+
+        cmd = commandVesselKnife.CCommandSepVesselKnife(self.m_mediator)
+        cmd.m_inputData = dataInst
+        cmd.m_inputSkeleton = skeleton
+        cmd.m_inputMeshLibWholeVessel = meshLibVessel
+        cmd.m_inputWorldA = worldStart
+        cmd.m_inputWorldB = worldEnd
+        cmd.m_inputWorldC = cameraPos
+        cmd.process()
+
+        if cmd.OutputWhole is None or cmd.OutputSub is None :
+            print("failed to vessel knife")
+        else :
+            node.set_whole_vessel(cmd.OutputWhole)
+            node.Vessel = cmd.OutputSub
+
+        self.__add_vessel_territory(node)
+        self.m_mediator.update_viewer()
+    def _command_save_vessel(self, outputFolder : str) :
+        mergeCmd = treeVessel.CMergePolyData()
+        mergeCmd.process(self.m_treeVessel)
+
+        for label, polyData in mergeCmd.OutDicPolyData.items() :
+            fullPath = os.path.join(outputFolder, f"{label}.stl")
+            algVTK.CVTK.save_poly_data_stl(fullPath, polyData)
+
+
+
+    # ui event 
+    def _on_tv_vessel_item_clicked(self, index) :
+        model = self.m_tvVessel.model()
+        item = model.itemFromIndex(index)
+        self._command_clicked_vessel_hierarchy(item)
+    def on_lb_invalid_node(self, item) :
+        self._command_clicked_invalid_node(item)
+    def _on_btn_view_separated_vessel(self) :
+        self._command_separate_vessel()
         QMessageBox.information(self.m_mediator, "Alarm", "complete to separate vessel")
     def _on_btn_save_vessel(self) :
-        self._command_save_vessel()
+        outputPath = QFileDialog.getExistingDirectory(self.get_main_widget(), "Selection Output Path")
+        if outputPath == "" :
+            return
+        self._command_save_vessel(outputPath)
         QMessageBox.information(self.m_mediator, "Alarm", "complete to save vessel")
 
 
     # private
+    def __init_tree_vessel(self) :
+        dataInst = self.get_data()
+        clinfoinx = self.get_clinfo_index()
+        skeleton = dataInst.get_skeleton(clinfoinx)
+        self.m_treeVessel = treeVessel.CTreeVessel(skeleton)
+        self._command_clicked_clID(skeleton.RootCenterline.ID)
+    def __clear_tree_vessel(self) :
+        if self.m_treeVessel is not None :
+            self.m_treeVessel.clear()
+        self.m_treeVessel = None
+        
+        if self.m_tvVessel.model() is not None :
+            self.m_tvVessel.model().clear()
+        self.m_lvInvalidNode.clear()
     def __init_vessel_territory(self) :
         self.m_mediator.remove_key_type(data.CData.s_territoryType)
     def __clear_vessel_territory(self) :
@@ -257,9 +561,9 @@ class CTabStateStomachVesselKnife(tabState.CTabState) :
         self.__clear_vessel_territory()
 
         dataInst = self.get_data()
-        validVessel = node.get_valid_vessel()
-        if validVessel is None :
-            return 
+        # if node.Vessel is None :
+        #     print("not found vessel mesh")
+        #     return 
 
         key = data.CData.make_key(data.CData.s_territoryType, 0, 0)
         terriObj = vtkObjInterface.CVTKObjInterface()
@@ -267,32 +571,10 @@ class CTabStateStomachVesselKnife(tabState.CTabState) :
         terriObj.Key = key
         terriObj.Color = algLinearMath.CScoMath.to_vec3([1.0, 1.0, 0.0])
         terriObj.Opacity = 0.5
-        terriObj.PolyData = validVessel
+        # terriObj.PolyData = node.Vessel
+        terriObj.PolyData = node.get_valid_vessel()
         dataInst.add_vtk_obj(terriObj)
         self.m_mediator.ref_key_type(data.CData.s_territoryType)
-
-
-    # slot
-    def slot_vessel_hierarchy_node(self, listCLID : list, listNode : list) :
-        if len(listNode) == 0 :
-            return
-        clinfoInx = self.get_clinfo_index()
-
-        self.m_opSelectionCL.process_reset()
-        for clID in listCLID :
-            clKey = data.CData.make_key(data.CData.s_skelTypeCenterline, clinfoInx, clID)
-            self.m_opSelectionCL.add_selection_key(clKey)
-        self.m_opSelectionCL.process()
-
-        node = listNode[0]
-        self.__add_vessel_territory(node)
-        self.m_mediator.update_viewer()
-    def slot_invalid_node(self, node : treeVessel.CNodeVesselHier) :
-        self.__add_vessel_territory(node)
-        self.m_mediator.update_viewer()
-    def slot_finished_knife(self, node : treeVessel.CNodeVesselHier) :
-        self.__add_vessel_territory(node)
-        self.m_mediator.update_viewer()
 
         
 

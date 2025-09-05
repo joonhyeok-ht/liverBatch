@@ -325,22 +325,6 @@ class CSkeleton :
 
         self.build_graph()
         self.build_kd_tree()
-    def rebuild_centerline_related_data(self) :
-        for centerline in self.ListCenterline :
-            self.__init_conn_centerline(centerline)
-        self.extract_leaf_centerline()
-        self.build_graph()
-        self.build_kd_tree()
-
-        rootCenterlineID = -1
-        if self.RootCenterline is not None :
-            rootCenterlineID = self.RootCenterline.ID
-        if rootCenterlineID >= self.get_centerline_count() :
-            rootCenterlineID = -1
-            self.RootCenterline = None
-        if rootCenterlineID != -1 :
-            self.build_tree(rootCenterlineID)
-
 
     def get_centerline_count(self) -> int :
         return len(self.m_listCenterline)

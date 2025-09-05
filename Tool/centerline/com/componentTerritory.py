@@ -25,7 +25,7 @@ import AlgUtil.algSkeletonGraph as algSkeletonGraph
 
 import data as data
 import dataGroup as dataGroup
-import operation as operation
+import operationColored as operation
 import component as component
 import treeVessel as treeVessel
 import clMask as clMask

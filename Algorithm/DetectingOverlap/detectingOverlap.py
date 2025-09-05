@@ -1,8 +1,4 @@
-import numpy as np
-import matplotlib.pyplot as plt
 import os, sys
-import matplotlib.patches as patches
-import pandas as pd
 import vtk
 import math
 import json
@@ -11,20 +7,9 @@ sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 dirPath = os.path.join(os.path.abspath(os.path.dirname(__file__)), "../")
 sys.path.append(dirPath)
 
-import scoUtil
-import scoData
-import scoReg
-import scoMath
-import scoRenderObj
-import scoSkeleton
-import scoSkeletonVM
-import scoBuffer
-import scoBufferAlg
-
-
 '''
 Name
-    - DetectingOveralpBlock (HuAlgKidOver_v1.0.1)
+    - DetectingOveralpBlock (HuAlgKOver_v1.1.0)
 Input
     - "InputPath"       : overlap 검출 대상인 stl 파일들이 저장 된 폴더 
 Output
@@ -48,6 +33,9 @@ class CDetectingOverlap() :
         # input your code
         targetPolyData = None  
         listPolyData = []
+        listPolyDataName = []
+        targetPolyDataName = self.TargetStlFile.split(".")[0]
+        
         listSphere = []
         jsonData = {}
         jsonData["overlap count"] = 0
@@ -57,33 +45,47 @@ class CDetectingOverlap() :
         for fileName in self.m_listSrcStlFile : 
             fullPath = os.path.join(self.m_inputPath, fileName)
             if os.path.exists(fullPath) == False :
-                print(f"not found {fileName}")
+                #print(f"not found {fileName}")
                 continue
             polyData = self._load_stl(fullPath)
             listPolyData.append(polyData)
+            listPolyDataName.append(fileName.split(".")[0])
         
         fullPath = os.path.join(self.m_inputPath, self.TargetStlFile)
         if os.path.exists(fullPath) == False :
-            print(f"not found {self.TargetStlFile}")
+            #print(f"not found {self.TargetStlFile}")
             return
         targetPolyData = self._load_stl(fullPath)
 
-        for srcPolyData in listPolyData :
+        for inx, srcPolyData in enumerate(listPolyData) :
+            overlapedPosition = set()
             booleanOp = vtk.vtkBooleanOperationPolyDataFilter()
             booleanOp.SetOperationToIntersection()
-            booleanOp.SetInputData(0, srcPolyData)
-            booleanOp.SetInputData(1, targetPolyData)
+            
+            src = self.watertight_cap(srcPolyData)
+            tgt = self.watertight_cap(targetPolyData)
+            
+            booleanOp.SetInputData(0, src)
+            booleanOp.SetInputData(1, tgt)
+            booleanOp.GlobalWarningDisplayOff()
             booleanOp.Update()
+
 
             listTmp = self._get_connectivity_poly_data(booleanOp.GetOutput())
             for polyData in listTmp :
                 sphere, center, radius = self._get_sphere_poly_data(polyData)
-                listSphere.append(sphere)
-
-                dicOverlapInfo = {}
-                dicOverlapInfo["center"] = center
-                dicOverlapInfo["radius"] = radius
-                listOverlap.append(dicOverlapInfo)
+                
+                roundedCenter = (round(center[0]), round(center[1]), round(center[2]))
+                if roundedCenter not in overlapedPosition:
+                    overlapedPosition.add(roundedCenter)
+                    dicOverlapInfo = {}
+                    dicOverlapInfo["center"] = center
+                    dicOverlapInfo["radius"] = radius
+                    dicOverlapInfo["objectsName"] = listPolyDataName[inx] + "_" + targetPolyDataName
+                    listOverlap.append(dicOverlapInfo)
+                    listSphere.append(sphere)
+                else:
+                    continue
 
         jsonData["overlap count"] = len(listSphere)
         
@@ -96,10 +98,10 @@ class CDetectingOverlap() :
 
         for inx, sphere in enumerate(listSphere) :
             inx_new = inx + overlap_det_file_cnt
-            fileName = "zz_overlap_{0:03d}.stl".format(inx_new)
+            fileName = "zz_overlap_{0:03d}_".format(inx_new) + listOverlap[inx]["objectsName"] + ".stl"
             fullPath = os.path.join(self.m_outputPath, fileName)
             self._save_polydata_to_stl(fullPath, sphere)
-            print(f"saved {fullPath}")
+            #print(f"saved {fullPath}")
         
         # save overlap info 
         if self.OutputJsonPath == "" :
@@ -113,6 +115,35 @@ class CDetectingOverlap() :
         self.m_outputJsonPath = ""
         self.m_listSrcStlFile.clear()
         self.m_targetStlFile = ""
+
+    def watertight_cap(self, poly):
+        tri = vtk.vtkTriangleFilter()
+        tri.SetInputData(poly)
+
+        clean = vtk.vtkCleanPolyData()
+        clean.SetInputConnection(tri.GetOutputPort())
+        clean.PointMergingOn()
+        clean.SetTolerance(1e-6)
+
+        fill = vtk.vtkFillHolesFilter()
+        fill.SetInputConnection(clean.GetOutputPort())
+        fill.SetHoleSize(1e6)
+        fill.Update()
+
+        tri2 = vtk.vtkTriangleFilter()
+        tri2.SetInputConnection(fill.GetOutputPort())
+
+        outClean = vtk.vtkCleanPolyData()
+        outClean.SetInputConnection(tri2.GetOutputPort())
+
+        norms = vtk.vtkPolyDataNormals()
+        norms.SetInputConnection(outClean.GetOutputPort())
+        norms.ConsistencyOn()
+        norms.AutoOrientNormalsOn()
+        norms.SplittingOff()
+        norms.Update()
+
+        return norms.GetOutput()
 
 
     def add_src_stl_filename(self, niftiFileName : str) :
@@ -162,8 +193,8 @@ class CDetectingOverlap() :
         ret : tuple
               (vtk.vtkPolyData, listCenter, radius)
         '''
-        min = [100000.0, 100000.0, 100000.0]
-        max = [-100000.0, -100000.0, -100000.0]
+        min = [1000000.0, 1000000.0, 1000000.0]
+        max = [-1000000.0, -1000000.0, -1000000.0]
         for i in range(polyData.GetNumberOfCells()):
             cell = polyData.GetCell(i)
             for j in range(cell.GetNumberOfPoints()) :

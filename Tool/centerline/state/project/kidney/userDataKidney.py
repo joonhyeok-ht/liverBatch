@@ -23,7 +23,6 @@ sys.path.append(fileCommonPipelinePath)
 import Block.optionInfo as optionInfo
 
 import command.commandExport as commandExport
-import command.commandRecon as commandRecon
 
 import data as data
 
@@ -72,42 +71,6 @@ class CUserDataKidney(userData.CUserData) :
         return len(self.m_listExo)
     def get_exoname(self, inx : int) -> str :
         return self.m_listExo[inx]
-    
-
-        # override
-    def override_recon(self, patientID : str, outputPath : str) :
-        cmd = commandRecon.CCommandReconDevelopCommon(self.m_mediator)
-        cmd.InputData = self.Data
-        cmd.InputPatientID = patientID
-        cmd.InputBlenderScritpFileName = "blenderScriptRecon"
-        cmd.InputSaveBlenderName = f"{patientID}_recon"
-        cmd.OutputPath = outputPath
-        cmd.process()
-    def override_clean(self, patientID : str, outputPath : str) :
-        blenderScritpFileName = "blenderScriptClean"
-        saveBlenderName = f"{patientID}"
-
-        outputPatientPath = os.path.join(outputPath, patientID)
-        saveBlenderFullPath = os.path.join(outputPatientPath, f"{saveBlenderName}.blend")
-        srcBlenderFullPath = os.path.join(outputPatientPath, f"{patientID}_recon.blend")
-
-        if os.path.exists(srcBlenderFullPath) == False :
-            print("not found recon blender file")
-            return
-
-        # 기존것은 지움
-        if os.path.exists(saveBlenderFullPath) == True :
-            os.remove(saveBlenderFullPath)
-        # 새롭게 생성 
-        shutil.copy(srcBlenderFullPath, saveBlenderFullPath)
-
-        cmd = commandRecon.CCommandReconDevelopClean(self.m_mediator)
-        cmd.InputData = self.Data
-        cmd.InputPatientID = patientID
-        cmd.InputBlenderScritpFileName = blenderScritpFileName
-        cmd.InputSaveBlenderName = saveBlenderName
-        cmd.OutputPath = outputPath
-        cmd.process()
     
 
     # protected

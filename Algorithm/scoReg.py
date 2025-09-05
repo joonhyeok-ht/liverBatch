@@ -6,7 +6,7 @@ import open3d.visualization
 #from matplotlib.patches import Rectangle
 #import pickle
 
-#sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
+sys.path.append(os.path.dirname(__file__))
 import scoUtil
 import scoMath
 import scoBuffer
@@ -226,14 +226,6 @@ class CRegRigidRefinedTransform(CRegTransform) :
                         nowOffsetX = anchorOffsetX + offsetX
                         minV = scoMath.CScoVec3(srcAABB.Min.X + nowOffsetX, srcAABB.Min.Y + nowOffsetY, srcAABB.Min.Z + nowOffsetZ)
                         maxV = scoMath.CScoVec3(srcAABB.Max.X + nowOffsetX, srcAABB.Max.Y + nowOffsetY, srcAABB.Max.Z + nowOffsetZ)
-
-                        if not (
-                            minV.X >= 0 and 0 <= maxV.X < self.m_srcMask.Shape[0] and
-                            minV.Y >= 0 and 0 <= maxV.Y < self.m_srcMask.Shape[1] and
-                            minV.Z >= 0 and 0 <= maxV.Z < self.m_srcMask.Shape[2]
-                        ) :
-                            continue  # 이미지 경계 벗어나면 skip
-
                         nowDiceScore = self.m_targetMask.get_dice_score(npSrcCrop, minV, maxV)
                         if nowDiceScore > maxDiceScore :
                             if offsetX == 0 and offsetY == 0 and offsetZ == 0 :

@@ -48,14 +48,12 @@ class CCommandExportInterface(commandInterface.CCommand) :
 
 
     def export_from_blender(self, scriptFullPath : str, tmpStr : str, outExportPath : str) :
-        
-        outExportPath = outExportPath.replace('\\', '/')
         with open(scriptFullPath, 'w') as scriptFp:
             scriptFp.write(f""" 
 import bpy
 import os
 listObjName = [{tmpStr}]
-outputPath = '{outExportPath}'
+outputPath = r'{outExportPath}'
 for objName in listObjName :
     if objName in bpy.data.objects:
         bpy.ops.object.mode_set(mode='OBJECT')

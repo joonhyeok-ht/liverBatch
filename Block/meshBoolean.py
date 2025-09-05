@@ -33,7 +33,7 @@ class CMeshBoolean() :
         
         iBooleanCnt = self.InputOptionInfo.get_mesh_boolean_count()
         if iBooleanCnt == 0 :
-            print("not found mesh boolean list")
+            #print("not found mesh boolean list")
             return
         
         for inx in range(0, iBooleanCnt) :
@@ -49,10 +49,10 @@ class CMeshBoolean() :
             stlFullPath = os.path.join(self.InputPath, f"{blenderName}.stl")
 
             if os.path.exists(stlFullPath0) == False :
-                print(f"not found stl file 0  : {blenderName0}")
+                #print(f"not found stl file 0  : {blenderName0}")
                 continue
             if os.path.exists(stlFullPath1) == False :
-                print(f"not found stl file 1  : {blenderName0}")
+                #print(f"not found stl file 1  : {blenderName0}")
                 continue
 
             mesh0 = algMeshLib.CMeshLib.meshlib_load_stl(stlFullPath0)

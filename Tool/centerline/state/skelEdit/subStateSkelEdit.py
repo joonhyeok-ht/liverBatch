@@ -4,10 +4,9 @@ import numpy as np
 import shutil
 import vtk
 import subprocess
-from scipy.spatial import KDTree
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QHBoxLayout, QWidget, QPushButton, QLineEdit, QLabel, QSizePolicy, QListWidget, QFileDialog, QFrame, QCheckBox, QTabWidget, QComboBox, QMessageBox
+from PySide6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QHBoxLayout, QWidget, QPushButton, QLineEdit, QLabel, QSizePolicy, QListWidget, QFileDialog, QFrame, QCheckBox, QTabWidget, QComboBox
 from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 
 fileAbsPath = os.path.abspath(os.path.dirname(__file__))
@@ -82,14 +81,12 @@ class CSubStateSkelEdit() :
         skeleton = self._get_skeleton()
         if skeleton is None :
             return
-        
-        self._update_skeleton()
 
-        # clInPath = dataInst.get_cl_in_path()
+        clInPath = dataInst.get_cl_in_path()
         clOutPath = dataInst.get_cl_out_path()
-        # file = "clDataInfo.pkl"
-        # pklFullPath = os.path.join(clInPath, file)
-        # data.CData.save_inst(pklFullPath, dataInst.DataInfo)
+        file = "clDataInfo.pkl"
+        pklFullPath = os.path.join(clInPath, file)
+        data.CData.save_inst(pklFullPath, dataInst.DataInfo)
 
         clInfo = dataInst.OptionInfo.get_centerlineinfo(clinfoInx)
         blenderName = clInfo.get_input_blender_name()
@@ -131,63 +128,6 @@ class CSubStateSkelEdit() :
         return self.m_mediator.getui_cl_ancestor()
     def _getui_range(self) -> int :
         return self.m_mediator.getui_range()
-    
-
-    def _update_skeleton(self) : 
-        self.__update_cl_radius()
-        skeleton = self._get_skeleton()
-        skeleton.rebuild_centerline_related_data()
-        QMessageBox.information(self.m_mediator.m_mediator, "Alarm", "complete to save vessel")
-    
-    
-    # private
-    # def __update_cl_radius(self) :
-    #     dataInst = self._get_data()
-    #     skeleton = self._get_skeleton()
-    #     clinfoIndex = self._get_clinfo_index()
-
-    #     vesselKey = data.CData.make_key(data.CData.s_vesselType, clinfoIndex, 0)
-    #     vesselObj = dataInst.find_obj_by_key(vesselKey)
-    #     if vesselObj is None :
-    #         return
-    #     vesselPolyData = vesselObj.PolyData
-    #     anchorVertex = algVTK.CVTK.poly_data_get_vertex(vesselPolyData)
-    #     tree = KDTree(anchorVertex)
-
-    #     iCnt = skeleton.get_centerline_count()
-    #     for inx in range(0, iCnt) :
-    #         cl = skeleton.get_centerline(inx)
-    #         dist, self.m_npNNIndex = tree.query(cl.Vertex, k=1)
-    #         print(f"dist : {dist}")
-    #         inx = 0
-    def __update_cl_radius(self) :
-        dataInst = self._get_data()
-        skeleton = self._get_skeleton()
-        clinfoIndex = self._get_clinfo_index()
-
-        vesselKey = data.CData.make_key(data.CData.s_vesselType, clinfoIndex, 0)
-        vesselObj = dataInst.find_obj_by_key(vesselKey)
-        if vesselObj is None :
-            return
-        vesselPolyData = vesselObj.PolyData
-        # anchorVertex = algVTK.CVTK.poly_data_get_vertex(vesselPolyData)
-        # tree = KDTree(anchorVertex)
-
-        distCalculator = vtk.vtkImplicitPolyDataDistance()
-        distCalculator.SetInput(vesselPolyData)
-
-        iCnt = skeleton.get_centerline_count()
-        for inx in range(0, iCnt) :
-            cl = skeleton.get_centerline(inx)
-            dist = np.zeros(len(cl.Vertex))
-            for ptInx, point in enumerate(cl.Vertex) :
-                radius = abs(distCalculator.EvaluateFunction(point))
-                # radius = distCalculator.EvaluateFunction(point)
-                dist[ptInx] = radius
-            # dist, self.m_npNNIndex = tree.query(cl.Vertex, k=1)
-            # print(f"dist : {dist}")
-            cl.Radius = dist
-            inx = 0
 
 
     @property

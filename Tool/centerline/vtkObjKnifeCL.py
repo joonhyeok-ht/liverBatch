@@ -28,7 +28,7 @@ import VtkObj.vtkObjPolyData as vtkObjPolyData
 import VtkUI.vtkUI as vtkUI
 import vtkObjInterface as vtkObjInterface
 
-import operation as operation
+import state.operation as operation
 
 
 

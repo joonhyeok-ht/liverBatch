@@ -132,11 +132,14 @@ class CReconstruction(multiProcessTask.CMultiProcessTask) :
             phaseInfo = self.InputNiftiContainer.find_phase_info(niftiInfo.MaskInfo.Phase)
 
             if self.InputOptionInfo.find_recon_param(reconType) is None :
-                print(f"not found recon type {reconType}")
+                pass
+                #print(f"not found recon type {reconType}")
             elif niftiInfo.Valid == False :
-                print(f"not found data {niftiInfo.MaskInfo.Name}")
+                pass
+                #print(f"not found data {niftiInfo.MaskInfo.Name}")
             elif phaseInfo is None :
-                print(f"not found phase info {niftiInfo.MaskInfo.Name}")
+                pass
+                #print(f"not found phase info {niftiInfo.MaskInfo.Name}")
             else :
                 listParam.append((niftiInfo, phaseInfo))
 
@@ -183,7 +186,6 @@ class CReconstruction(multiProcessTask.CMultiProcessTask) :
         inputNiftiFullPath = ""
         if vertex is not None :
             inputNiftiFullPath = os.path.join(self.OutputPath, f"{blenderName}.nii.gz")
-
             npImg = algImage.CAlgImage.create_np(size, np.uint8)
             algImage.CAlgImage.set_clear(npImg, 0)
             algImage.CAlgImage.set_value(npImg, vertex, 255)
@@ -211,7 +213,7 @@ class CReconstruction(multiProcessTask.CMultiProcessTask) :
         elif algorithm == "MarchingSharpnessPro" : 
             polyData = algVTK.CVTK.recon_marching_cube_sharpness_pro(vtkImg, 0, contour, iter, reduction, sharpnessAngle, sharpnessNormalAngle, matPhy)
         algVTK.CVTK.save_poly_data_stl(outputStlFullPath, polyData)
-        print(f"saved stl : {outputStlFullPath}")
+        #print(f"saved stl : {outputStlFullPath}")
 
     
     @property

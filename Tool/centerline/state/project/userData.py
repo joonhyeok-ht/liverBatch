@@ -41,21 +41,14 @@ class CUserData :
         if self.Data.DataInfo.PatientID == "" :
             return False
         
-        # dataRootPath = self.Data.OptionInfo.DataRootPath
-        # patientID = self.Data.DataInfo.PatientID
-        # patientMaskFullPath = os.path.join(dataRootPath, os.path.join(patientID, "Mask"))
-        # if os.path.exists(patientMaskFullPath) == False :
-        #     print("not found patient mask folder")
-        #     return False
+        dataRootPath = self.Data.OptionInfo.DataRootPath
+        patientID = self.Data.DataInfo.PatientID
+        patientMaskFullPath = os.path.join(dataRootPath, os.path.join(patientID, "Mask"))
+        if os.path.exists(patientMaskFullPath) == False :
+            print("not found patient mask folder")
+            return False
         
         return True
-    
-    
-    # override
-    def override_recon(self, patientID : str, outputPath : str) :
-        pass
-    def override_clean(self, patientID : str, outputPath : str) :
-        pass
     
 
     @property

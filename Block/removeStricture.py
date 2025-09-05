@@ -64,14 +64,13 @@ class CRemoveStricture(multiProcessTask.CMultiProcessTask) :
         inx = param[0]
         niftiInfo = param[1]
         shape = param[2]
-
+        # print(f"RemoveStricture CurrNifti : {niftiInfo.FullPath}")
         npImg, origin, spacing, direction, size = algImage.CAlgImage.get_np_from_nifti(niftiInfo.FullPath)
         vertex = algImage.CAlgImage.get_vertex_from_np(npImg, np.int32)
 
         vesselVertex = algImage.CAlgImage.get_removed_stricture_voxel_index_from_vertex(vertex, shape)
         self.m_sharedList[inx] = vesselVertex
-        print(f"completed removed stricture vessel {niftiInfo.MaskInfo.Name}")
-    
+        print(f"completed removed stricture vessel {niftiInfo.MaskInfo.Name}", file=sys.__stdout__, flush=True)
 
     @property
     def InputNiftiContainer(self) -> niftiContainer.CNiftiContainer :

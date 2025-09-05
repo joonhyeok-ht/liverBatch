@@ -10,7 +10,6 @@ sys.path.append(solutionPath)
 import AlgUtil.algLinearMath as algLinearMath
 import AlgUtil.algImage as algImage
 import AlgUtil.algVTK as algVTK
-import AlgUtil.algImage as algImage
 import AlgUtil.algGeometry as algGeometry
 
 from Algorithm import scoReg
@@ -18,7 +17,6 @@ from Algorithm import scoReg
 import multiProcessTask as multiProcessTask
 import niftiContainer as niftiContainer
 import optionInfo as optionInfo
-
 
 class CRegistration(multiProcessTask.CMultiProcessTask) :
     def __init__(self) -> None:
@@ -61,11 +59,13 @@ class CRegistration(multiProcessTask.CMultiProcessTask) :
             targetFullPath = targetNiftiInfoList[0].FullPath
             srcFullPath = srcNiftiInfoList[0].FullPath
             rigidAABB = regInfo.RigidAABB
+            # print(f"RegInfo[{inx}] targetFullPath : {targetFullPath}")
+            # print(f"               srcFullPath : {srcFullPath}")
 
             listParam.append((paramCnt, targetFullPath, srcFullPath, rigidAABB))
             paramCnt += 1
         
-        if paramCnt == 0 :
+        if paramCnt == 0 or len(listParam) == 0:
             print("passed registration")
             return
         
@@ -79,7 +79,7 @@ class CRegistration(multiProcessTask.CMultiProcessTask) :
         targetFullPath = param[1]
         srcFullPath = param[2]
         rigidAABB = param[3]
-
+        
         if os.path.exists(targetFullPath) == False or os.path.exists(srcFullPath) == False :
             print("-" * 30)
             print(f"not found registration files")
@@ -118,7 +118,7 @@ class CRegistration(multiProcessTask.CMultiProcessTask) :
             phyOffsetV = phyOffsetV + rigidPhysicalOffset
 
             self.m_sharedList[inx] = phyOffsetV
-            print(f"completed registration {srcFullPath}")
+            print(f"completed registration {srcFullPath}", file=sys.__stdout__, flush= True)
 
     def __get_rigid_physical_offset(self, targetInfo : tuple, srcInfo : tuple) -> np.ndarray :
         targetVertex = targetInfo[0]

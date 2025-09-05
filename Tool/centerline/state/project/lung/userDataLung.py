@@ -4,8 +4,6 @@ import numpy as np
 import shutil
 import vtk
 import subprocess
-import copy
-import SimpleITK as sitk
 
 fileAbsPath = os.path.abspath(os.path.dirname(__file__))
 fileStateProjectPath = os.path.dirname(fileAbsPath)
@@ -22,18 +20,11 @@ sys.path.append(fileToolPath)
 sys.path.append(fileCommonPipelinePath)
 
 
-import AlgUtil.algLinearMath as algLinearMath
-import AlgUtil.algImage as algImage
-import AlgUtil.algVTK as algVTK
-
 import Block.optionInfo as optionInfo
-import Block.niftiContainer as niftiContainer
 
 import data as data
 
 import userData as userData
-
-import command.commandRecon as commandRecon
 
 
 class CUserDataLung(userData.CUserData) :
@@ -44,58 +35,36 @@ class CUserDataLung(userData.CUserData) :
         super().__init__(data, CUserDataLung.s_userDataKey)
         # input your code
         self.m_mediator = mediator
+        self.m_currPatientID = ''
+        
     def clear(self) :
         # input your code
-        self.m_mediator = None
+
         super().clear()
 
     def load_patient(self) -> bool :
-        if super().load_patient() == False :
+        # if super().load_patient() == False :
+        #     return False
+        if self.Data is None :
             return False
-        # input your code
+        if self.Data.OptionInfo is None :
+            return False
+        if self.Data.DataInfo.PatientPath == "" :
+            return False
+        if self.Data.DataInfo.PatientID == "" :
+            return False
         
+        dataRootPath = self.Data.OptionInfo.DataRootPath
+        patientID = self.Data.DataInfo.PatientID
+        patientMaskFullPath = os.path.join(dataRootPath, patientID, "02_SAVE", "01_MASK", "AP")
+        if os.path.exists(patientMaskFullPath) == False :
+            print("CUserDataLung : not found patient mask folder")
+            return False
+        print(f"userDataLung - PatientMaskFullPath : {patientMaskFullPath}")
+        # input your code
+       
         return True
     
-
-    # override
-    def override_recon(self, patientID : str, outputPath : str) :
-        cmd = commandRecon.CCommandReconDevelopCommon(self.m_mediator)
-        cmd.InputData = self.Data
-        cmd.InputPatientID = patientID
-        cmd.InputBlenderScritpFileName = "blenderScriptRecon"
-        cmd.InputSaveBlenderName = f"{patientID}_recon"
-        cmd.OutputPath = outputPath
-        cmd.process()
-    def override_clean(self, patientID : str, outputPath : str) :
-        blenderScritpFileName = "blenderScriptClean"
-        saveBlenderName = f"{patientID}"
-
-        outputPatientPath = os.path.join(outputPath, patientID)
-        saveBlenderFullPath = os.path.join(outputPatientPath, f"{saveBlenderName}.blend")
-        srcBlenderFullPath = os.path.join(outputPatientPath, f"{patientID}_recon.blend")
-
-        if os.path.exists(srcBlenderFullPath) == False :
-            print("not found recon blender file")
-            return
-
-        # 기존것은 지움
-        if os.path.exists(saveBlenderFullPath) == True :
-            os.remove(saveBlenderFullPath)
-        # 새롭게 생성 
-        shutil.copy(srcBlenderFullPath, saveBlenderFullPath)
-
-        cmd = commandRecon.CCommandReconDevelopClean(self.m_mediator)
-        cmd.InputData = self.Data
-        cmd.InputPatientID = patientID
-        cmd.InputBlenderScritpFileName = blenderScritpFileName
-        cmd.InputSaveBlenderName = saveBlenderName
-        cmd.OutputPath = outputPath
-        cmd.process()
-    
-
-
-    
-
     @property
     def Data(self) -> data.CData :
         return self.m_data

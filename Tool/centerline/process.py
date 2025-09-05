@@ -66,7 +66,7 @@ import state.tabStateSkelEdit as tabStateSkelEdit
 import state.tabStateSkelLabeling as tabStateSkelEditLabeling
 import state.tabStateTerritory as tabStateTerritory
 import state.tabStateVesselRemodeling as tabStateVesselRemodeling
-import operation as op
+import state.operation as op
 
 import data as data
 import clMask as clMask
@@ -76,25 +76,17 @@ import clMask as clMask
 import vtkUIViewerCL as vtkUIViewerCL
 
 # user data
-import state.project.common.tabStateCommonTerritory as tabStateCommonTerritory
 import state.project.kidney.tabStateKidneySepTest as tabStateKidneySepTest
-import state.project.colon.tabStateColonMain as tabStateColonMain
-import state.project.colon.tabStateColonVesselCutting as tabStateColonVesselCutting
+import state.project.colon.tabStateColonTerritory as tabStateColonTerritory
 import state.project.colon.tabStateColonMerge as tabStateColonMerge
 import state.project.stomach.tabStateStomachVesselKnife as tabStateStomachVesselKnife
 import state.project.stomach.tabStateStomachVesselLabeling as tabStateStomachVesselLabeling
-import state.project.liver.tabStateLiverReg as tabStateLiverReg
-import state.project.liver.tabStateSkelLabelingLiver as tabStateSkelLabelingLiver
 import state.project.test.tabStateTerritoryEnhanced as tabStateTerritoryEnhanced
 # import state.project.test.tabStateKnife as tabStateKnife
 
-import state.project.userData as userData
-import state.project.common.userDataCommon as userDataCommon
-import state.project.stomach.userDataStomach as userDataStomach
 import state.project.kidney.userDataKidney as userDataKidney
-import state.project.lung.userDataLung as userDataLung
-import state.project.liver.userDataLiver as userDataLiver
 import state.project.colon.userDataColon as userDataColon
+import state.project.stomach.userDataStomach as userDataStomach
 
 
 class COutputRedirector :
@@ -110,27 +102,25 @@ class COutputRedirector :
 
 class CTestApp(QMainWindow) :
     # 일단 하드코딩 
-    s_titleToken = "hu3D 제작도구 - "
     s_projectTypeInfo = {
         "Common" : {
             "TabInfo" : [
                 {"TabName" : "Patient Info", "TabInst" : tabStatePatient.CTabStatePatient},
                 {"TabName" : "Edit", "TabInst" : tabStateSkelEdit.CTabStateSkelEdit},
-                {"TabName" : "Territory", "TabInst" : tabStateCommonTerritory.CTabStateCommonTerritory}
-                # {"TabName" : "Labeling", "TabInst" : tabStateSkelEditLabeling.CTabStateSkelLabeling},
-                # {"TabName" : "Territory", "TabInst" : tabStateTerritory.CTabStateTerritory},
-                # {"TabName" : "Territory Enhanced", "TabInst" : tabStateTerritoryEnhanced.CTabStateTerritoryEnhanced},
-                # {"TabName" : "VesselRemodeling", "TabInst" : tabStateVesselRemodeling.CTabStateVesselRemodeling},
+                {"TabName" : "Labeling", "TabInst" : tabStateSkelEditLabeling.CTabStateSkelLabeling},
+                {"TabName" : "Territory", "TabInst" : tabStateTerritory.CTabStateTerritory},
+                {"TabName" : "Territory Enhanced", "TabInst" : tabStateTerritoryEnhanced.CTabStateTerritoryEnhanced},
+                {"TabName" : "VesselRemodeling", "TabInst" : tabStateVesselRemodeling.CTabStateVesselRemodeling},
             ],
-            "UserDataKey" : userDataCommon.CUserDataCommon.s_userDataKey,
-            "UserDataInst" : userDataCommon.CUserDataCommon
+            "UserDataKey" : "",
+            "UserDataInst" : None
         },
         "Stomach" : {
             "TabInfo" : [
                 {"TabName" : "Patient Info", "TabInst" : tabStatePatient.CTabStatePatient},
                 {"TabName" : "Edit", "TabInst" : tabStateSkelEdit.CTabStateSkelEdit},
                 {"TabName" : "Vessel Labeling", "TabInst" : tabStateStomachVesselLabeling.CTabStateStomachVesselLabeling},
-                {"TabName" : "Vessel Cutting", "TabInst" : tabStateStomachVesselKnife.CTabStateStomachVesselKnife},
+                {"TabName" : "Vessel Knife", "TabInst" : tabStateStomachVesselKnife.CTabStateStomachVesselKnife},
                 {"TabName" : "Vessel Remodeling", "TabInst" : tabStateVesselRemodeling.CTabStateVesselRemodeling},
             ],
             "UserDataKey" : userDataStomach.CUserDataStomach.s_userDataKey,
@@ -155,28 +145,27 @@ class CTestApp(QMainWindow) :
                 {"TabName" : "Territory", "TabInst" : tabStateTerritory.CTabStateTerritory},
                 {"TabName" : "VesselRemodeling", "TabInst" : tabStateVesselRemodeling.CTabStateVesselRemodeling},
             ],
-            "UserDataKey" : userDataLung.CUserDataLung.s_userDataKey,
-            "UserDataInst" : userDataLung.CUserDataLung
+            "UserDataKey" : "",
+            "UserDataInst" : None
         },
         "Liver" : {
             "TabInfo" : [
                 {"TabName" : "Patient Info", "TabInst" : tabStatePatient.CTabStatePatient},
                 {"TabName" : "Edit", "TabInst" : tabStateSkelEdit.CTabStateSkelEdit},
-                {"TabName" : "Labeling", "TabInst" : tabStateSkelLabelingLiver.CTabStateSkelLabelingLiver},
-                {"TabName" : "Territory", "TabInst" : tabStateTerritoryEnhanced.CTabStateTerritoryEnhanced},
-                {"TabName" : "Registration Test", "TabInst" : tabStateLiverReg.CTabStateReg},
+                {"TabName" : "Labeling", "TabInst" : tabStateSkelEditLabeling.CTabStateSkelLabeling},
+                {"TabName" : "Territory", "TabInst" : tabStateTerritory.CTabStateTerritory},
+                {"TabName" : "VesselRemodeling", "TabInst" : tabStateVesselRemodeling.CTabStateVesselRemodeling},
             ],
-            "UserDataKey" : userDataLiver.CUserDataLiver.s_userDataKey,
-            "UserDataInst" : userDataLiver.CUserDataLiver
+            "UserDataKey" : "",
+            "UserDataInst" : None
         },
         "Colon" : {
             "TabInfo" : [
-                {"TabName" : "Patient Info", "TabInst" : tabStateColonMain.CTabStateColonMain},
+                {"TabName" : "Patient Info", "TabInst" : tabStatePatient.CTabStatePatient},
                 {"TabName" : "Edit", "TabInst" : tabStateSkelEdit.CTabStateSkelEdit},
-                # {"TabName" : "Labeling", "TabInst" : tabStateSkelEditLabeling.CTabStateSkelLabeling},
+                {"TabName" : "Labeling", "TabInst" : tabStateSkelEditLabeling.CTabStateSkelLabeling},
                 {"TabName" : "Colon Merge", "TabInst" : tabStateColonMerge.CTabStateColonMerge},
-                {"TabName" : "Vessel Cutting", "TabInst" : tabStateColonVesselCutting.CTabStateColonVesselCutting},
-                # {"TabName" : "Colon Territory", "TabInst" : tabStateColonTerritory.CTabStateColonTerritory},
+                {"TabName" : "Colon Territory", "TabInst" : tabStateColonTerritory.CTabStateColonTerritory},
             ],
             "UserDataKey" : userDataColon.CUserDataColon.s_userDataKey,
             "UserDataInst" : userDataColon.CUserDataColon
@@ -246,8 +235,6 @@ QPushButton {
         self._init_layout_bottom()
         self._init_layout_vtk()
         self._init_tab()
-
-        self.setWindowTitle(CTestApp.s_titleToken)
 
 
     # operator interface 
@@ -710,7 +697,7 @@ QPushButton {
         return cellID
     def picking_intersected_point(self, clickX, clickY, listKeyType : list, tolerance : float = 0.001) -> np.ndarray :
         '''
-        ret : None (nothing picking)
+        ret : -1 (nothing picking)
         '''
         for keyType in listKeyType :
             self.visibility_key_type(keyType, False)
@@ -767,47 +754,7 @@ QPushButton {
         myFar = camPos + camDir * distFromCamera
 
         return myFar, pNear, pFar
-    def project_points_to_display(self, np_pts: np.ndarray):
-        """
-        np_pts : shape (N, 3)
-        return    : shape (N, 2), display coordinates (x, y)
-        """
 
-        # 1) 카메라 & 렌더러 정보
-        renderer = self.get_viewercl_renderer()
-        cam        = renderer.GetActiveCamera()
-        win_size   = renderer.GetRenderWindow().GetSize()
-        aspect     = win_size[0] / win_size[1]
-        near, far  = cam.GetClippingRange()
-
-        # 2) Composite projection matrix 얻기 (view+proj 포함)
-        #    → signature: GetCompositeProjectionTransformMatrix(aspect, near, far)
-        comp_mat_vtk = cam.GetCompositeProjectionTransformMatrix(aspect, near, far)
-
-        # 3) vtkMatrix4x4 → NumPy (4×4)
-        M = np.zeros((4,4), dtype=float)
-        for i in range(4):
-            for j in range(4):
-                M[i,j] = comp_mat_vtk.GetElement(i,j)
-
-        # 4) 동차좌표로 확장 (N×4)
-        ones = np.ones((np_pts.shape[0],1), dtype=float)
-        pts_h = np.hstack([np_pts, ones])  # (N,4)
-
-        # 5) 행렬곱 → 클립좌표 (N,4)
-        clip = pts_h @ M.T
-
-        # 6) NDC(normalized device coords) 로 변환
-        ndc = clip[:,:3] / clip[:,3:4]      # (N,3)    x,y ∈ [−1,1]
-
-        # 7) 화면 픽셀 좌표로 변환
-        x_disp = (ndc[:,0] + 1.0) * 0.5 * win_size[0]
-        y_disp = (ndc[:,1] + 1.0) * 0.5 * win_size[1]
-
-        return np.stack([x_disp, y_disp], axis=1)  # (N,2)
-
-    def set_title(self, patientID : str) :
-        self.setWindowTitle(f"{CTestApp.s_titleToken}{patientID}")
 
 
     @property
@@ -825,14 +772,6 @@ QPushButton {
     @property
     def Data(self) -> data.CData :
         return self.m_data
-    @property
-    def ReconUserData(self) -> userData.CUserData :
-        '''
-        warning : recon 용도외에 절대 사용하지 말 것 data에 있는 userData가 진짜임 
-        '''
-        projectType = self.ProjectType
-        userData = CTestApp.s_projectTypeInfo[projectType]["UserDataInst"](self.Data, self)
-        return userData
 
 
     # protected
@@ -924,12 +863,6 @@ QPushButton {
 
 
     # UIViewer event
-    def uiviewer_on_click_mouse_left(self, clickX, clickY) :
-        self.get_tab_state(self.m_tabIndex).clicked_mouse_lb(clickX, clickY)
-    def uiviewer_on_click_mouse_left_shift(self, clickX, clickY) :
-        self.get_tab_state(self.m_tabIndex).clicked_mouse_lb_shift(clickX, clickY)
-    def uiviewer_on_release_mouse_left(self) :
-        self.get_tab_state(self.m_tabIndex).release_mouse_lb()
     def uiviewer_on_click_mouse_right(self, clickX, clickY) :
         self.get_tab_state(self.m_tabIndex).clicked_mouse_rb(clickX, clickY)
     def uiviewer_on_click_mouse_right_shift(self, clickX, clickY) :
@@ -938,8 +871,6 @@ QPushButton {
         self.get_tab_state(self.m_tabIndex).release_mouse_rb()
     def uiviewer_on_mouse_move(self, clickX, clickY) :
         self.get_tab_state(self.m_tabIndex).mouse_move(clickX, clickY)
-    def uiviewer_on_mouse_move_left(self, clickX, clickY) :
-        self.get_tab_state(self.m_tabIndex).mouse_move_lb(clickX, clickY)
     def uiviewer_on_mouse_move_right(self, clickX, clickY) :
         self.get_tab_state(self.m_tabIndex).mouse_move_rb(clickX, clickY)
     def uiviewer_on_key_press(self, keyCode) :
@@ -955,6 +886,7 @@ if __name__ == '__main__' :
     app.setStyle("Fusion")
 
     guiWindow = CTestApp(1920, 1080)
+    guiWindow.setWindowTitle("GUI Test")
     guiWindow.show()
     sys.exit(app.exec())
 

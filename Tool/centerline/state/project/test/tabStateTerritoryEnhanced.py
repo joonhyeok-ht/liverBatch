@@ -340,14 +340,14 @@ class CTabStateTerritoryEnhanced(tabState.CTabState) :
             return
         
         # save territory
-        key = data.CData.make_key(data.CData.s_territoryType, 0, 0)
-        obj = dataInst.find_obj_by_key(key)
-        if obj is None :
-            print("not found territory")
-            return
-        polyData = obj.PolyData
-        algVTK.CVTK.save_poly_data_stl(savePath, polyData)
-        print("Territory file saved successfully.")
+        # key = data.CData.make_key(data.CData.s_territoryType, 0, 0)
+        # obj = dataInst.find_obj_by_key(key)
+        # if obj is None :
+        #     print("not found territory")
+        #     return
+        # polyData = obj.PolyData
+        # algVTK.CVTK.save_poly_data_stl(savePath, polyData)
+        # print("Territory file saved successfully.")
 
         # save whole
         fullPath = os.path.join(dirPath, f"{fileName}_whole.stl")

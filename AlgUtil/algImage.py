@@ -4,7 +4,6 @@ import os
 # from torch.autograd import Variable
 import numpy as np
 import math
-# from scipy import ndimage
 from scipy.ndimage import binary_erosion
 import SimpleITK as sitk
 # from sklearn.decomposition import PCA
@@ -57,13 +56,6 @@ class CAlgImage :
     @staticmethod
     def get_vertex_from_np(npImg : np.ndarray, dtype=np.float32) -> np.ndarray :
         vertex = np.array(np.where(npImg > 0), dtype=dtype).transpose()
-        return vertex
-    @staticmethod
-    def get_vertex_from_np_value(npImg : np.ndarray, value, dtype=np.float32) -> np.ndarray :
-        coord = np.where(npImg == value)
-        if coord[0].size == 0 :
-            return None
-        vertex = np.array(coord, dtype=dtype).transpose()
         return vertex
     @staticmethod
     def get_vertex_by_line(npImg : np.ndarray, start : np.ndarray, end : np.ndarray, value, dtype=np.float32) -> np.ndarray :
@@ -199,12 +191,6 @@ class CAlgImage :
     def set_value(npImg : np.ndarray, voxelInx : np.ndarray, value) :
         voxelInx = voxelInx.T
         npImg[voxelInx[0], voxelInx[1], voxelInx[2]] = value
-    @staticmethod
-    def get_value(npImg : np.ndarray, voxelInx : np.ndarray) -> np.ndarray :
-        voxelInx = voxelInx.T
-        value = npImg[voxelInx[0], voxelInx[1], voxelInx[2]]
-        return value.astype(np.uint8)
-    
     
     @staticmethod
     def get_removed_stricture_voxel_index(npImg : np.ndarray) -> np.ndarray :
