@@ -34,9 +34,9 @@ class CSubDetectOverlap :
                 os.remove(fullpath)
                 
                 
-        outputOverlapJson0 = os.path.join(self.m_logPath, "Artery.json")
-        outputOverlapJson1 = os.path.join(self.m_logPath, "Vein.json")
-        outputOverlapJson2 = os.path.join(self.m_logPath, "Portal.json")
+        outputOverlapJson0 = os.path.join(self.m_logPath, "Overlaped_Artery.json")
+        outputOverlapJson1 = os.path.join(self.m_logPath, "Overlaped_Vein.json")
+        outputOverlapJson2 = os.path.join(self.m_logPath, "Overlaped_Portal.json")
         
         
         # DetectingOverlapBlock_0

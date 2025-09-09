@@ -79,7 +79,7 @@ class COptionInfo :
     def NiftiStlPair(self) -> dict :
         return self.m_dicNiftiSTLPair
     
-class CBlenderScriptStomach :
+class CBlenderScriptLiver :
     @staticmethod
     def list_objects_in_blend(blend_path):
         with bpy.data.libraries.load(blend_path, link=False) as (data_from, data_to):
@@ -245,7 +245,7 @@ class CBlenderScriptStomach :
             print(f"Not Found : {blenderPath}")
             return False
         # 1. blend_path의 모든 오브젝트의 이름을 가져오기
-        object_names = CBlenderScriptStomach.list_objects_in_blend(blenderPath)
+        object_names = CBlenderScriptLiver.list_objects_in_blend(blenderPath)
             
         # 2. 중복 오브젝트가 있다면 현재 .blend에서 삭제
         for mesh in bpy.data.meshes :
@@ -561,7 +561,7 @@ class CBlenderScriptStomach :
                 # 선택 해제
                 obj.select_set(False)
     
-class CBlenderScriptStomachBasic(CBlenderScriptStomach) :
+class CBlenderScriptStomachBasic(CBlenderScriptLiver) :
     def __init__(self, patientID : str, optionPath : str, stlPath : str, outputPath = "") :
         super().__init__(patientID, optionPath, stlPath, outputPath)    
 
@@ -692,7 +692,7 @@ class CBlenderScriptStomachExport() :
         # _export_stl(out_path) # for blender v4.1.1
         self._export_stl2(out_path) # for blender v3.6 ~ v4.1.1
         
-class CBlenderScriptStomachImportSave(CBlenderScriptStomach) :
+class CBlenderScriptStomachImportSave(CBlenderScriptLiver) :
     
     def __init__(self, patientID : str, optionPath : str, stlPath : str, outputPath = "" ) :
         super().__init__(patientID, optionPath, stlPath, outputPath)    
@@ -720,7 +720,29 @@ class CBlenderScriptStomachImportSave(CBlenderScriptStomach) :
         #     print(f"delete {self.m_stlPath} folder")
         return True
     
-class CBlenderScriptStomachMeshClean(CBlenderScriptStomach) :
+class CBlenderScriptLiverOpen(CBlenderScriptLiver) :
+    def __init__(self, patientID : str, optionPath : str, stlPath : str, outputPath = "") :
+        super().__init__(patientID, optionPath, stlPath, outputPath)    
+        self.m_openPath = ""
+    def process(self) -> bool :
+        
+        if super().process() == False :
+            return False
+        if os.path.exists(self.m_openPath) == False:
+            print(f"ERROR : openPath Not Exist. ")
+            return False
+
+        patientBlenderName = self.m_openPath
+        bpy.ops.wm.open_mainfile(filepath=patientBlenderName) 
+    @property
+    def OpenPath(self) :
+        return self.m_openPath
+    @OpenPath.setter
+    def OpenPath(self, path) :
+        self.m_openPath = path
+    
+    
+class CBlenderScriptStomachMeshClean(CBlenderScriptLiver) :
     def __init__(self, patientID : str, optionPath : str, stlPath : str, outputPath = "", overlapPath = "") :
         super().__init__(patientID, optionPath, stlPath, outputPath)    
 
@@ -868,4 +890,13 @@ if __name__=='__main__' :
                 overlapPath = find_param(scriptArgs, "--overlap_path")
                 inst = CBlenderScriptStomachMeshClean(patientID, optionPath, stlPath, outputPath)
                 inst.process() 
+            elif funcMode == "OpenBlend" :
+                openPath = find_param(scriptArgs, "--open_path")
+                stlPath = find_param(scriptArgs, "--stl_path")
+                optionPath = find_param(scriptArgs, "--option_path")
+                outputPath = find_param(scriptArgs, "--out_path")
+                
+                inst = CBlenderScriptLiverOpen(patientID, optionPath, stlPath, outputPath)
+                inst.OpenPath = openPath
+                inst.process()
     

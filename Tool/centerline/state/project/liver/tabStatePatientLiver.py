@@ -925,21 +925,34 @@ class CTabStatePatient(tabState.CTabState):
         self.loading_dialog.show()
         dataInst = self.get_data()
         unzipPath = self.m_editUnzipPath.text()
+        currPatientID = self.getui_patientID()
 
+        if currPatientID == "":
+            print(f"ERROR : CurrPatientID is empty.")
+            return
+        stlPath = os.path.join(self.m_outputPath, currPatientID, "Result")
+        savePath = os.path.join(
+            self.m_dataRootPath, currPatientID, "02_SAVE", "02_BLENDER_SAVE"
+        )
         def _clicked_clean(self):
-            currPatientID = self.getui_patientID()
+            # currPatientID = self.getui_patientID()
 
-            if currPatientID == "":
-                print(f"ERROR : CurrPatientID is empty.")
-                return
-            stlPath = os.path.join(self.m_outputPath, currPatientID, "Result")
-            savePath = os.path.join(
-                self.m_dataRootPath, currPatientID, "02_SAVE", "02_BLENDER_SAVE"
-            )
+            # if currPatientID == "":
+            #     print(f"ERROR : CurrPatientID is empty.")
+            #     return
+            # stlPath = os.path.join(self.m_outputPath, currPatientID, "Result")
+            # savePath = os.path.join(
+            #     self.m_dataRootPath, currPatientID, "02_SAVE", "02_BLENDER_SAVE"
+            # )
             
             overlapBlenderPath = os.path.join(
                 unzipPath, self.getui_patientID(), "02_SAVE", "02_BLENDER_SAVE", "Auto02_Overlap", f"{self.getui_patientID()}.blend"
             )
+            
+            if os.path.exists(overlapBlenderPath) == False :
+                print(f"ERROR : Not Found {overlapBlenderPath}. return.")
+                self.m_mediator.show_dialog(f"Auto02_Overlap 폴더에 .blend 파일이 존재하지 않습니다.")
+                return
 
             cmd = f'{dataInst.OptionInfo.BlenderExe} -b --python {os.path.join(self.fileAbsPath, "blenderScriptLiver.py")} -- \
             --func_mode "MeshClean" \
@@ -955,12 +968,17 @@ class CTabStatePatient(tabState.CTabState):
             self.loading_dialog.close()
             self.m_mediator.show_dialog(f"Mesh-Clean Done")
             
-            cleanupBlenderPath = os.path.join(
+            openPath = os.path.join(
                 unzipPath, self.getui_patientID(), "02_SAVE", "02_BLENDER_SAVE", "Auto03_MeshClean", f"{self.getui_patientID()}.blend"
             )
             
-            cmd = f'{dataInst.OptionInfo.BlenderExe} "{cleanupBlenderPath}"'
+            # cmd = f'{dataInst.OptionInfo.BlenderExe} "{cleanupBlenderPath}"'
+            # os.system(cmd)
+            
+            cmd = f"{dataInst.OptionInfo.BlenderExe} --python {os.path.join(self.fileAbsPath, 'blenderScriptLiver.py')} -- --patient_id {currPatientID} --stl_path {stlPath} --option_path {self.m_optionFullPath} --open_path {openPath} --out_path {savePath} --func_mode OpenBlend"
             os.system(cmd)
+                
+            
             
         self.worker = LoadingWorkerThread(self)
         self.worker.loadedFunction = _clicked_clean
