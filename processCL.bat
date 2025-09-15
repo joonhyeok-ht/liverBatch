@@ -23,6 +23,9 @@ if "%~1"=="--file" (
 ) else if "%~1"=="--cellID" (
     set "cellID=%~2"
     shift
+) else if "%~1"=="--advancementRatio" (
+    set "advancementRatio=%~2"
+    shift
 ) else (
     echo Unknown parameter: %~1
     exit /b 1
@@ -40,6 +43,6 @@ set "PY_PATH=processCL.py"
 
 echo ➡ python 스크립트 실행
 python --version
-python "%PY_PATH%" --file "%file%" --index "%index%" --cellID "%cellID%"
+python "%PY_PATH%" --file "%file%" --index "%index%" --cellID "%cellID%" --advancementRatio "%advancementRatio%"
 
 endlocal

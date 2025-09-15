@@ -43,10 +43,12 @@ class CCommandExtractionCL(commandInterface.CCommand) :
         # input your code
         self.m_inputIndex = -1
         self.m_inputCellID = -1
+        self.m_inputAdvancementRatio = 1.001
     def clear(self) :
         # input your code
         self.m_inputIndex = -1
         self.m_inputCellID = -1
+        self.m_inputAdvancementRatio = 1.001
         super().clear()
     # def process(self) :
     #     super().process()
@@ -83,6 +85,7 @@ class CCommandExtractionCL(commandInterface.CCommand) :
         file = "clDataInfo.pkl"
         index = self.InputIndex
         cellID = self.InputCellID
+        advancementRatio = self.InputAdvancementRatio
 
         self.m_clInPath = self.InputData.get_cl_in_path()
         self.m_clOutPath = self.InputData.get_cl_out_path()
@@ -104,6 +107,7 @@ class CCommandExtractionCL(commandInterface.CCommand) :
             "--file", pklFullPath,
             "--index", str(index),
             "--cellID", str(cellID),
+            "--advancementRatio", str(advancementRatio),
         ]
 
         print("RUN:", args)
@@ -132,7 +136,12 @@ class CCommandExtractionCL(commandInterface.CCommand) :
     @InputCellID.setter
     def InputCellID(self, inputCellID : int) :
         self.m_inputCellID = inputCellID
-
+    @property
+    def InputAdvancementRatio(self) -> float :
+        return self.m_inputAdvancementRatio
+    @InputAdvancementRatio.setter
+    def InputAdvancementRatio(self, inputAdvancementRatio : float) :
+        self.m_inputAdvancementRatio = inputAdvancementRatio
 
 
 

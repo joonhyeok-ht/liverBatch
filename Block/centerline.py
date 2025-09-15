@@ -360,10 +360,12 @@ class CCenterlineWithPklStartCellID :
         self.m_inputPklFullPath = ""
         self.m_inputIndex = -1
         self.m_inputCellID = -1
+        self.m_inputAdvancementRatio = 1.001
     def clear(self) :
         self.m_inputPklFullPath = ""
         self.m_inputIndex = -1
         self.m_inputCellID = -1
+        self.m_inputAdvancementRatio = 1.001
     def process(self) :
         if self.InputPklFullPath == "" :
             print("not setting InputPklName")
@@ -410,7 +412,8 @@ class CCenterlineWithPklStartCellID :
         
         # vertexInx = ret[0]
         cellInx = ret[1]
-        advancementRatio = clParam.AdvancementRatio
+        advancementRatio = self.InputAdvancementRatio
+        #advancementRatio = clParam.AdvancementRatio
         resamplingLength = clParam.ResamplingLength
         smoothingIter = clParam.SmoothingIter
         smoothingFactor = clParam.SmoothingFactor
@@ -454,7 +457,8 @@ class CCenterlineWithPklStartCellID :
         print(f"centerline : Number of cells {polyData.GetNumberOfCells()}")
         
         cellInx = self.InputCellID
-        advancementRatio = clParam.AdvancementRatio
+        advancementRatio = self.InputAdvancementRatio
+        #advancementRatio = clParam.AdvancementRatio
         resamplingLength = clParam.ResamplingLength
         smoothingIter = clParam.SmoothingIter
         smoothingFactor = clParam.SmoothingFactor
@@ -498,6 +502,12 @@ class CCenterlineWithPklStartCellID :
     @InputCellID.setter
     def InputCellID(self, inputCellID : int) :
         self.m_inputCellID = inputCellID
+    @property
+    def InputAdvancementRatio(self) -> float :
+        return self.m_inputAdvancementRatio
+    @InputAdvancementRatio.setter
+    def InputAdvancementRatio(self, inputAdvancementRatio : float) :
+        self.m_inputAdvancementRatio = inputAdvancementRatio
 
 
 if __name__ == '__main__' :

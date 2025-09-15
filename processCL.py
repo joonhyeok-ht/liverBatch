@@ -15,6 +15,12 @@ sys.path.append(fileBlockPath)
 
 
 import Block.centerline as centerline
+import Block.optionInfo as optionInfo
+import Block.niftiContainer as niftiContainer
+import AlgUtil.algVTK as algVTK
+import Block.reconstruction as reconstruction
+import AlgUtil.algImage as algImage
+import AlgUtil.algLinearMath as algLinearMath
 
 
 # class CCommonPipelineCL() :
@@ -86,19 +92,19 @@ import Block.centerline as centerline
 
 #         self.__init_cl(niftiContainerBlock, outputPatientFullPath)
 
-#         iCLInfoCnt = self.m_optionInfo.get_centerlineinfo_count()
-#         for i in range(0, iCLInfoCnt) :
-#             centerlineBlock = centerline.CCenterline()
-#             centerlineBlock.InputOptionInfo = self.m_optionInfo
-#             centerlineBlock.InputNiftiContainer = niftiContainerBlock
-#             centerlineBlock.InputCLInfoIndex = i
-#             centerlineBlock.InputPath = self.m_clInPath
-#             centerlineBlock.OutputPath = self.m_clOutPath
-#             centerlineBlock.process()
-#             centerlineBlock.clear()
+#         # iCLInfoCnt = self.m_optionInfo.get_centerlineinfo_count()
+#         # for i in range(0, iCLInfoCnt) :
+#         #     centerlineBlock = centerline.CCenterline()
+#         #     centerlineBlock.InputOptionInfo = self.m_optionInfo
+#         #     centerlineBlock.InputNiftiContainer = niftiContainerBlock
+#         #     centerlineBlock.InputCLInfoIndex = i
+#         #     centerlineBlock.InputPath = self.m_clInPath
+#         #     centerlineBlock.OutputPath = self.m_clOutPath
+#         #     centerlineBlock.process()
+#         #     centerlineBlock.clear()
         
-#         self.__end_cl(passInst, outputDataRoot, outputPatientFullPath, patientID)
-#         niftiContainerBlock.clear()
+#         # self.__end_cl(passInst, outputDataRoot, outputPatientFullPath, patientID)
+#         # niftiContainerBlock.clear()
 
 #     def __init_cl(
 #             self, 
@@ -293,12 +299,12 @@ def parse_args():
     parser.add_argument('--file', type=str, help='The file to process')
     parser.add_argument('--index', type=int, help='The index value')
     parser.add_argument('--cellID', type=int, help='start cellID')
+    parser.add_argument('--advancementRatio', type=float, help='advancementRatio')
     return parser.parse_args()
 
 
 if __name__ == '__main__' :
     args = parse_args()
-
     if args.index is None :
         multiprocessing.freeze_support()
         # app = CCommonPipelineCL()
@@ -309,11 +315,13 @@ if __name__ == '__main__' :
         print(f"파일: {args.file}")
         print(f"인덱스: {args.index}")
         print(f"cellID: {args.cellID} {type(args.cellID)}")
+        print(f"advancementRatio: {args.advancementRatio} {type(args.advancementRatio)}")
 
         clPkl = centerline.CCenterlineWithPklStartCellID()
         clPkl.InputPklFullPath = args.file
         clPkl.InputIndex = args.index
         clPkl.InputCellID = args.cellID
+        clPkl.InputAdvancementRatio = float(args.advancementRatio)
 
         clPkl.process()
 

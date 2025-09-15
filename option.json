@@ -4,7 +4,7 @@
         "DESC": "Solution Common Pipeline"
     },
   
-	"DataRootPath" : "C:\\Users\\hutom\\Desktop\\jh_test\\data\\liver\\LIVER0227\\dataRoot_liver_0902_150559",
+	"DataRootPath" : "C:\\Users\\hutom\\Desktop\\jh_test\\data\\liver\\LIVER0060\\dataRoot_liver_0904_165911",
     "CL" : "processCL.exe",
     
     "ReconParamList" : {
@@ -46,7 +46,7 @@
     },
     "CenterlineParamList" : {
         "CenterlineDefaultType" : {
-            "advancementRatio" : 1.0,
+            "advancementRatio" : 1.001,
             "resamplingLength" : 1.0,
             "smoothingIter" : 10,
             "smoothingFactor" : 0.1

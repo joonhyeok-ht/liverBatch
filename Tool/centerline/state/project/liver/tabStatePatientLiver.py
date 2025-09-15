@@ -1,6 +1,7 @@
 import sys
 import os
 import csv
+import vtk
 
 from PySide6.QtCore import Qt, QItemSelectionModel
 from PySide6.QtWidgets import (
@@ -14,7 +15,9 @@ from PySide6.QtWidgets import (
     QFrame,
     QApplication,
     QStackedLayout,
-    QTableView
+    QTableView,
+    QCheckBox,
+    QHBoxLayout
 )
 from PySide6.QtGui import QStandardItemModel, QStandardItem, QPixmap
 import command.commandExtractionCL as commandExtractionCL
@@ -31,7 +34,7 @@ sys.path.append(fileCommonPipelinePath)
 
 import state.project.liver.userDataLiverBatch as userDataLiver
 
-# import AlgUtil.algVTK as algVTK
+import AlgUtil.algVTK as algVTK
 import AlgUtil.algLinearMath as algLinearMath
 
 # import AlgUtil.algImage as algImage
@@ -352,6 +355,23 @@ class CTabStatePatient(tabState.CTabState):
 
     s_listStepName = ["Recon", "Overlap", "MeshClean", "Centerline"]
     s_intermediatePathAlias = "OutTemp"
+    
+    @staticmethod
+    def extract_cell_polydata(polydata : vtk.vtkPolyData, cellID : int) -> vtk.vtkPolyData :
+        ids = vtk.vtkIdList()
+        ids.InsertNextId(cellID)
+
+        extractor = vtk.vtkExtractCells()
+        extractor.SetInputData(polydata)
+        extractor.SetCellList(ids)
+        extractor.Update()
+
+        geometry = vtk.vtkGeometryFilter()
+        geometry.SetInputConnection(extractor.GetOutputPort())
+        geometry.Update()
+
+        return geometry.GetOutput()
+    
 
     def __init__(self, mediator):
         self.m_bReady = False
@@ -380,6 +400,7 @@ class CTabStatePatient(tabState.CTabState):
 
         self.m_outputPath = ""
         self.m_zipPathPatientID = ""
+        self.m_stateSelCell = 0
         self.m_bReady = False
         self.m_reconStomach = None  # sally
         self.m_reconReady = False  # sally
@@ -387,12 +408,26 @@ class CTabStatePatient(tabState.CTabState):
         self.m_dataRootPath = ""
         self.m_patientID = ""
         self.m_tumorPhase = ""
-
+        
+        self.m_advancementRatio = "1.001"
+        
+        self.m_mapperHL = vtk.vtkPolyDataMapper()
+        self.m_actorHL = vtk.vtkActor()
+        self.m_actorHL.SetMapper(self.m_mapperHL)
+        self.m_actorHL.GetProperty().SetColor(1, 0, 0) 
+        self.m_actorHL.GetProperty().SetLineWidth(3.0)
+        
+        self.m_mapperClikedCell = vtk.vtkPolyDataMapper()
+        self.m_actorClikedCell = vtk.vtkActor()
+        self.m_actorClikedCell.SetMapper(self.m_mapperClikedCell)
+        self.m_actorClikedCell.GetProperty().SetColor(0, 1, 0) 
+        self.m_actorClikedCell.GetProperty().SetLineWidth(3.0)
     def clear(self):
         # input your code
         self.m_btnCL = None
         self.m_outputPath = ""
         self.m_zipPathPatientID = ""
+        self.m_stateSelCell = 0
         self.m_bReady = False
         self.m_reconStomach = None  # sally
         self.m_reconReady = False  # sally
@@ -400,7 +435,10 @@ class CTabStatePatient(tabState.CTabState):
         self.m_dataRootPath = ""
         self.m_patientID = ""
         self.m_tumorPhase = ""
-
+        self.m_advancementRatio = ""
+        
+        self.m_actorHL = None
+        
         super().clear()
 
     def process_init(self):
@@ -513,6 +551,30 @@ class CTabStatePatient(tabState.CTabState):
         self.m_tvCLInfo.setSelectionBehavior(QTableView.SelectRows)
         self.m_tvCLInfo.clicked.connect(self._on_tv_clicked_clinfo)
         tabLayout.addWidget(self.m_tvCLInfo)
+        
+        self.m_checkSelectionStartCell = QCheckBox("Selection Start Cell ")
+        self.m_checkSelectionStartCell.setChecked(False)
+        self.m_checkSelectionStartCell.stateChanged.connect(self._on_check_sel_cell)
+        tabLayout.addWidget(self.m_checkSelectionStartCell)
+
+        layout = QHBoxLayout()
+        label = QLabel("CellID ")
+        label.setStyleSheet("QLabel { margin-top: 1px; margin-bottom: 1px; }")
+        label.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
+        self.m_editBoxCellID = QLineEdit()
+        self.m_editBoxCellID.returnPressed.connect(self.on_cellID_changed)
+        layout.addWidget(self.m_checkSelectionStartCell)
+        layout.addWidget(label)
+        layout.addWidget(self.m_editBoxCellID)
+        tabLayout.addLayout(layout)
+
+
+        input_advancementRatio = QLineEdit()
+        input_advancementRatio.setPlaceholderText(f"advancement ratio 입력")
+        input_advancementRatio.setText(str(1.001))
+        input_advancementRatio.textChanged.connect(self.on_advancement_ratio_changed)
+        tabLayout.addWidget(input_advancementRatio)
+        
 
         btn = QPushButton("Extraction Centerline")
         btn.setStyleSheet(self.get_btn_stylesheet())
@@ -524,6 +586,7 @@ class CTabStatePatient(tabState.CTabState):
         btn.setStyleSheet(self.get_btn_stylesheet())
         btn.clicked.connect(self._on_btn_do_blender)
         tabLayout.addWidget(btn)
+        
 
         # btn = QPushButton("Extract Centerline")
         # btn.setStyleSheet(self.get_btn_stylesheet())
@@ -537,6 +600,139 @@ class CTabStatePatient(tabState.CTabState):
 
         lastUI = line
         tabLayout.setAlignment(lastUI, Qt.AlignmentFlag.AlignTop)
+        
+    def extract_cell_polydata_from_current_cellID(self):
+        dataInst = self.get_data()
+        clinfoInx = self.getui_clinfo_inx()
+
+        vesselKey = data.CData.make_key(data.CData.s_vesselType, clinfoInx, 0)
+        vesselObj = dataInst.find_obj_by_key(vesselKey)
+        if vesselObj is None :
+            return
+        
+        # vessel의 min-max 추출 및 정육면체 생성
+        vesselPolyData = vesselObj.PolyData
+        try:
+            pickedPoly = CTabStatePatient.extract_cell_polydata(vesselPolyData, self.m_selCellID)
+        except:
+            pickedPoly = vtk.vtkPolyData()
+        
+        return pickedPoly
+        
+    def clicked_mouse_rb(self, clickX, clickY) :
+        if self.m_stateSelCell == 0 : 
+            return
+        self.setui_cellID(self.m_selCellID)
+        
+        if self.m_selCellID == -1:
+            self.m_mapperClikedCell.SetInputData(vtk.vtkPolyData())
+            self.m_mapperClikedCell.Update()
+        else:
+            self.m_mapperClikedCell.SetInputData(self.extract_cell_polydata_from_current_cellID())
+            self.m_mapperClikedCell.Update()
+        self.m_mediator.update_viewer()
+    def mouse_move(self, clickX, clickY) :
+        # vessel과 마우스와의 picking 수행
+        # 가장 가까운 cell을 찾음
+        # cell의 중심 vertex를 guideEPKey에 세팅 
+        listExceptKeyType = [
+            data.CData.s_skelTypeCenterline,
+        ]
+
+        if self.m_stateSelCell == 0 : 
+            return
+        
+        # self.m_picker.Pick(clickX, clickY, 0, self.m_mediator.get_viewercl_renderer())
+        # selCellID = self.m_picker.GetCellId()
+        # print(f"state : {self.m_stateSelCell} cellID : {selCellID}")
+        # # 정확한 pick이 아니면 무시
+        # if selCellID < 0 or not self.m_picker.GetActor() == self.m_actorHL :
+        #     return
+        selcellID = self.m_mediator.picking_cellid(clickX, clickY, listExceptKeyType)
+        
+        if selcellID < 0 :
+            self.m_selCellID = selcellID
+            return
+
+        if selcellID > 0 :
+            self.m_selCellID = selcellID
+            dataInst = self.get_data()
+            clinfoInx = self.getui_clinfo_inx()
+
+            vesselKey = data.CData.make_key(data.CData.s_vesselType, clinfoInx, 0)
+            vesselObj = dataInst.find_obj_by_key(vesselKey)
+            if vesselObj is None :
+                return
+            
+            # vessel의 min-max 추출 및 정육면체 생성
+            vesselPolyData = vesselObj.PolyData
+
+            pickedPoly = CTabStatePatient.extract_cell_polydata(vesselPolyData, self.m_selCellID)
+            self.m_mapperHL.SetInputData(pickedPoly)
+            self.m_mapperHL.Update()
+        self.m_mediator.update_viewer()
+
+        
+    def _on_check_sel_cell(self, state) :
+        '''
+        state
+            - 0 : unchecked
+            - 1 : partially checked
+            - 2 : checked
+        '''
+        if state == 2 :
+            bCheck = True
+            self.__set_selcellstate(1)
+        else :
+            bCheck = False
+            self.__set_selcellstate(0)
+            
+    def __set_selcellstate(self, state : int) :
+        # state exit
+        if self.m_stateSelCell == 0 :
+            pass
+        else :
+            self.m_mediator.get_viewercl_renderer().RemoveActor(self.m_actorHL)
+            self.m_mediator.get_viewercl_renderer().RemoveActor(self.m_actorClikedCell)
+
+        self.m_stateSelCell = state
+        self.setui_cellID(-1)
+        self.m_selCellID = -1
+
+        # state start
+        if state == 0 :
+            pass
+        else :
+            self.m_picker = vtk.vtkCellPicker()
+            self.m_picker.SetTolerance(0.0005)
+            self.m_mediator.get_viewercl_renderer().AddActor(self.m_actorHL)
+            self.m_mediator.get_viewercl_renderer().AddActor(self.m_actorClikedCell)
+            self.m_mapperClikedCell.SetInputData(vtk.vtkPolyData())
+            self.m_mapperClikedCell.Update()
+        self.m_mediator.update_viewer()
+
+        
+    def on_advancement_ratio_changed(self, input_advancementRation):
+        self.m_advancementRatio = input_advancementRation
+        
+    def on_cellID_changed(self):
+        text = self.m_editBoxCellID.text().strip()
+        try:
+            self.m_selCellID = int(text)
+        except ValueError:
+            self.m_selCellID = -1 
+
+        if self.m_selCellID == -1:
+            self.m_mapperClikedCell.SetInputData(vtk.vtkPolyData())
+            self.m_mapperClikedCell.Update()
+        else:
+            self.m_mapperClikedCell.SetInputData(self.extract_cell_polydata_from_current_cellID())
+            self.m_mapperClikedCell.Update()
+
+        self.m_mediator.update_viewer()
+        
+    def setui_cellID(self, cellID : int) :
+        self.m_editBoxCellID.setText(str(cellID))
 
     def setui_patientID(self, inx: int):
         self.m_cbPatientID.blockSignals(True)
@@ -583,6 +779,14 @@ class CTabStatePatient(tabState.CTabState):
 
     def getui_output_path(self) -> str:
         return self.m_editOutputPath.text()
+    
+    def getui_cellID(self) -> int :
+        cellID = -1
+        try :
+            cellID = int(self.m_editBoxCellID.text())
+        except ValueError:
+            cellID = -1
+        return cellID
 
     # command
     def _command_option_path(self) -> bool:
@@ -683,6 +887,10 @@ class CTabStatePatient(tabState.CTabState):
         if os.path.exists(clOutPath) == False :
             print("not found clOutPath")
             return False
+        clInPath = dataInst.get_cl_in_path()
+        if os.path.exists(clInPath) == False :
+            print("not found clInPath")
+            return False
 
         clinfoInx = self.get_clinfo_index()
         clinfo = dataInst.DataInfo.get_clinfo(clinfoInx)
@@ -691,9 +899,24 @@ class CTabStatePatient(tabState.CTabState):
         self.m_mediator.remove_key_type_groupID(data.CData.s_skelTypeBranch, clinfoInx)
         self.m_mediator.remove_key_type_groupID(data.CData.s_skelTypeEndPoint, clinfoInx)
         
+        startCellID = self.getui_cellID()
+        if startCellID > -1 :
+            vesselKey = data.CData.make_key(data.CData.s_vesselType, clinfoInx, 0)
+            vesselObj = dataInst.find_obj_by_key(vesselKey)
+            if vesselObj is None :
+                print("not found vessel polydata")
+                return
+            # vessel의 min-max 추출 및 정육면체 생성
+            vesselPolyData = vesselObj.PolyData
+            blenderName = clinfo.get_input_blender_name()
+            vtpFullPath = os.path.join(clInPath, f"{blenderName}.vtp")
+            algVTK.CVTK.save_poly_data_vtp(vtpFullPath, vesselPolyData)
+        
         cmd = commandExtractionCL.CCommandExtractionCL(self.m_mediator)
         cmd.InputData = dataInst
         cmd.InputIndex = clinfoInx
+        cmd.InputAdvancementRatio = self.m_advancementRatio
+        cmd.InputCellID = self.getui_cellID()
         cmd.process()
 
         clOutput = clinfo.OutputName
