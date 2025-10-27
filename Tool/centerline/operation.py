@@ -91,6 +91,26 @@ class COperationSelectionEP(COperationSelection) :
             clObj = dataInst.find_obj_by_key(selectionKey)
             if clObj is not None :
                 clObj.Color = color
+class COperationSelectionVertex(COperationSelection) :
+    def __init__(self, mediator) :
+        super().__init__(mediator)
+    def clear(self) :
+        super().clear()
+    def process(self) :
+        dataInst = self.Data
+        self._color_setting(self.m_listSelectionKey, dataInst.SelectionCLColor)
+    def process_reset(self) :
+        dataInst = self.Data
+        self._color_setting(self.m_listSelectionKey, dataInst.CLColor)
+        self.m_listSelectionKey.clear()
+
+    def _color_setting(self, listSelectionKey : list, color : np.ndarray) :
+        dataInst = self.Data
+        for selectionKey in listSelectionKey :
+            clObj = dataInst.find_obj_by_key(selectionKey)
+            if clObj is not None :
+                clObj.Color = color
+                
 class COperationSelectionCL(COperationSelection) :
     @staticmethod
     def clicked(selectionCL, clKey : str) :
@@ -176,6 +196,19 @@ class COperationSelectionCL(COperationSelection) :
         if len(retList) == 0 :
             return None
         return list(set(retList))
+    def get_selection_groupID(self):
+        groupIDSet = set()
+        iCnt = self.get_selection_key_count()
+        for inx in range(0, iCnt) :
+            key = self.get_selection_key(inx)
+            groupID = data.CData.get_groupID_from_key(key)
+            groupIDSet.add(groupID)
+            
+        if len(groupIDSet) > 1:
+            print("selectied multy group")
+            return list(groupIDSet)[0]
+        return list(groupIDSet)[0]
+    
     def get_all_selection_cl(self) -> list :
         retList = self.get_selection_cl_list()
         if retList is None : 
@@ -192,7 +225,9 @@ class COperationSelectionCL(COperationSelection) :
     def _update_child_selection_key(self) :
         self.m_listChildSelectionKey.clear()
 
-        skeleton = self.Skeleton
+        dataInst = self.Data
+        skeleton = dataInst.get_skeleton(self.get_selection_groupID())
+        #skeleton = self.Skeleton
         if skeleton is None :
             return
 
@@ -208,9 +243,11 @@ class COperationSelectionCL(COperationSelection) :
                 childKey = data.CData.make_key(data.CData.s_skelTypeCenterline, groupID, childCL.ID)
                 self.m_listChildSelectionKey.append(childKey)
     def _update_parent_selection_key(self) :
+        dataInst = self.Data
         self.m_listParentSelectionKey.clear()
 
-        skeleton = self.Skeleton
+        #skeleton = self.Skeleton
+        skeleton = dataInst.get_skeleton(self.get_selection_groupID())
         if skeleton is None :
             return
         
@@ -228,7 +265,12 @@ class COperationSelectionCL(COperationSelection) :
 
     def _color_setting(self, listSelectionKey : list, rootColor : np.ndarray, _color : np.ndarray) :
         dataInst = self.Data
-        skeleton = self.Skeleton
+        
+        if len(listSelectionKey) == 0:
+            return
+        
+        skeleton = dataInst.get_skeleton(self.get_selection_groupID())
+        #skeleton = self.Skeleton
         if skeleton is None :
             return
         

@@ -67,6 +67,9 @@ class CTabState :
     def get_clinfo_index(self) -> int :
         dataInst = self.get_data()
         return dataInst.CLInfoIndex
+    def get_clinfo_indices(self) -> int :
+        dataInst = self.get_data()
+        return dataInst.m_clinfoIndexList
     def get_seginfo_count(self) -> int :
         optionInfoInst = CTabState.get_optioninfo(self.m_mediator)
         return optionInfoInst.get_segmentinfo_count()

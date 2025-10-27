@@ -98,12 +98,12 @@ class CSubStateSkelEditSelectionCL(subStateSkelEdit.CSubStateSkelEdit) :
         if dataInst.Ready == False :
             return
         
-        clinfoInx = self._get_clinfo_index()
-        skeleton = self._get_skeleton()
+        opSelectionCL = self._get_operator_selection_cl()
+        clinfoInx = opSelectionCL.get_selection_groupID()
+        skeleton = dataInst.get_skeleton(clinfoInx)
+        
         if skeleton is None :
             return
-        
-        opSelectionCL = self._get_operator_selection_cl()
         retList = opSelectionCL.get_selection_cl_list()
         if retList is None :
             print("not selecting centerline")
@@ -116,12 +116,6 @@ class CSubStateSkelEditSelectionCL(subStateSkelEdit.CSubStateSkelEdit) :
         rootKey = data.CData.make_key(data.CData.s_skelTypeCenterline, clinfoInx, clID)
         self.App.refresh_key(rootKey, dataInst.RootCLColor)
 
-        rootID = skeleton.RootCenterline.ID
-        clCount = skeleton.get_centerline_count()
-        brCount = skeleton.get_branch_count()
-        self._setui_rootid(rootID)
-        self._setui_cl_count(clCount)
-        self._setui_br_count(brCount)
         self.App.update_viewer()
     
 
@@ -135,10 +129,15 @@ class CSubStateSkelEditSelectionCL(subStateSkelEdit.CSubStateSkelEdit) :
         retList = opSelectionCL.get_all_selection_cl()
         if retList is None :
             return
+        
+        clinfoInx = opSelectionCL.get_selection_groupID()
+        skeleton = dataInst.get_skeleton(clinfoInx)
+        #skeleton = self._get_skeleton()
 
         cmd = commandSkelEdit.CCommandAutoRemoveCL(self.App)
         cmd.InputData = dataInst
-        cmd.InputSkeleton = self._get_skeleton()
+        cmd.InputSkeleton = skeleton
+        cmd.SelectedGroupID = clinfoInx
         for clID in retList :
             cmd.add_clID(clID)
         cmd.process()

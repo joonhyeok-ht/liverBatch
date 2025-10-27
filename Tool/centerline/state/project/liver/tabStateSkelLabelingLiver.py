@@ -45,7 +45,7 @@ import vtkObjGuideCLBound as vtkObjGuideCLBound
 import vtkObjInterface as vtkObjInterface
 from PySide6.QtWidgets import QDialog, QMessageBox
 import com.componentTreeVessel as componentTreeVessel
-
+import skelEdit.subStateSkelEditSelectionCL as subStateSkelEditSelectionCL
 import progressWindow as PW
 
 
@@ -57,6 +57,7 @@ class CTabStateSkelLabelingLiver(tabState.CTabState) :
         super().__init__(mediator)
         # input your code
         self.m_opSelectionCL = operation.COperationSelectionCL(mediator)
+        self.m_subState = subStateSkelEditSelectionCL.CSubStateSkelEditSelectionCL(self)
         self.m_guideBoundKey = ""
         self.m_skelCircle = None
     def clear(self) :
@@ -72,35 +73,36 @@ class CTabStateSkelLabelingLiver(tabState.CTabState) :
         if dataInst.Ready == False :
             return
         
-        clinfoInx = self.get_clinfo_index()
-        skeleton = dataInst.get_skeleton(clinfoInx)
-        if skeleton is None :
-            return 
+        for clinfoIndex in dataInst.m_clinfoIndexList:
+            skeleton = dataInst.get_skeleton(clinfoIndex)
+            if skeleton is None :
+                return 
 
-        opSelectionCL = self.m_opSelectionCL
-        opSelectionCL.Skeleton = skeleton
+            # opSelectionCL = self.m_opSelectionCL
+            # opSelectionCL.Skeleton = skeleton
 
-        self.m_skelCircle = curveInfo.CSkelCircle(skeleton, 30)
-        # labeling obj
-        # labelColor = algLinearMath.CScoMath.to_vec3([1.0, 0.647, 0.0])
-        # labelColor = algLinearMath.CScoMath.to_vec3([0.53, 0.81, 0.92])
-        labelColor = algLinearMath.CScoMath.to_vec3([1.0, 0.0, 0.0])
-        iCnt = skeleton.get_centerline_count()
-        for inx in range(0, iCnt) :
-            cl = skeleton.get_centerline(inx)
-            iCLInx = int(cl.get_vertex_count() / 2)
-            pos = cl.get_vertex(iCLInx)
-            activeCamera = self.m_mediator.get_active_camera()
-            clName = cl.Name
+            self.m_skelCircle = curveInfo.CSkelCircle(skeleton, 30)
+            # labeling obj
+            # labelColor = algLinearMath.CScoMath.to_vec3([1.0, 0.647, 0.0])
+            # labelColor = algLinearMath.CScoMath.to_vec3([0.53, 0.81, 0.92])
+            labelColor = algLinearMath.CScoMath.to_vec3([1.0, 0.0, 0.0])
+            iCnt = skeleton.get_centerline_count()
+            for inx in range(0, iCnt) :
+                cl = skeleton.get_centerline(inx)
+                iCLInx = int(cl.get_vertex_count() / 2)
+                pos = cl.get_vertex(iCLInx)
+                activeCamera = self.m_mediator.get_active_camera()
+                clName = cl.Name
 
-            key = data.CData.make_key(data.CData.s_textType, 0, cl.ID)
-            vtkText = vtkObjText.CVTKObjText(activeCamera, pos, clName, 1.0)
-            vtkText.KeyType = data.CData.s_textType
-            vtkText.Key = key
-            vtkText.Color = labelColor
-            dataInst.add_vtk_obj(vtkText)
-        
-        self.m_mediator.ref_key_type(data.CData.s_textType)
+                key = data.CData.make_key(data.CData.s_textType, clinfoIndex, cl.ID)
+                vtkText = vtkObjText.CVTKObjText(activeCamera, pos, clName, 1.0)
+                vtkText.KeyType = data.CData.s_textType
+                vtkText.Key = key
+                vtkText.Color = labelColor
+                dataInst.add_vtk_obj(vtkText)
+            
+            self.m_mediator.ref_key_type(data.CData.s_textType)
+            
         self.m_mediator.update_viewer()
     def process(self) :
         pass
@@ -274,23 +276,27 @@ class CTabStateSkelLabelingLiver(tabState.CTabState) :
         self.m_editCLName.setText(f"{(cl.Name).split('_')[0]}")
         self.m_editCLPtCnt.setText(f"{cl.Vertex.shape[0]}")
         self.m_editCLLength.setText(f"{length}")
+        
     def _update_clname(self, clName : str) :
+        dataInst = self.get_data()
         opSelectionCL = self.m_opSelectionCL
         iCnt = opSelectionCL.get_selection_key_count()
         if iCnt == 0 :
             return
-        skeleton = opSelectionCL.Skeleton
-        if skeleton is None :
-            return
+        skeleton = None
         
-        retListKey = []
-        retListKey += opSelectionCL.m_listSelectionKey
-        retListKey += opSelectionCL.m_listChildSelectionKey
-        retListKey += opSelectionCL.m_listParentSelectionKey
-        
-        self.__update_clname_with_key(skeleton, retListKey, clName)
+        for selectionKey in opSelectionCL.m_listSelectionKey:
+            skeleton = dataInst.get_skeleton(data.CData.get_groupID_from_key(selectionKey))
+            if skeleton is None :
+                return
+            
+            retListKey = []
+            retListKey += opSelectionCL.m_listSelectionKey
+            retListKey += opSelectionCL.m_listChildSelectionKey
+            retListKey += opSelectionCL.m_listParentSelectionKey
+              
+            self.__update_clname_with_key(skeleton, retListKey, clName)
         self.m_mediator.update_viewer()
-
 
     # ui event
     def _on_check_cl_hierarchy(self, state) :
@@ -461,24 +467,27 @@ class CTabStateSkelLabelingLiver(tabState.CTabState) :
 
         clOutPath = dataInst.get_cl_out_path()
         clInPath = dataInst.get_cl_in_path()
-        clInfo = dataInst.OptionInfo.get_centerlineinfo(dataInst.CLInfoIndex)
-        blenderName = clInfo.get_input_blender_name() # "Artery", "Bronchus", "Vein"
-        outputFileName = clInfo.OutputName
-        outputFullPath = os.path.join(clOutPath, f"Centerline_{outputFileName}.json")
+        #clInfo = dataInst.OptionInfo.get_centerlineinfo(dataInst.CLInfoIndex)
+        
+        for clinfoIndex in dataInst.m_clinfoIndexList:
+            clInfo = dataInst.OptionInfo.get_centerlineinfo(clinfoIndex)
+            blenderName = clInfo.get_input_blender_name() # "Artery", "Bronchus", "Vein"
+            outputFileName = clInfo.OutputName
+            outputFullPath = os.path.join(clOutPath, f"Centerline_{outputFileName}.json")
 
-        vessel_key = data.CData.make_key(dataInst.s_vesselType, dataInst.CLInfoIndex, 0) # CLInfoIndex는 tabStatePatientLung에서 셋팅됨       
-        vessel_obj = dataInst.find_obj_by_key(vessel_key)
-        # polydata = vessel_obj.PolyData
-        skeleton = dataInst.get_skeleton(dataInst.CLInfoIndex)
-        # if polydata != None and skeleton != None :
-        if skeleton != None :
-            editInst = subSkelEditLiver.CSubSkelEditLiver(blenderName, skeleton, clInPath)
-            if editInst.init(outputFullPath) :
-                self._generate_progress_window(editInst)
-                # editInst.process()
-                # self.m_mediator.show_dialog("Save Info Done!" ) 
-        else :
-            print(f"_on_btn_save_centerline_info_for_graphics() : skeleton is None!")
+            vessel_key = data.CData.make_key(dataInst.s_vesselType, clinfoIndex, 0) # CLInfoIndex는 tabStatePatientLung에서 셋팅됨       
+            vessel_obj = dataInst.find_obj_by_key(vessel_key)
+            # polydata = vessel_obj.PolyData
+            skeleton = dataInst.get_skeleton(clinfoIndex)
+            # if polydata != None and skeleton != None :
+            if skeleton != None :
+                editInst = subSkelEditLiver.CSubSkelEditLiver(blenderName, skeleton, clInPath)
+                if editInst.init(outputFullPath) :
+                    self._generate_progress_window(editInst)
+                    # editInst.process()
+                    # self.m_mediator.show_dialog("Save Info Done!" ) 
+            else :
+                print(f"_on_btn_save_centerline_info_for_graphics() : skeleton is None!")
             
                     
     def _on_btn_save_separation(self) :
@@ -511,23 +520,23 @@ class CTabStateSkelLabelingLiver(tabState.CTabState) :
         
     def _on_btn_clear(self):
         dataInst = self.get_data()
-        clinfoInx = self.get_clinfo_index()
-        skeleton = dataInst.get_skeleton(clinfoInx)
-        
-        iCnt = skeleton.get_centerline_count()
-        for inx in range(0, iCnt) :
-            cl = skeleton.get_centerline(inx)
-            cl.Name = ""
+        clinfoInxs = self.get_clinfo_indices()
+        for clinfoInx in clinfoInxs:
+            skeleton = dataInst.get_skeleton(clinfoInx)
             
-            textKey = data.CData.make_key(data.CData.s_textType, 0, cl.ID)
-            textObj = dataInst.find_obj_by_key(textKey)
-            if textObj is not None :
-                textObj.Text = ""
+            iCnt = skeleton.get_centerline_count()
+            for inx in range(0, iCnt) :
+                cl = skeleton.get_centerline(inx)
+                cl.Name = ""
                 
-        ketList = dataInst.find_key_list_by_type_groupID(dataInst.s_skelTypeCenterline, clinfoInx)
-        self.m_opSelectionCL._color_setting(ketList, dataInst.RootCLColor, dataInst.CLColor)
+                textKey = data.CData.make_key(data.CData.s_textType, clinfoInx, cl.ID)
+                textObj = dataInst.find_obj_by_key(textKey)
+                if textObj is not None :
+                    textObj.Text = ""
+                    
+            ketList = dataInst.find_key_list_by_type_groupID(dataInst.s_skelTypeCenterline, clinfoInx)
+            self.m_opSelectionCL._color_setting(ketList, dataInst.RootCLColor, dataInst.CLColor)
         self.m_mediator.update_viewer()
-
 
     # private
     def __update_clname_with_key(self, skeleton : algSkeletonGraph.CSkeleton, listKey : list, clName : str) :
@@ -539,7 +548,7 @@ class CTabStateSkelLabelingLiver(tabState.CTabState) :
                 cl = skeleton.get_centerline(id)
                 cl.Name = clName
 
-                textKey = data.CData.make_key(data.CData.s_textType, 0, cl.ID)
+                textKey = data.CData.make_key(data.CData.s_textType, groupID, cl.ID)
                 textObj = dataInst.find_obj_by_key(textKey)
                 if textObj is not None :
                     textObj.Text = clName
@@ -553,7 +562,7 @@ class CTabStateSkelLabelingLiver(tabState.CTabState) :
                 cl = skeleton.get_centerline(id)
                 cl.Name = clName
 
-                textKey = data.CData.make_key(data.CData.s_textType, 0, cl.ID)
+                textKey = data.CData.make_key(data.CData.s_textType, groupID, cl.ID)
                 textObj = dataInst.find_obj_by_key(textKey)
                 if textObj is not None :
                     textObj.Text = clName

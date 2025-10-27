@@ -95,6 +95,7 @@ class CData :
     s_skelTypeCenterline = "centerline"
     s_skelTypeBranch = "branch"
     s_skelTypeEndPoint = "endPoint"
+    s_skelTypeVertex = "vertex"
     s_outsideKeyType = "outsideCLType"
     s_textType = "text"
 
@@ -166,6 +167,7 @@ class CData :
         self.m_dicObj = {}
         self.m_listSkel = []
         self.m_listTerriInfo = []
+        self.m_clinfoIndexList = []
 
         self.m_clSize = 1.0
         self.m_clColor = algLinearMath.CScoMath.to_vec3([0.3, 0.3, 0.0])
@@ -179,6 +181,10 @@ class CData :
         self.m_epSize = 1.0
         self.m_epColor = algLinearMath.CScoMath.to_vec3([0.0, 1.0, 0.0])
         self.m_selectionEPColor = algLinearMath.CScoMath.to_vec3([0.0, 0.0, 0.0])
+        
+        self.m_vertexSize = 1.0
+        self.m_vertexColor = algLinearMath.CScoMath.to_vec3([0.3, 0.3, 0.0])
+        self.m_selectionVertexColor = algLinearMath.CScoMath.to_vec3([0.0, 1.0, 0.0])
     def clear(self) : 
         self.clear_patient()
 
@@ -202,6 +208,12 @@ class CData :
         self.m_epSize = 1.0
         self.m_epColor = algLinearMath.CScoMath.to_vec3([0.0, 1.0, 0.0])
         self.m_selectionEPColor = algLinearMath.CScoMath.to_vec3([0.0, 0.0, 0.0])
+        
+        self.m_vertexSize = 1.0
+        self.m_vertexColor = algLinearMath.CScoMath.to_vec3([0.0, 0.3, 0.3])
+        self.m_selectionVertexColor = algLinearMath.CScoMath.to_vec3([0.0, 1.0, 0.0])
+        
+        self.m_clinfoIndexList = []
     def clear_patient(self) :
         for skel in self.m_listSkel :
             if skel != None : #sally
@@ -389,6 +401,8 @@ class CData :
             skeleton = algSkeletonGraph.CSkeleton()
             skeleton.load(fullPath)
         self.m_listSkel[inx] = skeleton
+    def add_clinfoIndex(self, inx : int):
+        self.m_clinfoIndexList.append(inx)
     def get_skeleton_count(self) -> int :
         return len(self.m_listSkel)
     def get_skeleton(self, inx : int) -> algSkeletonGraph.CSkeleton :
@@ -399,6 +413,14 @@ class CData :
         return len(self.m_listTerriInfo)
     def get_terriinfo(self, inx : int) -> CTerritoryInfo :
         return self.m_listTerriInfo[inx]
+    def get_clinfoIndex_count(self) -> int :
+        return len(self.m_clinfoIndexList)
+    def get_clinfoIndex(self, inx : int) -> CTerritoryInfo :
+        return self.m_clinfoIndexList[inx]
+    def clear_clinfoIndex(self) :
+        self.m_clinfoIndexList = []
+    
+    
     def find_terriinfo_by_blender_name(self, blenderName : str) -> CTerritoryInfo :
         iCnt = self.get_terriinfo_count()
         for inx in range(0, iCnt) :
@@ -540,6 +562,25 @@ class CData :
     @SelectionEPColor.setter
     def SelectionEPColor(self, selectionEPColor : np.ndarray) :
         self.m_selectionEPColor = selectionEPColor
+        
+    @property
+    def VertexSize(self) -> float :
+        return self.m_vertexSize
+    @BrSize.setter
+    def VertexSize(self, vertexSize : float) :
+        self.m_vertexSize = vertexSize
+    @property
+    def VertexColor(self) -> np.ndarray :
+        return self.m_vertexColor
+    @VertexColor.setter
+    def VertexColor(self, vertexColor : np.ndarray) :
+        self.m_vertexColor = vertexColor
+    @property
+    def SelectionVertexColor(self) -> np.ndarray :
+        return self.m_selectionVertexColor
+    @SelectionVertexColor.setter
+    def SelectionVertexColor(self, selectionVertexColor : np.ndarray) :
+        self.m_selectionVertexColor = selectionVertexColor
     
 
 

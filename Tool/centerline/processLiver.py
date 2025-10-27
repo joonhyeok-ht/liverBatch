@@ -34,8 +34,10 @@ import VtkObj.vtkObj as vtkObj
 import vtkObjCL as vtkObjCL
 import vtkObjBr as vtkObjBr
 import vtkObjEP as vtkObjEP
+import vtkObjVertex as vtkObjVertex
 import vtkObjSTL as vtkObjSTL
 import vtkObjOutsideCL as vtkObjOutsideCL
+from vtkmodules.vtkCommonDataModel import vtkPolyData
 
 import command.commandInterface as commandInterface
 
@@ -45,7 +47,7 @@ import state.tabStateSkelEdit as tabStateSkelEdit
 import state.tabStateSkelLabeling as tabStateSkelEditLabeling
 import state.tabStateTerritory as tabStateTerritory
 import state.tabStateVesselRemodeling as tabStateVesselRemodeling
-import state.operation as op
+import operation as op
 
 import data as data
 import clMask as clMask
@@ -76,6 +78,7 @@ import state.project.lung.tabStateSkelLabelingLung as tabStateSkelEditLabelingLu
 import state.project.lung.tabStateTerritoryLung as tabStateTerritoryLung
 import state.project.lung.tabStateLungVesselKnife as tabStateLungVesselKnife
 import state.project.liver.tabStateLiverReg as tabStateLiverReg
+import state.project.liver.tabStateSkelEditLiver as tabStateSkelEditLiver
 import state.project.liver.tabStateSkelLabelingLiver as tabStateSkelLabelingLiver
 import state.project.liver.tabStateLiverVesselKnife as tabStateLiverVesselKnife
 import state.project.kidneyBatch.tabStatePatientKidneyBatch as tabStatePatientKidney
@@ -107,89 +110,89 @@ class CTestApp(QMainWindow) :
     # ]
 
     s_projectTypeInfo = {
-         "StomachBatch" : {
-            "TabInfo" : [
-                {"TabName" : "Patient Info", "TabInst" : tabStatePatientStomach.CTabStatePatient},
-            ],
-            "UserDataKey" : userDataStomachBatch.CUserDataStomach.s_userDataKey,
-            "UserDataInst" : userDataStomachBatch.CUserDataStomach
-        },
-         "KidneyBatch" : {
-            "TabInfo" : [
-                {"TabName" : "Patient Info", "TabInst" : tabStatePatientKidney.CTabStatePatient},
-            ],
-            "UserDataKey" : userDataKidneyBatch.CUserDataKidney.s_userDataKey,
-            "UserDataInst" : userDataKidneyBatch.CUserDataKidney
-        },
-        "Lung" : {
-            "TabInfo" : [
-                {"TabName" : "Patient Info", "TabInst" : tabStatePatientLung.CTabStatePatient},
-                {"TabName" : "Edit", "TabInst" : tabStateSkelEditLung.CTabStateSkelEdit},
-                {"TabName" : "Labeling", "TabInst" : tabStateSkelEditLabelingLung.CTabStateSkelLabeling},
-                {"TabName" : "Territory", "TabInst" : tabStateTerritoryLung.CTabStateTerritory},
-                {"TabName" : "Cut", "TabInst" : tabStateTerritory.CTabStateTerritory},
-                {"TabName" : "Vessel Knife", "TabInst" : tabStateLungVesselKnife.CTabStateLungVesselKnife},
-            ],
-            "UserDataKey" : userDataLung.CUserDataLung.s_userDataKey,
-            "UserDataInst" : userDataLung.CUserDataLung
-        },
-        "Common" : {
-            "TabInfo" : [
-                {"TabName" : "Patient Info", "TabInst" : tabStatePatient.CTabStatePatient},
-                {"TabName" : "Edit", "TabInst" : tabStateSkelEdit.CTabStateSkelEdit},
-                {"TabName" : "Labeling", "TabInst" : tabStateSkelEditLabeling.CTabStateSkelLabeling},
-                {"TabName" : "Territory", "TabInst" : tabStateTerritory.CTabStateTerritory},
-                {"TabName" : "Territory Enhanced", "TabInst" : tabStateTerritoryEnhanced.CTabStateTerritoryEnhanced},
-                {"TabName" : "VesselRemodeling", "TabInst" : tabStateVesselRemodeling.CTabStateVesselRemodeling},
-            ],
-            "UserDataKey" : "",
-            "UserDataInst" : None
-        },
-        "Stomach" : {
-            "TabInfo" : [
-                {"TabName" : "Patient Info", "TabInst" : tabStatePatient.CTabStatePatient},
-                {"TabName" : "Edit", "TabInst" : tabStateSkelEdit.CTabStateSkelEdit},
-                {"TabName" : "Vessel Labeling", "TabInst" : tabStateStomachVesselLabeling.CTabStateStomachVesselLabeling},
-                {"TabName" : "Vessel Knife", "TabInst" : tabStateStomachVesselKnife.CTabStateStomachVesselKnife},
-                {"TabName" : "Vessel Remodeling", "TabInst" : tabStateVesselRemodeling.CTabStateVesselRemodeling},
-            ],
-            "UserDataKey" : userDataStomach.CUserDataStomach.s_userDataKey,
-            "UserDataInst" : userDataStomach.CUserDataStomach
-        },
-        "Kidney" : {
-            "TabInfo" : [
-                {"TabName" : "Patient Info", "TabInst" : tabStatePatient.CTabStatePatient},
-                {"TabName" : "Edit", "TabInst" : tabStateSkelEdit.CTabStateSkelEdit},
-                {"TabName" : "Labeling", "TabInst" : tabStateSkelEditLabeling.CTabStateSkelLabeling},
-                {"TabName" : "Territory", "TabInst" : tabStateTerritory.CTabStateTerritory},
-                {"TabName" : "Kidney-Tumor Separation", "TabInst" : tabStateKidneySepTest.CTabStateKidneySepTest},
-            ],
-            "UserDataKey" : userDataKidney.CUserDataKidney.s_userDataKey,
-            "UserDataInst" : userDataKidney.CUserDataKidney
-        },
+        #  "StomachBatch" : {
+        #     "TabInfo" : [
+        #         {"TabName" : "Patient Info", "TabInst" : tabStatePatientStomach.CTabStatePatient},
+        #     ],
+        #     "UserDataKey" : userDataStomachBatch.CUserDataStomach.s_userDataKey,
+        #     "UserDataInst" : userDataStomachBatch.CUserDataStomach
+        # },
+        #  "KidneyBatch" : {
+        #     "TabInfo" : [
+        #         {"TabName" : "Patient Info", "TabInst" : tabStatePatientKidney.CTabStatePatient},
+        #     ],
+        #     "UserDataKey" : userDataKidneyBatch.CUserDataKidney.s_userDataKey,
+        #     "UserDataInst" : userDataKidneyBatch.CUserDataKidney
+        # },
+        # "Lung" : {
+        #     "TabInfo" : [
+        #         {"TabName" : "Patient Info", "TabInst" : tabStatePatientLung.CTabStatePatient},
+        #         {"TabName" : "Edit", "TabInst" : tabStateSkelEditLung.CTabStateSkelEdit},
+        #         {"TabName" : "Labeling", "TabInst" : tabStateSkelEditLabelingLung.CTabStateSkelLabeling},
+        #         {"TabName" : "Territory", "TabInst" : tabStateTerritoryLung.CTabStateTerritory},
+        #         {"TabName" : "Cut", "TabInst" : tabStateTerritory.CTabStateTerritory},
+        #         {"TabName" : "Vessel Knife", "TabInst" : tabStateLungVesselKnife.CTabStateLungVesselKnife},
+        #     ],
+        #     "UserDataKey" : userDataLung.CUserDataLung.s_userDataKey,
+        #     "UserDataInst" : userDataLung.CUserDataLung
+        # },
+        # "Common" : {
+        #     "TabInfo" : [
+        #         {"TabName" : "Patient Info", "TabInst" : tabStatePatient.CTabStatePatient},
+        #         {"TabName" : "Edit", "TabInst" : tabStateSkelEdit.CTabStateSkelEdit},
+        #         {"TabName" : "Labeling", "TabInst" : tabStateSkelEditLabeling.CTabStateSkelLabeling},
+        #         {"TabName" : "Territory", "TabInst" : tabStateTerritory.CTabStateTerritory},
+        #         {"TabName" : "Territory Enhanced", "TabInst" : tabStateTerritoryEnhanced.CTabStateTerritoryEnhanced},
+        #         {"TabName" : "VesselRemodeling", "TabInst" : tabStateVesselRemodeling.CTabStateVesselRemodeling},
+        #     ],
+        #     "UserDataKey" : "",
+        #     "UserDataInst" : None
+        # },
+        # "Stomach" : {
+        #     "TabInfo" : [
+        #         {"TabName" : "Patient Info", "TabInst" : tabStatePatient.CTabStatePatient},
+        #         {"TabName" : "Edit", "TabInst" : tabStateSkelEdit.CTabStateSkelEdit},
+        #         {"TabName" : "Vessel Labeling", "TabInst" : tabStateStomachVesselLabeling.CTabStateStomachVesselLabeling},
+        #         {"TabName" : "Vessel Knife", "TabInst" : tabStateStomachVesselKnife.CTabStateStomachVesselKnife},
+        #         {"TabName" : "Vessel Remodeling", "TabInst" : tabStateVesselRemodeling.CTabStateVesselRemodeling},
+        #     ],
+        #     "UserDataKey" : userDataStomach.CUserDataStomach.s_userDataKey,
+        #     "UserDataInst" : userDataStomach.CUserDataStomach
+        # },
+        # "Kidney" : {
+        #     "TabInfo" : [
+        #         {"TabName" : "Patient Info", "TabInst" : tabStatePatient.CTabStatePatient},
+        #         {"TabName" : "Edit", "TabInst" : tabStateSkelEdit.CTabStateSkelEdit},
+        #         {"TabName" : "Labeling", "TabInst" : tabStateSkelEditLabeling.CTabStateSkelLabeling},
+        #         {"TabName" : "Territory", "TabInst" : tabStateTerritory.CTabStateTerritory},
+        #         {"TabName" : "Kidney-Tumor Separation", "TabInst" : tabStateKidneySepTest.CTabStateKidneySepTest},
+        #     ],
+        #     "UserDataKey" : userDataKidney.CUserDataKidney.s_userDataKey,
+        #     "UserDataInst" : userDataKidney.CUserDataKidney
+        # },
         "Liver" : {
             "TabInfo" : [
                 {"TabName" : "Patient Info", "TabInst" : tabStatePatientLiver.CTabStatePatient},
-                {"TabName" : "Edit", "TabInst" : tabStateSkelEdit.CTabStateSkelEdit},
-                {"TabName" : "Labeling", "TabInst" : tabStateSkelLabelingLiver.CTabStateSkelLabelingLiver},
-                {"TabName" : "Vessel Cutting", "TabInst" : tabStateLiverVesselKnife.CTabStateStomachVesselKnife},
-                {"TabName" : "Territory", "TabInst" : tabStateTerritoryEnhanced.CTabStateTerritoryEnhanced},
-                {"TabName" : "Registration Test", "TabInst" : tabStateLiverReg.CTabStateReg},
+                {"TabName" : "Edit", "TabInst" : tabStateSkelEditLiver.CTabStateSkelEditLiver},
+                {"TabName" : "Labeling", "TabInst" : tabStateSkelLabelingLiver.CTabStateSkelLabelingLiver}
+                # {"TabName" : "Vessel Cutting", "TabInst" : tabStateLiverVesselKnife.CTabStateStomachVesselKnife},
+                # {"TabName" : "Territory", "TabInst" : tabStateTerritoryEnhanced.CTabStateTerritoryEnhanced},
+                #{"TabName" : "Registration Test", "TabInst" : tabStateLiverReg.CTabStateReg},
             ],
             "UserDataKey" : "",
             "UserDataInst" : None
-        },
-        "Colon" : {
-            "TabInfo" : [
-                {"TabName" : "Patient Info", "TabInst" : tabStatePatient.CTabStatePatient},
-                {"TabName" : "Edit", "TabInst" : tabStateSkelEdit.CTabStateSkelEdit},
-                {"TabName" : "Labeling", "TabInst" : tabStateSkelEditLabeling.CTabStateSkelLabeling},
-                {"TabName" : "Colon Merge", "TabInst" : tabStateColonMerge.CTabStateColonMerge},
-                {"TabName" : "Colon Territory", "TabInst" : tabStateColonTerritory.CTabStateColonTerritory},
-            ],
-            "UserDataKey" : userDataColon.CUserDataColon.s_userDataKey,
-            "UserDataInst" : userDataColon.CUserDataColon
-        },
+        }
+        # "Colon" : {
+        #     "TabInfo" : [
+        #         {"TabName" : "Patient Info", "TabInst" : tabStatePatient.CTabStatePatient},
+        #         {"TabName" : "Edit", "TabInst" : tabStateSkelEdit.CTabStateSkelEdit},
+        #         {"TabName" : "Labeling", "TabInst" : tabStateSkelEditLabeling.CTabStateSkelLabeling},
+        #         {"TabName" : "Colon Merge", "TabInst" : tabStateColonMerge.CTabStateColonMerge},
+        #         {"TabName" : "Colon Territory", "TabInst" : tabStateColonTerritory.CTabStateColonTerritory},
+        #     ],
+        #     "UserDataKey" : userDataColon.CUserDataColon.s_userDataKey,
+        #     "UserDataInst" : userDataColon.CUserDataColon
+        # },
 
     }
 
@@ -300,6 +303,9 @@ QPushButton {
 
         self.m_tabIndex = -1
         self.m_listTabState = []
+        
+        self.m_lastPickedVertexId = None
+        self.m_lastPickedVertexKey = None
 
         self._init_layout_main_ui()
         self._init_layout_bottom()
@@ -684,7 +690,28 @@ QPushButton {
             epObj.Opacity = 1.0
             epObj.Visibility = True
             dataInst.add_vtk_obj(epObj)
+            
+    def load_vertex_key(self, groupID : int) :
+        dataInst = self.m_data
+        skeleton = dataInst.get_skeleton(groupID)
+        if skeleton is None : 
+            return
+        clcnt = skeleton.get_centerline_count()
         
+        for clInx in range(0, clcnt):
+            skeletonCL = skeleton.get_centerline(clInx)
+            
+            vertexObj = vtkObjVertex.CVTKObjVertex(skeletonCL, dataInst.VertexSize, dataInst.VertexColor.flatten())
+            if vertexObj.Ready == False :
+                continue
+            
+            vertexObj.KeyType = data.CData.s_skelTypeVertex
+            vertexObj.Key = data.CData.make_key(vertexObj.KeyType, groupID, skeletonCL.ID)
+            #vertexObj.Color = dataInst.VertexColor
+            vertexObj.Opacity = 1.0
+            vertexObj.Visibility = True
+            dataInst.add_vtk_obj(vertexObj)
+    
     def load_vessel_key(self, groupID : int, id : int) :
         dataInst = self.m_data
 
@@ -776,6 +803,302 @@ QPushButton {
         for keyType in listKeyType :
             self.visibility_key_type(keyType, True)
         return clKey
+    
+    def picking_point(self, clickX, clickY, listKeyType: list) -> str:
+        renderer = self.get_viewercl_renderer()
+
+        saved_pickable = []  # [(actor, old_pickable)]
+        actors = renderer.GetActors()
+        actors.InitTraversal()
+
+        def _actor_key_type(a) -> str:
+            try:
+                name = a.GetObjectName() or ""
+                return name.split("_", 1)[0] if name else ""
+            except Exception:
+                return ""
+
+        n = actors.GetNumberOfItems()
+        for _ in range(n):
+            a = actors.GetNextActor()
+            old = a.GetPickable()
+            saved_pickable.append((a, old))
+            kt = _actor_key_type(a)
+            if kt in listKeyType:
+                a.SetPickable(0)
+            else:
+                a.SetPickable(1)
+        
+        selector = vtk.vtkHardwareSelector()
+        selector.SetRenderer(renderer)
+        selector.SetFieldAssociation(vtk.vtkDataObject.FIELD_ASSOCIATION_CELLS)
+        selector.SetArea(clickX, clickY, clickX, clickY)
+
+        sel = selector.Select()
+
+        clKey = ""
+        picked_vid = None
+        picked_prop = None
+
+        if sel and sel.GetNumberOfNodes() > 0:
+            for i in range(sel.GetNumberOfNodes()):
+                node = sel.GetNode(i)
+                idlist = node.GetSelectionList()
+                if idlist and idlist.GetNumberOfValues() > 0:
+                    picked_vid = int(idlist.GetValue(0))  # == VertexID (mapper에 SelectionIdArray 설정되었을 때)
+                    # 어떤 actor에서 뽑혔는지 prop 얻기
+                    props = node.GetProperties()
+                    if props and props.Has(vtk.vtkSelectionNode.PROP()):
+                        picked_prop = props.Get(vtk.vtkSelectionNode.PROP())
+                    break
+                
+            
+        if picked_prop is not None:
+            clKey = picked_prop.GetObjectName()
+            self.highlight_vertex_by_actor_and_id(clKey, picked_vid)
+            #print(f"Picked Actor: {clKey}, VertexID: {picked_vid}")
+        else:
+            pass
+            #print("No vertex picked.")
+            
+        for a, old in saved_pickable:
+            a.SetPickable(old)
+        
+
+            
+        if self.m_lastPickedVertexId == picked_vid and self.m_lastPickedVertexKey == clKey:
+            pass
+        else:
+            dataInst = self.m_data
+            self.highlight_vertex_by_actor_and_id(self.m_lastPickedVertexKey, self.m_lastPickedVertexId, dataInst.VertexColor.flatten())
+            
+            self.m_lastPickedVertexId = picked_vid
+            self.m_lastPickedVertexKey = clKey
+
+        return clKey, picked_vid
+    
+    def highlight_vertex_by_actor_and_id(self, clKey: str, picked_vid: int,
+                                        selectedColor=(0, 1.0, 0)):
+        """
+        clKey(= actor.GetObjectName())로 actor를 찾아 해당 actor의 picked_vid 정점 색을 바꾼다.
+        동일 clKey를 가진 actor가 여러 개면 모두 적용.
+        """
+        if not clKey or picked_vid is None or picked_vid < 0:
+            return
+
+        renderer = self.get_viewercl_renderer()
+        if renderer is None:
+            return
+
+        targets = []
+        actors = renderer.GetActors()
+        actors.InitTraversal()
+        for _ in range(actors.GetNumberOfItems()):
+            a = actors.GetNextActor()
+            try:
+                name = a.GetObjectName() or ""
+            except Exception:
+                name = ""
+            if name == clKey:
+                targets.append(a)
+                break
+
+        if not targets:
+            return
+
+        # 공통 처리 함수: 주어진 actor에서 picked_vid 정점 색을 칠함
+        def _apply_vertex_color(actor: 'vtk.vtkActor'):
+            mapper = actor.GetMapper()
+            if mapper is None:
+                return
+            poly = vtk.vtkPolyData.SafeDownCast(mapper.GetInput())
+            if poly is None:
+                return
+
+            npts = poly.GetNumberOfPoints()
+            if picked_vid >= npts:
+                return
+
+            ptd = poly.GetPointData()
+            colors = ptd.GetArray("RGB")
+
+            # 필요 시 RGB 배열 초기화 (actor 기본색으로 채움)
+            if colors is None:
+                base_r01, base_g01, base_b01 = actor.GetProperty().GetColor()
+                base_r = int(max(0, min(1, base_r01)) * 255)
+                base_g = int(max(0, min(1, base_g01)) * 255)
+                base_b = int(max(0, min(1, base_b01)) * 255)
+
+                colors = vtk.vtkUnsignedCharArray()
+                colors.SetName("RGB")
+                colors.SetNumberOfComponents(3)
+                colors.SetNumberOfTuples(npts)
+                # 초기 채우기
+                for i in range(npts):
+                    colors.SetTuple3(i, base_r, base_g, base_b)
+                ptd.AddArray(colors)
+                ptd.SetScalars(colors)
+
+                # 매퍼가 point field color를 쓰도록 설정
+                if hasattr(mapper, "SetScalarVisibility"):
+                    mapper.SetScalarVisibility(True)
+                if hasattr(mapper, "SetScalarModeToUsePointFieldData"):
+                    mapper.SetScalarModeToUsePointFieldData()
+                if hasattr(mapper, "SelectColorArray"):
+                    mapper.SelectColorArray("RGB")
+                if hasattr(mapper, "SetColorModeToDirectScalars"):
+                    mapper.SetColorModeToDirectScalars()
+
+            # 선택 색(0~1)을 0~255로 변환 후 적용
+            hr = int(max(0.0, min(1.0, selectedColor[0])) * 255)
+            hg = int(max(0.0, min(1.0, selectedColor[1])) * 255)
+            hb = int(max(0.0, min(1.0, selectedColor[2])) * 255)
+
+            colors.SetTuple3(picked_vid, hr, hg, hb)
+            colors.Modified()
+            poly.Modified()
+
+        # 동일 clKey를 가진 모든 actor에 적용
+        for actor in targets:
+            _apply_vertex_color(actor)
+        
+        
+    def reset_vertex_color(self, defaultColor=(0, 0.3, 0.3)):
+        """
+        이름에 'vertex'가 들어간 actor들의 모든 vertex 색상을 기본값으로 초기화한다.
+        """
+        renderer = self.get_viewercl_renderer()
+        if renderer is None:
+            return
+
+        actors = renderer.GetActors()
+        actors.InitTraversal()
+
+        targets = []
+        for _ in range(actors.GetNumberOfItems()):
+            a = actors.GetNextActor()
+            try:
+                name = a.GetObjectName() or ""
+            except Exception:
+                name = ""
+            if "vertex" in name:
+                targets.append(a)
+
+        if not targets:
+            return
+
+        # RGB(0~1 → 0~255 변환)
+        base_r = int(max(0, min(1, defaultColor[0])) * 255)
+        base_g = int(max(0, min(1, defaultColor[1])) * 255)
+        base_b = int(max(0, min(1, defaultColor[2])) * 255)
+
+        def _apply_vertex_color(actor: 'vtk.vtkActor'):
+            mapper = actor.GetMapper()
+            if mapper is None:
+                return
+            poly = vtk.vtkPolyData.SafeDownCast(mapper.GetInput())
+            if poly is None:
+                return
+
+            npts = poly.GetNumberOfPoints()
+            if npts == 0:
+                return
+
+            ptd = poly.GetPointData()
+            colors = ptd.GetArray("RGB")
+
+            if colors is None:
+                colors = vtk.vtkUnsignedCharArray()
+                colors.SetName("RGB")
+                colors.SetNumberOfComponents(3)
+                colors.SetNumberOfTuples(npts)
+                ptd.AddArray(colors)
+                ptd.SetScalars(colors)
+
+                # 매퍼 설정
+                if hasattr(mapper, "SetScalarVisibility"):
+                    mapper.SetScalarVisibility(True)
+                if hasattr(mapper, "SetScalarModeToUsePointFieldData"):
+                    mapper.SetScalarModeToUsePointFieldData()
+                if hasattr(mapper, "SelectColorArray"):
+                    mapper.SelectColorArray("RGB")
+                if hasattr(mapper, "SetColorModeToDirectScalars"):
+                    mapper.SetColorModeToDirectScalars()
+
+            # 모든 정점을 기본색으로 채움
+            for i in range(npts):
+                colors.SetTuple3(i, base_r, base_g, base_b)
+
+            colors.Modified()
+            poly.Modified()
+
+        for actor in targets:
+            _apply_vertex_color(actor)
+
+    
+    
+    # def highlight_vertex_by_actor_and_id(self, picked_prop, picked_vid, selectedColor=(0, 1.0, 0), defaultColor=(0, 0.3, 0.3)):
+
+    #     # prop → actor 캐스팅
+    #     actor = vtk.vtkActor.SafeDownCast(picked_prop)
+    #     if actor is None:
+    #         return
+
+    #     mapper = actor.GetMapper()
+    #     if mapper is None:
+    #         return
+
+    #     # mapper 입력에서 polydata 얻기
+    #     poly = vtkPolyData.SafeDownCast(mapper.GetInput())
+    #     if poly is None:
+    #         return
+    #     npts = poly.GetNumberOfPoints()
+    #     if picked_vid is None or picked_vid < 0 or picked_vid >= npts:
+    #         return
+
+    #     ptd = poly.GetPointData()
+
+    #     # 1) RGB 배열 가져오기 (없으면 생성)
+    #     colors = ptd.GetArray("RGB")
+    #     if colors is None:
+    #         # 기본색은 actor property 색으로 채움 (0~1 → 0~255)
+    #         base_r01, base_g01, base_b01 = actor.GetProperty().GetColor()
+    #         base_r = int(max(0, min(1, base_r01)) * 255)
+    #         base_g = int(max(0, min(1, base_g01)) * 255)
+    #         base_b = int(max(0, min(1, base_b01)) * 255)
+
+    #         colors = vtk.vtkUnsignedCharArray()
+    #         colors.SetName("RGB")
+    #         colors.SetNumberOfComponents(3)
+    #         colors.SetNumberOfTuples(npts)
+    #         # 초기화 (성능 이슈가 크면 numpy로 채우는 버전으로 교체 가능)
+    #         for i in range(npts):
+    #             colors.SetTuple3(i, base_r, base_g, base_b)
+    #         ptd.AddArray(colors)
+    #         ptd.SetScalars(colors)  # 바로 스칼라로 사용
+
+    #         # 매퍼를 per-point color 사용으로 설정
+    #         if hasattr(mapper, "SetScalarVisibility"):
+    #             mapper.SetScalarVisibility(True)
+    #         if hasattr(mapper, "SetScalarModeToUsePointFieldData"):
+    #             mapper.SetScalarModeToUsePointFieldData()
+    #         if hasattr(mapper, "SelectColorArray"):
+    #             mapper.SelectColorArray("RGB")
+    #         if hasattr(mapper, "SetColorModeToDirectScalars"):
+    #             mapper.SetColorModeToDirectScalars()
+
+    #     # 3) 선택 색 적용 (0~1 → 0~255)
+    #     hr = int(max(0.0, min(1.0, selectedColor[0])) * 255)
+    #     hg = int(max(0.0, min(1.0, selectedColor[1])) * 255)
+    #     hb = int(max(0.0, min(1.0, selectedColor[2])) * 255)
+
+    #     colors.SetTuple3(picked_vid, hr, hg, hb)
+    #     colors.Modified()
+    #     poly.Modified()
+
+        
+        
+        
     def picking_cellid(self, clickX, clickY, listKeyType : list, tolerance : float = 0.001) -> int :
         '''
         ret : -1 (nothing picking)

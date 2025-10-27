@@ -135,6 +135,7 @@ class CCommandLoadingPatient(commandInterface.CCommand) :
             self.m_mediator.load_cl_key(inx)
             self.m_mediator.load_br_key(inx)
             self.m_mediator.load_ep_key(inx)
+            self.m_mediator.load_vertex_key(inx)
 
         # loading organ 
         # terriInPath = self.InputData.get_terri_in_path()

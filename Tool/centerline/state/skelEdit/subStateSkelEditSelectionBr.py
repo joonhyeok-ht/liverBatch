@@ -75,9 +75,11 @@ class CSubStateSkelEditSelectionBr(subStateSkelEdit.CSubStateSkelEdit) :
         opSelectionCL.ChildSelectionMode = False
         opSelectionCL.ParentSelectionMode = False
 
-        clinfoInx = self._get_clinfo_index()
+        clinfoInxs = self.get_clinfo_indices()
+
+        for clinfoInx in clinfoInxs:
+            self.App.ref_key_type_groupID(data.CData.s_skelTypeBranch, clinfoInx)
         self._setui_range(self.m_range)
-        self.App.ref_key_type_groupID(data.CData.s_skelTypeBranch, clinfoInx)
         self.App.update_viewer()
     def process(self) :
         pass
@@ -169,7 +171,8 @@ class CSubStateSkelEditSelectionBr(subStateSkelEdit.CSubStateSkelEdit) :
         if self.m_selBrKey != "" :
             # update가 수행됨
             dataInst = self._get_data()
-            skeleton = self._get_skeleton()
+            clinfoInx = data.CData.get_groupID_from_key(self.m_selBrKey)
+            skeleton = dataInst.get_skeleton(clinfoInx)
 
             selectedBrID = data.CData.get_id_from_key(self.m_selBrKey)
             br = skeleton.get_branch(selectedBrID) 
@@ -180,11 +183,13 @@ class CSubStateSkelEditSelectionBr(subStateSkelEdit.CSubStateSkelEdit) :
                 cmdContainer = commandInterface.CCommandContainer(self.App)
                 cmdContainer.InputData = dataInst
 
+                
                 cmd = commandSkelEdit.CCommandUpdateBr(self.App)
                 cmd.InputData = dataInst
                 cmd.InputSkeleton = skeleton
                 cmd.InputBrID = br.ID
                 cmd.InputPos = guideBr.Pos
+                cmd.SelectedGroupID = clinfoInx
                 cmdContainer.add_cmd(cmd)
 
                 iCnt = br.get_conn_count()
@@ -199,6 +204,7 @@ class CSubStateSkelEditSelectionBr(subStateSkelEdit.CSubStateSkelEdit) :
                     cmd.InputVertex = guideCL.ModifiedVertex
                     cmd.InputMinInx = guideCL.MinInx
                     cmd.InputReverse = guideCL.Reverse
+                    cmd.SelectedGroupID = clinfoInx
                     cmdContainer.add_cmd(cmd)
             
                 cmdContainer.process()
@@ -258,7 +264,8 @@ class CSubStateSkelEditSelectionBr(subStateSkelEdit.CSubStateSkelEdit) :
         
         self.App.update_viewer()
 
-
+    def get_clinfo_indices(self) -> int :
+        return self._get_clinfo_indices()
     # protected
     def _remove_guide_key(self) :
         if self.m_guideBrKey != "" :
@@ -277,7 +284,8 @@ class CSubStateSkelEditSelectionBr(subStateSkelEdit.CSubStateSkelEdit) :
         self.App.ref_key(self.m_guideRangeKey)
     def _create_guide_key(self, guideColor : np.ndarray) :
         dataInst = self._get_data()
-        skeleton = self._get_skeleton()
+        clinfoInx = data.CData.get_groupID_from_key(self.m_selBrKey)
+        skeleton = dataInst.get_skeleton(clinfoInx)
         if self.m_selBrKey == "" :
             return
         

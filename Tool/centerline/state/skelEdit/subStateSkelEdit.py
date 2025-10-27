@@ -70,6 +70,8 @@ class CSubStateSkelEdit() :
         pass
     def check_cl_ancestor(self, bChecked : bool) :
         pass
+    def check_vertex_selector(self, bChecked : bool) :
+        pass
     def apply_root_cl(self) :
         pass
     def save_cl(self) :
@@ -77,24 +79,27 @@ class CSubStateSkelEdit() :
         if dataInst.Ready == False : 
             return
         
-        clinfoInx = self._get_clinfo_index()
-        skeleton = self._get_skeleton()
-        if skeleton is None :
-            return
+        #clinfoInx = self._get_clinfo_index()
+        #skeleton = self._get_skeleton()
+        clinfoInxs = self._get_clinfo_indices()
+        for clinfoInx in clinfoInxs:
+            skeleton = dataInst.get_skeleton(clinfoInx)
+            if skeleton is None :
+                return
 
-        clInPath = dataInst.get_cl_in_path()
-        clOutPath = dataInst.get_cl_out_path()
-        file = "clDataInfo.pkl"
-        pklFullPath = os.path.join(clInPath, file)
-        data.CData.save_inst(pklFullPath, dataInst.DataInfo)
+            clInPath = dataInst.get_cl_in_path()
+            clOutPath = dataInst.get_cl_out_path()
+            file = "clDataInfo.pkl"
+            pklFullPath = os.path.join(clInPath, file)
+            data.CData.save_inst(pklFullPath, dataInst.DataInfo)
 
-        clInfo = dataInst.OptionInfo.get_centerlineinfo(clinfoInx)
-        blenderName = clInfo.get_input_blender_name()
-        outputFileName = clInfo.OutputName
-        outputFullPath = os.path.join(clOutPath, f"{outputFileName}.json")
-        skeleton.save(outputFullPath, blenderName)
+            clInfo = dataInst.OptionInfo.get_centerlineinfo(clinfoInx)
+            blenderName = clInfo.get_input_blender_name()
+            outputFileName = clInfo.OutputName
+            outputFullPath = os.path.join(clOutPath, f"{outputFileName}.json")
+            skeleton.save(outputFullPath, blenderName)
 
-        print(f"completed save skeleton : {outputFileName}")
+            print(f"completed save skeleton : {outputFileName}")
     def change_range(self, range : int) :
         pass
 
@@ -108,8 +113,12 @@ class CSubStateSkelEdit() :
         return self.m_mediator.m_opSelectionBr
     def _get_operator_selection_ep(self) -> operation.COperationSelectionEP :
         return self.m_mediator.m_opSelectionEP
+    def _get_operator_selection_vertex(self) -> operation.COperationSelectionVertex :
+        return self.m_mediator.m_opSelectionVertex
     def _get_clinfo_index(self) -> int :
         return self.m_mediator.get_clinfo_index()
+    def _get_clinfo_indices(self) -> int :
+        return self.m_mediator.get_clinfo_indices()
     def _get_skeleton(self) -> algSkeletonGraph.CSkeleton :
         return self.m_mediator.Skeleton
     

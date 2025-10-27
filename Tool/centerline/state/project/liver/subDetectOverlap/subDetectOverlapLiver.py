@@ -35,8 +35,17 @@ class CSubDetectOverlap :
                 
                 
         outputOverlapJson0 = os.path.join(self.m_logPath, "Overlaped_Artery.json")
-        outputOverlapJson1 = os.path.join(self.m_logPath, "Overlaped_Vein.json")
+        outputOverlapJson1 = os.path.join(self.m_logPath, "Overlaped_Duct.json")
         outputOverlapJson2 = os.path.join(self.m_logPath, "Overlaped_Portal.json")
+        
+        Vein_List = ["IVC.stl",
+            "RHV.stl",
+            "MHV.stl",
+            "LHV.stl",
+            "IHV.stl",
+            "IHV2.stl",
+            "IHV3.stl",
+            "IHV4.stl"]
         
         
         # DetectingOverlapBlock_0
@@ -44,7 +53,8 @@ class CSubDetectOverlap :
         detectingOverlapBlock.InputPath = self.m_stlPath
         detectingOverlapBlock.OutputPath = self.m_stlPath
         detectingOverlapBlock.OutputJsonPath = outputOverlapJson0
-        detectingOverlapBlock.add_src_stl_filename("Vein.stl")
+        for v in Vein_List:
+            detectingOverlapBlock.add_src_stl_filename(v)
         detectingOverlapBlock.add_src_stl_filename("Portal.stl")
         detectingOverlapBlock.add_src_stl_filename("Duct.stl")
         detectingOverlapBlock.TargetStlFile = "Artery.stl"
@@ -56,8 +66,9 @@ class CSubDetectOverlap :
         detectingOverlapBlock_1.OutputPath = self.m_stlPath
         detectingOverlapBlock_1.OutputJsonPath = outputOverlapJson1
         detectingOverlapBlock_1.add_src_stl_filename("Portal.stl")
-        detectingOverlapBlock_1.add_src_stl_filename("Duct.stl")
-        detectingOverlapBlock_1.TargetStlFile = "Vein.stl"
+        for v in Vein_List:
+            detectingOverlapBlock.add_src_stl_filename(v)
+        detectingOverlapBlock_1.TargetStlFile = "Duct.stl"
         detectingOverlapBlock_1.process()
 
         # DetectingOverlapBlock_2
@@ -65,7 +76,8 @@ class CSubDetectOverlap :
         detectingOverlapBlock_2.InputPath = self.m_stlPath
         detectingOverlapBlock_2.OutputPath = self.m_stlPath
         detectingOverlapBlock_2.OutputJsonPath = outputOverlapJson2
-        detectingOverlapBlock_2.add_src_stl_filename("Duct.stl")
+        for v in Vein_List:
+            detectingOverlapBlock.add_src_stl_filename(v)
         detectingOverlapBlock_2.TargetStlFile = "Portal.stl"
         detectingOverlapBlock_2.process()
                

@@ -78,9 +78,11 @@ class CCommandSkelEdit(commandInterface.CCommand) :
         super().__init__(mediator)
         # input your code
         self.m_inputSkeleton = None
+        self.m_selectedGroupID = 0
     def clear(self) :
         # input your code
         self.m_inputSkeleton = None
+        self.m_selectedGroupID = 0
         super().clear()
     def process(self) :
         super().process()
@@ -124,7 +126,8 @@ class CCommandSkelEdit(commandInterface.CCommand) :
             del self.InputSkeleton.ListBranch[brInx : ]
     def _refresh_changed_cl_data(self, clID : int) :
         dataInst = self.InputData
-        groupID = self.m_mediator.get_clinfo_index()
+        groupID = self.SelectedGroupID
+        
         skeleton = dataInst.get_skeleton(groupID)
 
         key = data.CData.make_key(data.CData.s_skelTypeCenterline, groupID, clID)
@@ -177,6 +180,13 @@ class CCommandSkelEdit(commandInterface.CCommand) :
     @InputSkeleton.setter
     def InputSkeleton(self, inputSkeleton : algSkeletonGraph.CSkeleton) :
         self.m_inputSkeleton = inputSkeleton
+        
+    @property
+    def SelectedGroupID(self) -> int : 
+        return self.m_selectedGroupID
+    @SelectedGroupID.setter
+    def SelectedGroupID(self, selectedGroupID : int):
+        self.m_selectedGroupID = selectedGroupID
 
 
 class CCommandDisconnCLFromBr(CCommandSkelEdit) :
@@ -395,7 +405,7 @@ class CCommandRemoveCL(CCommandSkelEdit) :
 
     def _refresh_changed_cl_id(self, srcID : int, dstID : int) :
         dataInst = self.InputData
-        groupID = self.m_mediator.get_clinfo_index()
+        groupID = self.SelectedGroupID
 
         srcKey = data.CData.make_key(data.CData.s_skelTypeCenterline, groupID, srcID)
         dstKey = data.CData.make_key(data.CData.s_skelTypeCenterline, groupID, dstID)
@@ -465,7 +475,7 @@ class CCommandRemoveCL(CCommandSkelEdit) :
             if bFlag == True :
                 self.m_mediator.ref_key(listEPObj[inx].Key)
     def _remove_cl_id(self, clID) :
-        groupID = self.m_mediator.get_clinfo_index()
+        groupID = self.SelectedGroupID
         clKey = data.CData.make_key(data.CData.s_skelTypeCenterline, groupID, clID)
         epKey = data.CData.make_key(data.CData.s_skelTypeEndPoint, groupID, clID)
         self.m_mediator.remove_key(clKey)
@@ -520,7 +530,7 @@ class CCommandRemoveBr(CCommandSkelEdit) :
         
         if src_br_id == dst_br_idx :
             self.InputSkeleton.ListBranch[src_br_id].Active = False
-            groupID = self.m_mediator.get_clinfo_index()
+            groupID = self.SelectedGroupID
             srcKey = data.CData.make_key(data.CData.s_skelTypeBranch, groupID, src_br_id)
             self.m_mediator.remove_key(srcKey)
         else :
@@ -536,12 +546,12 @@ class CCommandRemoveBr(CCommandSkelEdit) :
 
             # swap refresh & remove
             self._refresh_changed_br_id(src_br_id, dst_br_idx)
-            groupID = self.m_mediator.get_clinfo_index()
+            groupID = self.SelectedGroupID
             srcKey = data.CData.make_key(data.CData.s_skelTypeBranch, groupID, dst_br_idx)
             self.m_mediator.remove_key(srcKey)
     def _refresh_changed_br_id(self, srcID : int, dstID : int) :
         dataInst = self.InputData
-        groupID = self.m_mediator.get_clinfo_index()
+        groupID = self.SelectedGroupID
 
         srcKey = data.CData.make_key(data.CData.s_skelTypeBranch, groupID, srcID)
         dstKey = data.CData.make_key(data.CData.s_skelTypeBranch, groupID, dstID)
@@ -642,6 +652,7 @@ class CCommandMergeCL(CCommandSkelEdit) :
         cmdRemoveBr.InputData = self.InputData
         cmdRemoveBr.InputSkeleton = self.InputSkeleton
         cmdRemoveBr.InputBrID = self.InputBrID
+        cmdRemoveBr.SelectedGroupID = self.SelectedGroupID
         cmdRemoveBr.process()
 
         if src_cl.get_conn(1) is not None :
@@ -651,6 +662,7 @@ class CCommandMergeCL(CCommandSkelEdit) :
             cmdConn.InputCLID = dst_cl.ID
             cmdConn.InputCLConnInx = 1
             cmdConn.InputBrID = src_cl.get_conn(1).ID
+            cmdConn.SelectedGroupID = self.SelectedGroupID
             cmdConn.process()
 
         # modified dst_cl & refresh
@@ -661,7 +673,6 @@ class CCommandMergeCL(CCommandSkelEdit) :
         dst_cl.Vertex = concat_vertex
         dst_cl.Radius = concat_radius
 
-        groupID = self.m_mediator.get_clinfo_index()
         self._refresh_changed_cl_data(dst_cl.ID)
 
         # removed src_cl
@@ -669,6 +680,7 @@ class CCommandMergeCL(CCommandSkelEdit) :
         cmdRemoveCL.InputData = self.InputData
         cmdRemoveCL.InputSkeleton = self.InputSkeleton
         cmdRemoveCL.InputCLID = src_cl.ID
+        cmdRemoveCL.SelectedGroupID = self.SelectedGroupID
         cmdRemoveCL.process()
 
 
@@ -733,6 +745,7 @@ class CCommandAutoRemoveCL(CCommandSkelEdit) :
             cmd.InputData = self.InputData
             cmd.InputSkeleton = self.InputSkeleton
             cmd.InputCLID = cl.ID
+            cmd.SelectedGroupID = self.SelectedGroupID
             cmd.process()
             self.m_listCmd.append(cmd)
 
@@ -755,6 +768,7 @@ class CCommandAutoRemoveCL(CCommandSkelEdit) :
                 cmd.InputData = self.InputData
                 cmd.InputSkeleton = self.InputSkeleton
                 cmd.InputBrID = br.ID
+                cmd.SelectedGroupID = self.SelectedGroupID
                 cmd.process()
                 self.m_listCmd.append(cmd)
             elif br.get_conn_count() == 2 :
@@ -762,6 +776,7 @@ class CCommandAutoRemoveCL(CCommandSkelEdit) :
                 cmd.InputData = self.InputData
                 cmd.InputSkeleton = self.InputSkeleton
                 cmd.InputBrID = br.ID
+                cmd.SelectedGroupID = self.SelectedGroupID
                 cmd.process()
                 self.m_listCmd.append(cmd)
 
@@ -913,7 +928,7 @@ class CCommandUpdateBr(CCommandSkelEdit) :
     # protected
     def _refresh_changed_br_data(self, brID : int) :
         dataInst = self.InputData
-        groupID = self.m_mediator.get_clinfo_index()
+        groupID = self.SelectedGroupID
 
         key = data.CData.make_key(data.CData.s_skelTypeBranch, groupID, brID)
         obj = self.InputData.find_obj_by_key(key)

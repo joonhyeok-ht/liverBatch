@@ -30,11 +30,15 @@ import operation as operation
 class COperationSelectionCL(operation.COperationSelectionCL) :
     def _color_setting(self, listSelectionKey : list, rootColor : np.ndarray, _color : np.ndarray) :
         dataInst = self.Data
-        skeleton = self.Skeleton
-        if skeleton is None :
-            return
+        skeleton = None
         
-        for selectionKey in listSelectionKey :
+        for selectionKey in listSelectionKey:
+            skeleton = dataInst.get_skeleton(data.CData.get_groupID_from_key(selectionKey))
+            #skeleton = self.Skeleton
+            if skeleton is None :
+                return
+            
+            #for selectionKey in listSelectionKey :
             id = data.CData.get_id_from_key(selectionKey)
             if id == skeleton.RootCenterline.ID :
                 color = rootColor
@@ -62,6 +66,13 @@ class COperationSelectionBr(operation.COperationSelectionBr) :
             if clObj is not None :
                 clObj.Color = color
 class COperationSelectionEP(operation.COperationSelectionEP) :
+    def _color_setting(self, listSelectionKey : list, color : np.ndarray) :
+        dataInst = self.Data
+        for selectionKey in listSelectionKey :
+            clObj = dataInst.find_obj_by_key(selectionKey)
+            if clObj is not None :
+                clObj.Color = color
+class COperationSelectionVertex(operation.COperationSelectionVertex) :
     def _color_setting(self, listSelectionKey : list, color : np.ndarray) :
         dataInst = self.Data
         for selectionKey in listSelectionKey :

@@ -17,7 +17,8 @@ from PySide6.QtWidgets import (
     QStackedLayout,
     QTableView,
     QCheckBox,
-    QHBoxLayout
+    QHBoxLayout,
+    QAbstractItemView
 )
 from PySide6.QtGui import QStandardItemModel, QStandardItem, QPixmap
 import command.commandExtractionCL as commandExtractionCL
@@ -424,7 +425,7 @@ class CTabStatePatient(tabState.CTabState):
         self.m_actorClikedCell.GetProperty().SetLineWidth(3.0)
     def clear(self):
         # input your code
-        self.m_btnCL = None
+        #self.m_btnCL = None
         self.m_outputPath = ""
         self.m_zipPathPatientID = ""
         self.m_stateSelCell = 0
@@ -529,7 +530,7 @@ class CTabStatePatient(tabState.CTabState):
         for inx, stepName in enumerate(CTabStatePatient.s_listStepName):
             btnList[inx].clicked.connect(self.m_listStepBtnEvent[inx])
         tabLayout.addLayout(layout)
-        self.m_btnCL = btnList[2]
+        #self.m_btnCL = btnList[2]
 
         line = QFrame()
         line.setFrameShape(QFrame.Shape.HLine)
@@ -548,8 +549,10 @@ class CTabStatePatient(tabState.CTabState):
         self.m_tvCLInfo.setEditTriggers(QTableView.NoEditTriggers)
         self.m_tvCLInfo.horizontalHeader().setStretchLastSection(True)
         self.m_tvCLInfo.verticalHeader().setVisible(False)
-        self.m_tvCLInfo.setSelectionBehavior(QTableView.SelectRows)
-        self.m_tvCLInfo.clicked.connect(self._on_tv_clicked_clinfo)
+        self.m_tvCLInfo.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.m_tvCLInfo.setSelectionMode(QAbstractItemView.ExtendedSelection)
+        #self.m_tvCLInfo.clicked.connect(self._on_tv_clicked_clinfo)
+        self.m_tvCLInfo.selectionModel().selectionChanged.connect(self._on_selection_changed)
         tabLayout.addWidget(self.m_tvCLInfo)
         
         self.m_checkSelectionStartCell = QCheckBox("Selection Start Cell ")
@@ -774,6 +777,26 @@ class CTabStatePatient(tabState.CTabState):
             index = int(self.m_modelCLInfo.item(row, 0).text())
             return index
         return -1
+
+    def getui_clinfo_inxs(self) -> list[int]:
+        """
+        returns: 선택된 행들의 clinfo index 목록 (0번 컬럼의 값이 정수라고 가정)
+                아무 것도 없으면 [] 반환
+        """
+        sel_rows = self.m_tvCLInfo.selectionModel().selectedRows()  # 각 요소는 QModelIndex(컬럼=0)
+        result = []
+        for mi in sel_rows:
+            row = mi.row()
+            # QStandardItemModel이라면:
+            idx_text = self.m_modelCLInfo.item(row, 0).text()
+            try:
+                result.append(int(idx_text))
+            except ValueError:
+                pass
+        # 선택 순서가 섞일 수 있으니 정렬이 필요하면:
+        result.sort()
+        return result
+    
     def getui_patientID(self) -> str:
         return self.m_cbPatientID.currentText()
 
@@ -892,45 +915,56 @@ class CTabStatePatient(tabState.CTabState):
             print("not found clInPath")
             return False
 
-        clinfoInx = self.get_clinfo_index()
-        clinfo = dataInst.DataInfo.get_clinfo(clinfoInx)
-
-        self.m_mediator.remove_key_type_groupID(data.CData.s_skelTypeCenterline, clinfoInx)
-        self.m_mediator.remove_key_type_groupID(data.CData.s_skelTypeBranch, clinfoInx)
-        self.m_mediator.remove_key_type_groupID(data.CData.s_skelTypeEndPoint, clinfoInx)
+        clinfoInxs = self.get_clinfo_indices()
         
-        startCellID = self.getui_cellID()
-        if startCellID > -1 :
-            vesselKey = data.CData.make_key(data.CData.s_vesselType, clinfoInx, 0)
-            vesselObj = dataInst.find_obj_by_key(vesselKey)
-            if vesselObj is None :
-                print("not found vessel polydata")
-                return
-            # vessel의 min-max 추출 및 정육면체 생성
-            vesselPolyData = vesselObj.PolyData
-            blenderName = clinfo.get_input_blender_name()
-            vtpFullPath = os.path.join(clInPath, f"{blenderName}.vtp")
-            algVTK.CVTK.save_poly_data_vtp(vtpFullPath, vesselPolyData)
-        
-        cmd = commandExtractionCL.CCommandExtractionCL(self.m_mediator)
-        cmd.InputData = dataInst
-        cmd.InputIndex = clinfoInx
-        cmd.InputAdvancementRatio = self.m_advancementRatio
-        cmd.InputCellID = self.getui_cellID()
-        cmd.process()
+        for clinfoInx in clinfoInxs:
+            try:
+                clinfo = dataInst.DataInfo.get_clinfo(clinfoInx)
 
-        clOutput = clinfo.OutputName
-        clOutputFullPath = os.path.join(clOutPath, f"{clOutput}.json")
-        if os.path.exists(clOutputFullPath) == False :
-            print(f"not found skelinfo : {clOutputFullPath}")
-            return False
-        
-        dataInst.set_skeleton(clinfoInx, clOutputFullPath)
-        self.m_mediator.load_cl_key(clinfoInx)
-        self.m_mediator.load_br_key(clinfoInx)
-        self.m_mediator.load_ep_key(clinfoInx)
+                self.m_mediator.remove_key_type_groupID(data.CData.s_skelTypeCenterline, clinfoInx)
+                self.m_mediator.remove_key_type_groupID(data.CData.s_skelTypeBranch, clinfoInx)
+                self.m_mediator.remove_key_type_groupID(data.CData.s_skelTypeEndPoint, clinfoInx)
+                
+                startCellID = self.getui_cellID()
+                if startCellID > -1 and len(clinfoInxs) == 1:
+                    vesselKey = data.CData.make_key(data.CData.s_vesselType, clinfoInx, 0)
+                    vesselObj = dataInst.find_obj_by_key(vesselKey)
+                    if vesselObj is None :
+                        print(f"not found vessel polydata {vesselKey}")
+                        return
+                    # vessel의 min-max 추출 및 정육면체 생성
+                    vesselPolyData = vesselObj.PolyData
+                    blenderName = clinfo.get_input_blender_name()
+                    vtpFullPath = os.path.join(clInPath, f"{blenderName}.vtp")
+                    algVTK.CVTK.save_poly_data_vtp(vtpFullPath, vesselPolyData)
+                elif startCellID > -1 and len(clinfoInxs) > 1:
+                    print("select only one mask for start cell")
+                    return
+                    
+                
+                cmd = commandExtractionCL.CCommandExtractionCL(self.m_mediator)
+                cmd.InputData = dataInst
+                cmd.InputIndex = clinfoInx
+                cmd.InputAdvancementRatio = self.m_advancementRatio
+                cmd.InputCellID = self.getui_cellID()
+                cmd.process()
 
-        self.m_mediator.ref_key_type_groupID(data.CData.s_skelTypeCenterline, clinfoInx)
+                clOutput = clinfo.OutputName
+                clOutputFullPath = os.path.join(clOutPath, f"{clOutput}.json")
+                if os.path.exists(clOutputFullPath) == False :
+                    print(f"not found skelinfo : {clOutputFullPath}")
+                    continue
+                
+                dataInst.set_skeleton(clinfoInx, clOutputFullPath)
+                self.m_mediator.load_cl_key(clinfoInx)
+                self.m_mediator.load_br_key(clinfoInx)
+                self.m_mediator.load_ep_key(clinfoInx)
+                self.m_mediator.load_vertex_key(clinfoInx)
+
+                self.m_mediator.ref_key_type_groupID(data.CData.s_skelTypeCenterline, clinfoInx)
+            except:
+                pass
+            
         self.m_mediator.update_viewer()
 
 
@@ -1215,7 +1249,7 @@ class CTabStatePatient(tabState.CTabState):
         self._command_extraction_cl()
     
     def _on_btn_option_path(self):
-        self.m_btnCL.setEnabled(True)
+        #self.m_btnCL.setEnabled(True)
         optionPath, _ = QFileDialog.getOpenFileName(
             self.get_main_widget(), "Select Option File", "", "JSON Files (*.json)"
         )
@@ -1264,7 +1298,7 @@ class CTabStatePatient(tabState.CTabState):
         self.m_mediator.show_dialog("입력데이터 로딩 완료. Recon 버튼을 클릭하세요!")
 
     def _on_btn_output_temp_path(self):
-        self.m_btnCL.setEnabled(True)
+        #self.m_btnCL.setEnabled(True)
         outputPath = QFileDialog.getExistingDirectory(
             self.get_main_widget(),
             f"Select {CTabStatePatient.s_intermediatePathAlias} Path",
@@ -1344,6 +1378,8 @@ class CTabStatePatient(tabState.CTabState):
                     unzipPath, self.getui_patientID(), "02_SAVE", "01_MASK"
                 )
                 PPPath = os.path.join(maskRoot, "Mask_PP")
+                APPath = os.path.join(maskRoot, "Mask_PP")
+                HVPPath = os.path.join(maskRoot, "Mask_PP")
 
                 if os.path.exists(os.path.join(PPPath, "Skin.nii.gz")) == True:
                     skinImgPath = os.path.join(PPPath, "Skin.nii.gz")
@@ -1352,6 +1388,22 @@ class CTabStatePatient(tabState.CTabState):
 
                     clipPosition = int((navelZID * spacing_z - 100)//spacing_z)
                     self._clicked_recon_mask(clipPosition)
+                elif os.path.exists(os.path.join(APPath, "Skin.nii.gz")) == True:
+                    skinImgPath = os.path.join(APPath, "Skin.nii.gz")
+                    sitkImg = scoUtil.CScoUtilSimpleITK.load_image(skinImgPath, None)
+                    spacing_z = sitkImg.GetSpacing()[2]
+
+                    clipPosition = int((navelZID * spacing_z - 100)//spacing_z)
+                    self._clicked_recon_mask(clipPosition)
+                elif os.path.exists(os.path.join(HVPPath, "Skin.nii.gz")) == True:
+                    skinImgPath = os.path.join(HVPPath, "Skin.nii.gz")
+                    sitkImg = scoUtil.CScoUtilSimpleITK.load_image(skinImgPath, None)
+                    spacing_z = sitkImg.GetSpacing()[2]
+
+                    clipPosition = int((navelZID * spacing_z - 100)//spacing_z)
+                    self._clicked_recon_mask(clipPosition)
+                else:
+                    _manually_detect_navel()
             else:
                 _manually_detect_navel()
 
@@ -1419,6 +1471,7 @@ class CTabStatePatient(tabState.CTabState):
             return
 
         clinfoInx = self.getui_clinfo_inx()
+
         dataInst.CLInfoIndex = clinfoInx
         self.m_mediator.ref_key_type_groupID(dataInst.s_vesselType, clinfoInx)
         skeleton = dataInst.get_skeleton(clinfoInx)
@@ -1426,6 +1479,31 @@ class CTabStatePatient(tabState.CTabState):
             self.m_mediator.ref_key_type_groupID(dataInst.s_skelTypeCenterline, clinfoInx)
         
         self.m_mediator.update_viewer()
+        
+    def _command_clinfo_inxs(self) :
+        dataInst = self.get_data()
+        self.m_mediator.unref_all_key()
+
+        if dataInst.get_skeleton_count() == 0 :
+            self.m_mediator.update_viewer()
+            return
+
+        clinfoInxs = self.getui_clinfo_inxs()
+        dataInst.m_clinfoIndexList = clinfoInxs
+        
+        if clinfoInxs:
+            dataInst.CLInfoIndex = clinfoInxs[0]
+            
+        
+        dataInst.m_clinfoIndexList = clinfoInxs
+        #print(clinfoInxs, file=sys.__stdout__, flush=True)
+        for clinfoInx in clinfoInxs:
+            self.m_mediator.ref_key_type_groupID(dataInst.s_vesselType, clinfoInx)
+            skeleton = dataInst.get_skeleton(clinfoInx)
+            if skeleton is not None :
+                self.m_mediator.ref_key_type_groupID(dataInst.s_skelTypeCenterline, clinfoInx)
+            
+            self.m_mediator.update_viewer()
 
     def _command_centerline(self) :
         dataInst = self.get_data()
@@ -1442,12 +1520,11 @@ class CTabStatePatient(tabState.CTabState):
             unzipPath, self.getui_patientID(), "02_SAVE", "02_BLENDER_SAVE", "Auto03_MeshClean"
         )
         cmd.PatientBlenderFullPath = os.path.join(blenderRoot, f"{self.getui_patientID()}.blend")
-        #cmd.PatientBlenderFullPath = os.path.join(outputPatientPath, f"{self.getui_patientID()}_recon.blend")
         cmd.process()
         self.m_mediator.load_userdata()
 
         self._command_reset_clinfo_inx()
-        self.m_btnCL.setEnabled(False)
+        #self.m_btnCL.setEnabled(False)
 
     def _on_btn_integrity_mask(self):
         if not self.m_reconReady: 
@@ -1498,12 +1575,18 @@ class CTabStatePatient(tabState.CTabState):
         if dataInst.Ready == False :
             return
         self._command_clinfo_inx()
-
+        
+    def _on_selection_changed(self, selected, deselected):
+        dataInst = self.get_data()
+        if dataInst.Ready == False :
+            return
+        self._command_clinfo_inxs()
+        
     def _on_btn_do_blender(self):
         self._clicked_do_blender()
 
     def _on_cb_patientID_changed(self, index):
-        self.m_btnCL.setEnabled(True)
+        #self.m_btnCL.setEnabled(True)
         patientID = self.getui_patientID()
         if patientID == "":
             print("not select patientID")

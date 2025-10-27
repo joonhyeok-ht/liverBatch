@@ -4,7 +4,7 @@
         "DESC": "Solution Common Pipeline"
     },
   
-	"DataRootPath" : "C:\\Users\\hutom\\Desktop\\jh_test\\data\\liver\\LIVER0060\\dataRoot_liver_0904_165911",
+	"DataRootPath" : "C:\\Users\\hutom\\Desktop\\jh_test\\data\\liver\\LIVER0233\\dataRoot_liver_1027_160604",
     "CL" : "processCL.exe",
     
     "ReconParamList" : {
@@ -46,7 +46,7 @@
     },
     "CenterlineParamList" : {
         "CenterlineDefaultType" : {
-            "advancementRatio" : 1.001,
+            "advancementRatio" : 1.0,
             "resamplingLength" : 1.0,
             "smoothingIter" : 10,
             "smoothingFactor" : 0.1
@@ -69,6 +69,15 @@
         {"name":"Skin", "phase":"HVP", "reconType":"ClassicOrganType", "strictureMode":0, "blenderName":"Skin"},
         {"name":"Rib", "phase":"HVP", "reconType":"ClassicOrganType", "strictureMode":0, "blenderName":"Rib"},
         {"name":"Vein", "phase":"HVP", "reconType":"VesselType", "strictureMode":1, "blenderName":"Vein"},
+        {"name":"IVC", "phase":"HVP", "reconType":"VesselType", "strictureMode":1, "blenderName":"IVC"},
+        {"name":"LHV", "phase":"HVP", "reconType":"VesselType", "strictureMode":1, "blenderName":"LHV"},
+        {"name":"MHV", "phase":"HVP", "reconType":"VesselType", "strictureMode":1, "blenderName":"MHV"},
+        {"name":"RHV", "phase":"HVP", "reconType":"VesselType", "strictureMode":1, "blenderName":"RHV"},
+        {"name":"IHV", "phase":"HVP", "reconType":"VesselType", "strictureMode":1, "blenderName":"IHV"},
+        {"name":"IHV2", "phase":"HVP", "reconType":"VesselType", "strictureMode":1, "blenderName":"IHV2"},
+        {"name":"IHV3", "phase":"HVP", "reconType":"VesselType", "strictureMode":1, "blenderName":"IHV3"},
+        {"name":"IHV4", "phase":"HVP", "reconType":"VesselType", "strictureMode":1, "blenderName":"IHV4"},
+
         {"name":"MPV_HVP", "phase":"HVP", "reconType":"VesselType", "strictureMode":1, "blenderName":"MPV_HVP"},  
         
         {"name":"Duct", "phase":"MR", "reconType":"VesselType", "strictureMode":1, "blenderName":"Duct"},
@@ -147,7 +156,144 @@
                 "axis" : "maxZ",
                 "nnPos" : [0.0, 0.0, 0.0]
             }
+        },
+                                {
+            "centerlineType" : "CenterlineDefaultType",
+            "inputKey" : "blenderName",
+            "treeRootKey" : "axis",
+            "outputName" : "IVC",
+            "input" : {
+                "blenderName" : "IVC",
+                "reconType" : "SkelType"
+            },
+            "findCell" : "maxZ",
+            "treeRoot" : {
+                "maskName" : "",
+                "blenderName" : "",
+                "axis" : "maxZ",
+                "nnPos" : [0.0, 0.0, 0.0]
+            }
+        },
+                                {
+            "centerlineType" : "CenterlineDefaultType",
+            "inputKey" : "blenderName",
+            "treeRootKey" : "axis",
+            "outputName" : "RHV",
+            "input" : {
+                "blenderName" : "RHV",
+                "reconType" : "SkelType"
+            },
+            "findCell" : "maxZ",
+            "treeRoot" : {
+                "maskName" : "",
+                "blenderName" : "",
+                "axis" : "maxZ",
+                "nnPos" : [0.0, 0.0, 0.0]
+            }
+        },
+                                {
+            "centerlineType" : "CenterlineDefaultType",
+            "inputKey" : "blenderName",
+            "treeRootKey" : "axis",
+            "outputName" : "MHV",
+            "input" : {
+                "blenderName" : "MHV",
+                "reconType" : "SkelType"
+            },
+            "findCell" : "maxZ",
+            "treeRoot" : {
+                "maskName" : "",
+                "blenderName" : "",
+                "axis" : "maxZ",
+                "nnPos" : [0.0, 0.0, 0.0]
+            }
+        },
+                                {
+            "centerlineType" : "CenterlineDefaultType",
+            "inputKey" : "blenderName",
+            "treeRootKey" : "axis",
+            "outputName" : "LHV",
+            "input" : {
+                "blenderName" : "LHV",
+                "reconType" : "SkelType"
+            },
+            "findCell" : "maxZ",
+            "treeRoot" : {
+                "maskName" : "",
+                "blenderName" : "",
+                "axis" : "maxZ",
+                "nnPos" : [0.0, 0.0, 0.0]
+            }
+        },
+                                        {
+            "centerlineType" : "CenterlineDefaultType",
+            "inputKey" : "blenderName",
+            "treeRootKey" : "axis",
+            "outputName" : "IHV",
+            "input" : {
+                "blenderName" : "IHV",
+                "reconType" : "SkelType"
+            },
+            "findCell" : "maxZ",
+            "treeRoot" : {
+                "maskName" : "",
+                "blenderName" : "",
+                "axis" : "maxZ",
+                "nnPos" : [0.0, 0.0, 0.0]
+            }
+        },
+                                        {
+            "centerlineType" : "CenterlineDefaultType",
+            "inputKey" : "blenderName",
+            "treeRootKey" : "axis",
+            "outputName" : "IHV2",
+            "input" : {
+                "blenderName" : "IHV2",
+                "reconType" : "SkelType"
+            },
+            "findCell" : "maxZ",
+            "treeRoot" : {
+                "maskName" : "",
+                "blenderName" : "",
+                "axis" : "maxZ",
+                "nnPos" : [0.0, 0.0, 0.0]
+            }
+        },
+                                        {
+            "centerlineType" : "CenterlineDefaultType",
+            "inputKey" : "blenderName",
+            "treeRootKey" : "axis",
+            "outputName" : "IHV3",
+            "input" : {
+                "blenderName" : "IHV3",
+                "reconType" : "SkelType"
+            },
+            "findCell" : "maxZ",
+            "treeRoot" : {
+                "maskName" : "",
+                "blenderName" : "",
+                "axis" : "maxZ",
+                "nnPos" : [0.0, 0.0, 0.0]
+            }
+        },
+                                        {
+            "centerlineType" : "CenterlineDefaultType",
+            "inputKey" : "blenderName",
+            "treeRootKey" : "axis",
+            "outputName" : "IHV4",
+            "input" : {
+                "blenderName" : "IHV4",
+                "reconType" : "SkelType"
+            },
+            "findCell" : "maxZ",
+            "treeRoot" : {
+                "maskName" : "",
+                "blenderName" : "",
+                "axis" : "maxZ",
+                "nnPos" : [0.0, 0.0, 0.0]
+            }
         }
+             
     ],
     "SegmentInfo" : [
         {
@@ -197,7 +343,14 @@
             "Portal" : 40000,
             "PV[1,30]" : 500,
             "Vein" : 40000,
-            "HV[1,4]" : 500
+            "IVC" : 5000,
+            "LHV" : 5000,
+            "MHV" : 5000,
+            "RHV" : 5000,
+            "IHV" : 5000,
+            "IHV2" : 5000,
+            "IHV3" : 5000,
+            "IHV4" : 5000
         },
         "DecimationByRatio" : {
             "DESC":"input target percentage",
@@ -220,6 +373,14 @@
             "Portal",
             "Vein",
             "Artery",
+            "IVC",
+            "RHV",
+            "MHV",
+            "LHV",
+            "IHV",
+            "IHV2",
+            "IHV3",
+            "IHV4",
             "Duct",
             "MPV_AP",
             "MPV_PP",
@@ -234,6 +395,7 @@
         "DESC" : "Creates UVMap of stl files set in IncludedList.",
         "IncludedList" : [
             "Abdominal_wall",
+            "Adrenal",
             "Gallbladder",
             "Liver",
             "Diaphragm"
