@@ -1,0 +1,110 @@
+{
+    "Version" : {
+        "Release" : "Common Pipeline v2.0",
+        "DESC": "Solution Common Pipeline"
+    },
+  
+    "DataRootPath" : "/Users/hutom/Desktop/solution/project/anaconda/Solution/Data/Lung/remodelingTest",
+    "CL" : "processCL.sh",
+
+    "RegistrationInfo" : [
+        {"Target" : "targetMaskName", "Src" : "srcMaskName", "RigidAABB" : 1},
+        {"Target" : "targetMaskName", "Src" : "srcMaskName", "RigidAABB" : 0}
+    ],
+
+    "ResamplingToPhase" : [
+	    ["inMaskName", "outMaskName", "PP"]
+    ],
+    "ResamplingToMinSpacing" : [
+	    ["Artery_R", "Artery_R_min"],
+        ["Vein_R", "Vein_R_min"],
+        ["Bronchus", "Bronchus_min"]
+    ],
+
+    "Stricture" : [
+        ["Artery_R_min", "Artery_R_st"],
+        ["Vein_R_min", "Vein_R_st"],
+        ["Bronchus_min", "Bronchus_st"]
+    ],
+
+    "Recon" : [
+	    {
+            "name" : "remodelingType",
+		    "contour" : 10,
+		    "gaussian" : 0,
+		    "algorithm" : "Marching",
+		    "resampling factor" : 1,
+		    "param" : [
+			    [80, 0.18, 0.0],
+			    [20, 0.14, 0.0]
+		    ],
+		    "List" : [
+			    ["Artery_R", "", "PP", -1],
+                ["Vein_R", "", "PP", -1],
+                ["Bronchus", "", "PP", -1],
+
+                ["Artery_R_st", "Artery_R", "PP", 50000],
+                ["Vein_R_st", "Vein_R", "PP", 50000],
+                ["Bronchus_st", "Bronchus_R", "PP", 50000]
+		    ]
+	    }
+    ],
+    
+    "MeshBoolean" : [
+        ["subtraction", "blenderName0", "blenderName1", "blenderName"],
+        ["intersection", "blenderName0", "blenderName1", "blenderName"],
+        ["union", "blenderName0", "blenderName1", "blenderName"],
+        ["inside", "blenderName0", "blenderName1", "blenderName"],
+        ["outside", "blenderName0", "blenderName1", "blenderName"]
+    ],
+    "MeshHealing" : [
+        "blenderName0",
+        "blenderName1"
+    ],
+
+    "Blender" : {
+        "BlenderExe" : "/Applications/Blender.app/Contents/MacOS/Blender",
+        "Decimation" : {
+            "blenderName0" : 20000,
+            "blenderName1" : 500
+        },
+        "DecimationByRatio" : {
+            "blenderName0" : 20,
+            "blenderName1" : 20
+        },
+        "Remesh" : {
+            "VoxelSize" : 1,
+            "RemeshList" : {
+                "blenderName0" : 4000,
+                "blenderName1" : 4000
+            }
+        },
+        "MeshCleanUp" : [
+            "blenderName0",
+            "blenderName1"
+        ],
+        "SmartUV" : [
+            "blenderName0",
+            "blenderName1"
+        ]
+    },
+
+    "Centerline" : [
+        {
+		    "advancementRatio" : 1.001,
+		    "resamplingLength" : 1.0,
+		    "smoothingIter" : 10,
+		    "smoothingFactor" : 0.1,
+		    "List" : [
+			    ["Artery_R", "Artery_R"],
+                ["Vein_R", "Vein_R"],
+                ["Bronchus_R", "Bronchus_R"]
+		    ]
+        }
+    ],
+    "TargetTerritoryList" : [
+        "blenderName0",
+        "blenderName1"
+    ]
+}
+

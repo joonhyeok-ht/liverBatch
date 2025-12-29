@@ -1,0 +1,120 @@
+{
+    "Version" : {
+        "Release" : "Common Pipeline v2.0",
+        "DESC": "Solution Common Pipeline"
+    },
+  
+    "DataRootPath" : "C:/Users/hutom/Desktop/jh_test/jh_algorithm/COMMONPIPELINE_LIVER/input_liver",
+   "CL"  : "C:/Users/hutom/anaconda3/envs/centerline/python.exe processCL.py",
+
+    "RegistrationInfo" : [
+        {"Target" : "MPV_PP", "Src" : "MPV_AP", "RigidAABB" : 0},
+        {"Target" : "MPV_PP", "Src" : "MPV_HVP", "RigidAABB" : 0},
+        {"Target" : "MPV_PP", "Src" : "MPV_MR", "RigidAABB" : 1}
+    ],
+
+    "ResamplingToPhase" : [
+	    ["inMaskName", "outMaskName", "PP"]
+    ],
+    "ResamplingToMinSpacing" : [
+	    ["Portal", "Portal_min"],
+        ["Artery", "Artery_min"],
+        ["Vein", "Vein_min"],
+        ["MPV_PP", "MPV_PP_min"],
+        ["MPV_AP", "MPV_AP_min"],
+        ["MPV_HVP", "MPV_HVP_min"]
+
+    ],
+
+    "Stricture" : [
+        ["Portal_min", "Portal_st"],
+        ["Artery_min", "Artery_st"],
+        ["Vein_min", "Vein_st"],
+        ["MPV_PP_min", "MPV_PP_st"],
+        ["MPV_AP_min", "MPV_AP_st"],
+        ["MPV_HVP_min", "MPV_HVP_st"]
+    ],
+
+    "Recon" : [
+	    {
+            "name" : "remodelingType",
+		    "contour" : 10,
+		    "gaussian" : 0,
+		    "algorithm" : "Marching",
+		    "resampling factor" : 1,
+		    "param" : [
+			    [80, 0.18, 0.0],
+			    [20, 0.14, 0.0]
+		    ],
+		    "List" : [
+			    ["Portal", "", "PP", -1],
+                ["MPV_AP_st", "MPV_AP", "AP", 30000],
+                ["Artery_st", "Artery", "AP", -1],
+                ["MPV_PP_st", "MPV_PP", "PP", 10000],
+                ["Portal_st", "Portal", "PP", -1],
+                ["MPV_HVP_st", "MPV_HVP", "HVP", 10000],
+                ["Vein_st", "Vein", "HVP", -1]
+		    ]
+	    }
+    ],
+    
+    "MeshBoolean" : [
+        ["subtraction", "blenderName0", "blenderName1", "blenderName"],
+        ["intersection", "blenderName0", "blenderName1", "blenderName"],
+        ["union", "blenderName0", "blenderName1", "blenderName"],
+        ["inside", "blenderName0", "blenderName1", "blenderName"],
+        ["outside", "blenderName0", "blenderName1", "blenderName"]
+    ],
+    "MeshHealing" : [
+        "blenderName0",
+        "blenderName1"
+    ],
+
+    "Blender" : {
+        "BlenderExe" : "Blender",
+        "Decimation" : {
+            "blenderName0" : 20000,
+            "blenderName1" : 60000,
+            "Vein" : 60000
+        },
+        "DecimationByRatio" : {
+            "blenderName0" : 20,
+            "blenderName1" : 20
+        },
+        "Remesh" : {
+            "VoxelSize" : 1,
+            "RemeshList" : {
+                "blenderName0" : 4000,
+                "blenderName1" : 4000
+            }
+        },
+        "MeshCleanUp" : [
+            "Portal",
+            "Vein",
+            "Artery"
+        ],
+        "SmartUV" : [
+            "blenderName0",
+            "blenderName1"
+        ]
+    },
+
+    "Centerline" : [
+        {
+		    "advancementRatio" : 1.001,
+		    "resamplingLength" : 1.0,
+		    "smoothingIter" : 10,
+		    "smoothingFactor" : 0.1,
+		    "List" : [
+			    ["Portal", "Portal"],
+                ["Vein", "Vein"],
+                ["Artery", "Artery"]
+		    ]
+        }
+    ],
+    "TargetTerritoryList" : [
+        "blenderName0",
+        "blenderName1"
+    ]
+}
+

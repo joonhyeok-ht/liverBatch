@@ -1,0 +1,157 @@
+{
+    "Version" : {
+        "Release" : "Common Pipeline v2.0",
+        "DESC": "Solution Common Pipeline"
+    },
+  
+    "DataRootPath" : "/Users/hutom/Desktop/solution/project/anaconda/Solution/Data/Colon/rectumMergeTest",
+    "CL" : "processCL.sh",
+
+    "RegistrationInfo" : [
+        {"Target" : "sacrum", "Src" : "sacrum-MR", "RigidAABB" : 1},
+        {"Target" : "sacrum", "Src" : "sacrum-AP", "RigidAABB" : 0}
+    ],
+
+    "ResamplingToPhase" : [
+        ["rectum", "rectum_PP", "PP"],
+        ["levator-ani_PP", "levator-ani_MR", "MR"]
+    ],
+    "ResamplingToMinSpacing" : [
+	    ["artery-all", "artery-all_min"]
+    ],
+
+    "Stricture" : [
+        ["artery-all_min", "artery-all_st"]
+    ],
+
+    "Recon" : [
+        {
+            "name" : "CTColonType",
+		    "contour" : 127,
+		    "gaussian" : 0,
+		    "algorithm" : "Marching",
+		    "resampling factor" : 1,
+		    "param" : [
+			    [100, 0.2, 0.0],
+                [20, 0.1, 0.0]
+		    ],
+		    "List" : [
+			    ["colon", "colon", "PP", 14000],
+                ["rectum", "rectum", "MR", 7000]
+		    ]
+	    },
+	    {
+            "name" : "CTOrganType",
+		    "contour" : 10,
+		    "gaussian" : 1,
+		    "algorithm" : "MarchingPro",
+		    "resampling factor" : 1,
+		    "param" : [
+			    [20, 0.5, 0.87]
+		    ],
+		    "List" : [
+			    ["sacrum", "sacrum", "PP", -1],
+			    ["sacrum-AP", "sacrum-AP", "AP", -1]
+		    ]
+	    },
+        {
+            "name" : "VesselType",
+		    "contour" : 10,
+		    "gaussian" : 0,
+		    "algorithm" : "Marching",
+		    "resampling factor" : 1,
+		    "param" : [
+			    [16, 0.8, 0.01]
+		    ],
+		    "List" : [
+			    ["artery-all", "", "AP", -1],
+                ["artery-all_st", "artery-all", "AP", 50000]
+		    ]
+	    },
+        {
+            "name" : "MROrganType",
+		    "contour" : 10,
+		    "gaussian" : 0,
+		    "algorithm" : "MarchingPro",
+		    "resampling factor" : 1,
+		    "param" : [
+			    [20, 0.9, 0.0]
+		    ],
+		    "List" : [
+                ["sacrum-MR", "sacrum-MR", "MR", -1]
+		    ]
+	    },
+        {
+            "name" : "LevatorType",
+		    "contour" : 10,
+		    "gaussian" : 0,
+		    "algorithm" : "Marching",
+		    "resampling factor" : 1,
+		    "param" : [
+			    [100, 0.2, 0.0],
+                [20, 0.1, 0.0]
+		    ],
+		    "List" : [
+                ["levator-ani_PP", "", "PP", -1]
+		    ]
+        }
+    ],
+    
+    "MeshBoolean" : [
+        ["subtraction", "blenderName0", "blenderName1", "blenderName"],
+        ["intersection", "blenderName0", "blenderName1", "blenderName"],
+        ["union", "blenderName0", "blenderName1", "blenderName"],
+        ["inside", "blenderName0", "blenderName1", "blenderName"],
+        ["outside", "blenderName0", "blenderName1", "blenderName"]
+    ],
+    "MeshHealing" : [
+        "colon",
+        "rectum"
+    ],
+
+    "Blender" : {
+        "BlenderExe" : "/Applications/Blender.app/Contents/MacOS/Blender",
+        "Decimation" : {
+            "blenderName0" : 20000,
+            "blenderName1" : 500
+        },
+        "DecimationByRatio" : {
+            "blenderName0" : 20,
+            "blenderName1" : 20
+        },
+        "Remesh" : {
+            "VoxelSize" : 1,
+            "RemeshList" : {
+                "blenderName0" : 4000,
+                "blenderName1" : 4000
+            }
+        },
+        "MeshCleanUp" : [
+            "blenderName0",
+            "blenderName1"
+        ],
+        "SmartUV" : [
+            "blenderName0",
+            "blenderName1"
+        ]
+    },
+
+    "Centerline" : [
+        {
+		    "advancementRatio" : 1.001,
+		    "resamplingLength" : 1.0,
+		    "smoothingIter" : 10,
+		    "smoothingFactor" : 0.1,
+		    "List" : [
+			    ["colon", "colon"],
+                ["rectum", "rectum"],
+                ["artery-all", "artery-all"]
+		    ]
+        }
+    ],
+    "TargetTerritoryList" : [
+        "blenderName0",
+        "blenderName1"
+    ]
+}
+
