@@ -443,13 +443,26 @@ class CTabStatePatient(tabState.CTabState):
         super().clear()
 
     def process_init(self):
-        pass
+        dataInst = self.get_data()
+        if dataInst.Ready == False :
+            print("not setting patient path")
+            return
+        
+        self.setui_clear_clinfo()
+        iCnt = dataInst.get_skelinfo_count()
+        for inx in range(0, iCnt) :
+            skelinfo = dataInst.get_skelinfo(inx)
+            self.setui_add_clinfo(inx, skelinfo)
+
+        self.setui_clinfo_inx(dataInst.CLInfoIndex)
+        self._command_clinfo_inxs()
+        self.setui_check_sel_cell(False)
 
     def process(self):
         pass
 
     def process_end(self):
-        pass
+        self.setui_check_sel_cell(False)
 
     def changed_project_type(self):
         self.m_optionFullPath = os.path.join(self.m_mediator.FilePath, "option.json")
@@ -572,12 +585,17 @@ class CTabStatePatient(tabState.CTabState):
         tabLayout.addLayout(layout)
 
 
-        input_advancementRatio = QLineEdit()
-        input_advancementRatio.setPlaceholderText(f"advancement ratio 입력")
-        input_advancementRatio.setText(str(1.001))
-        input_advancementRatio.textChanged.connect(self.on_advancement_ratio_changed)
-        tabLayout.addWidget(input_advancementRatio)
+        # input_advancementRatio = QLineEdit()
+        # input_advancementRatio.setPlaceholderText(f"advancement ratio 입력")
+        # input_advancementRatio.setText(str(1.001))
+        # input_advancementRatio.textChanged.connect(self.on_advancement_ratio_changed)
+        # tabLayout.addWidget(input_advancementRatio)
         
+        btn = QPushButton("Delete Centerline")
+        btn.setStyleSheet(self.get_btn_stylesheet())
+        btn.clicked.connect(self._on_btn_delete_centerline)
+        tabLayout.addWidget(btn)
+
 
         btn = QPushButton("Extraction Centerline")
         btn.setStyleSheet(self.get_btn_stylesheet())
@@ -896,7 +914,6 @@ class CTabStatePatient(tabState.CTabState):
         self.m_mediator.update_viewer()
 
     def _generate_progress_window(self, instance):
-
         dialog = ProgressWindow(self.m_mediator, instance)
         result = dialog.exec()
 
@@ -923,6 +940,80 @@ class CTabStatePatient(tabState.CTabState):
         self.m_tvCLInfo.blockSignals(True)
         self.m_modelCLInfo.appendRow([QStandardItem(f"{inx}"), QStandardItem(blenderName), QStandardItem(jsonName)])
         self.m_tvCLInfo.blockSignals(False)
+    
+    # def getui_lv_cuttednode_selected_node(self) -> remodelingNode.CRemodelingNode :
+    #     selectedItems = self.m_lvCuttedNode.selectedItems()
+    #     if not selectedItems :
+    #         return None
+        
+    #     item = selectedItems[0]
+    #     text = item.text()
+    #     node = item.data(Qt.UserRole) 
+    #     return node
+    
+    def _remove_file(self, path):
+        if os.path.exists(path):
+            os.remove(path)
+            print(f"deletion completed: {path}")
+        else:
+            pass
+            #print(f"cannot found: {path}")
+            
+    def _re_align_ref_key(self, inx):
+        dataInst = self.get_data()
+        objKeys = [k for k in dataInst.m_dicObj.keys()]
+        for k in objKeys:
+            if data.CData.get_groupID_from_key(k) > inx:
+                kSplit = k.split("_")
+                kSplit[1] = str(data.CData.get_groupID_from_key(k)-1)
+                newKey = "_".join(kSplit)
+                dataInst.m_dicObj[newKey] = dataInst.m_dicObj.pop(k)
+    
+    def _command_delete_cl(self) :
+        dataInst = self.get_data()
+        clinfoIndices = self.get_clinfo_indices()
+        clInPath = dataInst.get_cl_in_path()
+        terriOutPath = dataInst.get_terri_out_path()
+        clOutPath = dataInst.get_cl_out_path()
+        
+        for clinfoinx in sorted(clinfoIndices, reverse=True):
+            skelinfo = dataInst.get_skelinfo(clinfoinx)
+            if clinfoinx == dataInst.OptionInfo.find_centerline_index_of_blendername(skelinfo.BlenderName):
+                print(f"cannot remove {skelinfo.BlenderName}", file=sys.__stdout__, flush=True)
+                continue
+            
+            clInStlPath = os.path.join(clInPath, f"{skelinfo.JsonName}.stl")
+            terriOutStlPath = os.path.join(terriOutPath, f"{skelinfo.JsonName}.stl")
+            clOutJsonPath = os.path.join(clOutPath, f"{skelinfo.JsonName}.json")
+    
+            self._remove_file(clInStlPath)
+            self._remove_file(terriOutStlPath)
+            self._remove_file(clOutJsonPath)
+            
+            dataInst.remove_skelinfo(clinfoinx)
+            
+            self.m_mediator.remove_vessel_obj(clinfoinx)
+            self.m_mediator.remove_skeleton_obj(clinfoinx)
+            
+            self.m_mediator.unref_key_type_groupID(data.CData.s_vesselType, clinfoinx)
+            self.m_mediator.unref_key_type_groupID(data.CData.s_skelTypeCenterline, clinfoinx)
+            
+            self._re_align_ref_key(clinfoinx)
+            
+        self.setui_clear_clinfo()
+        iCnt = dataInst.get_skelinfo_count()
+        for inx in range(0, iCnt) :
+            skelinfo = dataInst.get_skelinfo(inx)
+            self.setui_add_clinfo(inx, skelinfo)
+
+        self.setui_clinfo_inx(dataInst.CLInfoIndex)
+        self._command_clinfo_inxs()
+        self.setui_check_sel_cell(False)
+        
+        fullPath = os.path.join(dataInst.OutputPatientPath, f"{data.CData.s_fileName}.json")
+        dataInst.save(fullPath)
+        
+        self.m_mediator.update_viewer()
         
     def _command_extraction_cl(self) :
         dataInst = self.get_data()
@@ -947,7 +1038,9 @@ class CTabStatePatient(tabState.CTabState):
         # centerline 시작 cell이 있으므로 현재 vessel polydata를 vtp로 저장. 
         startCellID = self.getui_cellID()
         if startCellID < 0 :
-            startCellID = 0
+            QMessageBox.warning(self.m_mediator, "Error", "Please select start cell.")
+            return
+            #startCellID = 0
 
         vesselKey = data.CData.make_key(data.CData.s_vesselType, clinfoinx, 0)
         vesselObj = dataInst.find_obj_by_key(vesselKey)
@@ -1266,6 +1359,9 @@ class CTabStatePatient(tabState.CTabState):
         
 
     # ui event
+    def _on_btn_delete_centerline(self):
+        self._command_delete_cl()
+        
     def _on_btn_extraction_centerline(self) :
         self._command_extraction_cl()
     

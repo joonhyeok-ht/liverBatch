@@ -164,7 +164,7 @@ class CCommandRecon(CCommandReconInterface) :
         listPhase = optioninfo.get_phase_list()
 
         phaseInst = niftiContainer.CPhase()
-
+        
         for phase in listPhase :
             listMask = optioninfo.get_phase_mask_list(phase)
             for mask in listMask :

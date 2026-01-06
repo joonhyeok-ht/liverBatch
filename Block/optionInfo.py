@@ -397,7 +397,7 @@ class COptionInfo() :
             for listInx in range(0, iListCnt) :
                 _blenderName, _jsonName = self.get_centerline_list(clInx, listInx)
                 if _blenderName == blenderName :
-                    return clInx
+                    return listInx
         
         return -1
     def find_tricnt_of_blendername(self, blenderName : str) -> int :

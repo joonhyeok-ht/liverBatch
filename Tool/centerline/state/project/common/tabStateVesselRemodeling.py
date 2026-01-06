@@ -41,7 +41,6 @@ import tabState as tabState
 import VtkObj.vtkObjLine as vtkObjLine
 import vtkObjInterface as vtkObjInterface
 
-import command.commandVesselKnife as commandVesselKnife
 import command.commandExtractionCL as commandExtractionCL
 
 import remodeling.remodelingNode as remodelingNode
@@ -629,15 +628,18 @@ class CTabStateVesselRemodeling(tabState.CTabState) :
         skeleton = algSkeletonGraph.CSkeleton()
         skeleton.load(clOutputFullPath)
         CTabStateVesselRemodeling.refresh_radius(vesselObj.PolyData, skeleton)
-        self.__refine_max_radius(skeleton)
 
         # startVertex를 root에 삽입. 
         rootCL = skeleton.RootCenterline
+        rootCL.reverse_by_nn_vertex(startVertex)
         maxRadius = np.max(rootCL.Radius)
         newVertex = np.vstack((startVertex.reshape(-1, 3), rootCL.Vertex))
         newRadius = np.hstack((maxRadius, rootCL.Radius))
         rootCL.Vertex = newVertex
         rootCL.Radius = newRadius
+
+        # max radius refinement 수행 
+        self.__refine_max_radius(skeleton)
 
         skelID = dataInst.get_id_from_key(node.Key)
         groupID = 1
@@ -684,6 +686,8 @@ class CTabStateVesselRemodeling(tabState.CTabState) :
         skeleton = algSkeletonGraph.CSkeleton()
         skeleton.load(clOutputFullPath)
         CTabStateVesselRemodeling.refresh_radius(vesselObj.PolyData, skeleton)
+        rootCL = skeleton.RootCenterline
+        rootCL.reverse_by_nn_vertex(startVertex)
 
         skelID = dataInst.get_id_from_key(node.Key)
         groupID = 0

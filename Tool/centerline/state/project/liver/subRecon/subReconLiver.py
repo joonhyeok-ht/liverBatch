@@ -168,7 +168,8 @@ class CSubReconLiver(commandRecon.CCommandRecon) :
             fileLoadPhaseInfoBlock.InputPath = self.InputData.OutputPatientPath
             fileLoadPhaseInfoBlock.InputFileName = commandRecon.CCommandReconInterface.s_phaseInfoFileName
             phase = fileLoadPhaseInfoBlock.process()
-            self.update_progress_value(17)
+            if not self.update_progress_value(17):
+                return False
 
         else :
             phase = self._create_phase()
@@ -176,13 +177,25 @@ class CSubReconLiver(commandRecon.CCommandRecon) :
             originOffsetBlock.InputOptionInfo = self.InputData.OptionInfo
             originOffsetBlock.InputPhase = phase
             originOffsetBlock.process()
-            self.update_progress_value(1)
+            if not self.update_progress_value(1):
+                return False
 
             registrationBlock = registration.CRegistration()
             registrationBlock.InputOptionInfo = self.InputData.OptionInfo
             registrationBlock.InputMaskPath = maskCpyPath #self.CopiedMaskPath
+            
+            registrationBlock.progress_callback = lambda p, s="": self.progress_callback(
+                self.ProgressValue + int((14 / self.TotalPatientCnt) * (p / 100.0)),
+                s
+            )
+            registrationBlock.is_interrupted = self.is_interrupted
             registrationBlock.process()
-            self.update_progress_value(14)
+            
+            self.ProgressValue += int(14 / self.TotalPatientCnt)
+            #self.progress_callback(self.ProgressValue)
+            
+            # if not self.update_progress_value(14):
+            #     return False
             
             self._update_phase_offset(self.InputData.OptionInfo, registrationBlock, originOffsetBlock, phase)
             fileSavePhaseInfoBlock = niftiContainer.CFileSavePhaseInfo()
@@ -190,61 +203,88 @@ class CSubReconLiver(commandRecon.CCommandRecon) :
             fileSavePhaseInfoBlock.OutputSavePath = self.InputData.OutputPatientPath
             fileSavePhaseInfoBlock.OutputFileName = commandRecon.CCommandReconInterface.s_phaseInfoFileName
             fileSavePhaseInfoBlock.process()
-            self.update_progress_value(2)
+            if not self.update_progress_value(2):
+                return False
 
         resamplingToPhaseBlock = resamplingB.CResamplingToPhase()
         resamplingToPhaseBlock.InputOptionInfo = self.InputData.OptionInfo
         resamplingToPhaseBlock.InputMaskPath = maskCpyPath # self.CopiedMaskPath
         resamplingToPhaseBlock.InputPhase = phase
         resamplingToPhaseBlock.OutputMaskPath = maskCpyPath # self.CopiedMaskPath
+        resamplingToPhaseBlock.progress_callback = lambda p, s="": self.progress_callback(
+            self.ProgressValue + int((2 / self.TotalPatientCnt) * (p / 100.0)),
+            s
+        )
+        resamplingToPhaseBlock.is_interrupted = self.is_interrupted
+        
         resamplingToPhaseBlock.process()
-        self.update_progress_value(2)
+        self.ProgressValue += int(2 / self.TotalPatientCnt)
+        # if not self.update_progress_value(2):
+        #     return False
 
         resamplingToMinSpacingBlock = resamplingB.CResamplingToMinSpacing()
         resamplingToMinSpacingBlock.InputMaskPath = maskCpyPath # self.CopiedMaskPath
         resamplingToMinSpacingBlock.InputOptionInfo = self.InputData.OptionInfo
         resamplingToMinSpacingBlock.OutputMaskPath = maskCpyPath # self.CopiedMaskPath
+        resamplingToMinSpacingBlock.progress_callback = lambda p, s="": self.progress_callback(
+            self.ProgressValue + int((4 / self.TotalPatientCnt) * (p / 100.0)),
+            s
+        )
+        resamplingToMinSpacingBlock.is_interrupted = self.is_interrupted
+        
         resamplingToMinSpacingBlock.process()
-        self.update_progress_value(2)
+        self.ProgressValue += int(4 / self.TotalPatientCnt)
+        # if not self.update_progress_value(2):
+        #     return False
 
         removeStrictureBlock = removeStricture.CRemoveStricture()
         removeStrictureBlock.InputOptionInfo = self.OptionInfo
         removeStrictureBlock.InputMaskPath = maskCpyPath # self.CopiedMaskPath
         removeStrictureBlock.OutputMaskPath = maskCpyPath # self.CopiedMaskPath
+        removeStrictureBlock.progress_callback = lambda p, s="": self.progress_callback(
+            self.ProgressValue + int((26 / self.TotalPatientCnt) * (p / 100.0)),
+            s
+        )
+        removeStrictureBlock.is_interrupted = self.is_interrupted
         removeStrictureBlock.process()
-        self.update_progress_value(26)
+        self.ProgressValue += int(26 / self.TotalPatientCnt)
+        
+        # if not self.update_progress_value(26):
+        #     return False
 
         reconstructionBlock = reconstruction.CReconstruction()
         reconstructionBlock.InputOptionInfo = self.InputData.OptionInfo
         reconstructionBlock.InputMaskPath = maskCpyPath # self.CopiedMaskPath
         reconstructionBlock.InputPhase = phase
         reconstructionBlock.OutputPath = self.ResultPath
+        reconstructionBlock.progress_callback = lambda p, s="": self.progress_callback(
+            self.ProgressValue + int((45 / self.TotalPatientCnt) * (p / 100.0)),
+            s
+        )
+        reconstructionBlock.is_interrupted = self.is_interrupted
         reconstructionBlock.process()
-        self.update_progress_value(47)
+        self.ProgressValue += int(45 / self.TotalPatientCnt)
+        # if not self.update_progress_value(45):
+        #     return False
 
         meshHealingBlock = meshHealing.CMeshHealing()
         meshHealingBlock.InputPath = self.ResultPath
         meshHealingBlock.InputOptionInfo = self.InputData.OptionInfo
         meshHealingBlock.process()
-        self.update_progress_value(1)
+        if not self.update_progress_value(1):
+            return False
 
         meshBooleanBlock = meshBoolean.CMeshBoolean()
         meshBooleanBlock.InputPath = self.ResultPath
         meshBooleanBlock.InputOptionInfo = self.InputData.OptionInfo
         meshBooleanBlock.process()
-        self.update_progress_value(1)
+        if not self.update_progress_value(1):
+            return False
 
         removeStrictureBlock.clear()
         reconstructionBlock.clear()
         meshHealingBlock.clear()
         meshBooleanBlock.clear()
-
-
-
-
-
-
-
 
         # phaseInfoFileName = "phaseInfo"
 
@@ -344,6 +384,7 @@ class CSubReconLiver(commandRecon.CCommandRecon) :
         self.progress_callback(self.ProgressValue)
         if self.is_interrupted():
             return False
+        return True
     
     def _update_organ_phase(self, niftiContainerBlock):
         iNiftiInfoCnt = niftiContainerBlock.get_nifti_info_count()

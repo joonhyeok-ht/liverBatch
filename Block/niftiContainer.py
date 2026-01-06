@@ -37,8 +37,8 @@ class CPhaseInfo() :
             return False
         else :
             return True
-
     
+
     @property
     def Phase(self) -> str :
         return self.m_phase

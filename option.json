@@ -4,7 +4,7 @@
         "DESC": "Solution Common Pipeline"
     },
   
-    "DataRootPath" : "C:/Users/hutom/Desktop/jh_test/jh_algorithm/COMMONPIPELINE_LIVER/input_liver",
+	"DataRootPath" : "C:\\Users\\hutom\\Desktop\\jh_test\\data\\liver\\eval_regisration\\LIVER0060\\dataRoot_liver_0105_125928",
    "CL"  : "C:/Users/hutom/anaconda3/envs/centerline/python.exe processCL.py",
 
     "RegistrationInfo" : [
@@ -47,11 +47,13 @@
 			    [20, 0.14, 0.0]
 		    ],
 		    "List" : [
-			    ["Portal", "", "PP", -1],
+			    ["MPV_PP", "", "PP", -1],
+                ["MPV_AP", "", "AP", -1],
+                ["MPV_HVP", "", "HVP", -1],
                 ["MPV_AP_st", "MPV_AP", "AP", 30000],
-                ["Artery_st", "Artery", "AP", -1],
+                ["Artery_st", "Artery", "AP", 20000],
                 ["MPV_PP_st", "MPV_PP", "PP", 10000],
-                ["Portal_st", "Portal", "PP", -1],
+                ["Portal_st", "Portal", "PP", 60000],
                 ["MPV_HVP_st", "MPV_HVP", "HVP", 10000],
                 ["Vein_st", "Vein", "HVP", -1]
 		    ]
@@ -74,8 +76,7 @@
         "BlenderExe" : "Blender",
         "Decimation" : {
             "blenderName0" : 20000,
-            "blenderName1" : 60000,
-            "Vein" : 60000
+            "blenderName1" : 60000
         },
         "DecimationByRatio" : {
             "blenderName0" : 20,

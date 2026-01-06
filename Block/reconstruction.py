@@ -19,8 +19,85 @@ import niftiContainer as niftiContainer
 import optionInfo as optionInfo
 
 
+def _reconstruction_task_worker(param: tuple):
+    contour = param[0]
+    gaussian = param[1]
+    algorithm = param[2]
+    resampling = param[3]
+    listReconParam = param[4]
+    maskFullPath = param[5]
+    blenderFullPath = param[6]
+    phaseinfo = param[7]
+    triCnt = param[8]
 
-class CReconstruction(multiProcessTask.CMultiProcessTask) :
+    origin = phaseinfo.Origin
+    spacing = phaseinfo.Spacing
+    direction = phaseinfo.Direction
+    size = phaseinfo.Size
+    phaseOffset = phaseinfo.Offset
+    matPhy = algVTK.CVTK.get_vtk_phy_matrix_with_offset(origin, spacing, direction, phaseOffset)
+
+    reconParam = listReconParam[0]
+    if algorithm == "MarchingSharpness" or algorithm == "MarchingSharpnessPro" :
+        iter = reconParam[0]
+        reduction = reconParam[1]
+        sharpnessAngle = reconParam[2]
+        sharpnessNormalAngle = reconParam[3]
+    else :
+        iter = reconParam[0]
+        rel = reconParam[1]
+        deci = reconParam[2]
+    
+    if gaussian == 1 :
+        gaussian = True
+    else :
+        gaussian = False
+    
+    polydata = None
+    vtkImg = algVTK.CVTK.image_data_load_from_nifti(maskFullPath)
+    if algorithm == "Marching" :
+        polydata = algVTK.CVTK.recon_marching_cube(vtkImg, 1.0, 0, contour, iter, rel, deci, gaussian, matPhy, resampling)
+    elif algorithm == "MarchingPro" : 
+        polydata = algVTK.CVTK.recon_marching_cube_pro(vtkImg, 1.0, 0, contour, iter, rel, deci, gaussian, matPhy, resampling)
+    elif algorithm == "Flying" :
+        polydata = algVTK.CVTK.recon_fly_edge3d(vtkImg, 1.0, 0, contour, iter, rel, deci, gaussian, matPhy, resampling)
+    elif algorithm == "FlyingPro" :
+        polydata = algVTK.CVTK.recon_fly_edge3d_pro(vtkImg, 1.0, 0, contour, iter, rel, deci, gaussian, matPhy, resampling)
+    elif algorithm == "MarchingSharpness" :
+        polydata = algVTK.CVTK.recon_marching_cube_sharpness(vtkImg, 0, contour, iter, reduction, sharpnessAngle, sharpnessNormalAngle, matPhy)
+    elif algorithm == "MarchingSharpnessPro" : 
+        polydata = algVTK.CVTK.recon_marching_cube_sharpness_pro(vtkImg, 0, contour, iter, reduction, sharpnessAngle, sharpnessNormalAngle, matPhy)
+    
+    if polydata is None :
+        print(f"recon : failed to recon {os.path.basename(maskFullPath)}")
+        return 
+    if triCnt > 0 : 
+        meshlib = CReconstruction.get_meshlib(polydata)
+        meshlib = algMeshLib.CMeshLib.meshlib_healing(meshlib)
+        meshlib = algMeshLib.CMeshLib.meshlib_decimation(meshlib, triCnt)
+        meshlib = algMeshLib.CMeshLib.meshlib_healing(meshlib)
+        polydata = CReconstruction.get_vtkmesh(meshlib)
+    
+    iCnt = len(listReconParam)
+    for inx in range(1, iCnt) :
+        reconParam = listReconParam[inx]
+        if algorithm == "MarchingSharpness" or algorithm == "MarchingSharpnessPro" :
+            iter = reconParam[0]
+            rel = reconParam[1]
+            sharpnessAngle = reconParam[2]
+            sharpnessNormalAngle = reconParam[3]
+        else :
+            iter = reconParam[0]
+            rel = reconParam[1]
+            deci = reconParam[2]
+        polydata = algVTK.CVTK.laplacian_smoothing(polydata, iter, rel)
+    
+    algVTK.CVTK.save_poly_data_stl(blenderFullPath, polydata)
+    print(f"saved stl : {os.path.basename(blenderFullPath)}", file=sys.__stdout__, flush=True)
+
+
+
+class CReconstruction(multiProcessTask.CMultiProcessTaskProgress) :
     @staticmethod
     def get_meshlib(vtkMeshInst : vtk.vtkPolyData) :
         npVertex = algVTK.CVTK.poly_data_get_vertex(vtkMeshInst)
@@ -173,7 +250,7 @@ class CReconstruction(multiProcessTask.CMultiProcessTask) :
                     print(f"recon : not found phaseinfo {maskName}")
                     continue
                 if blenderName == "" :
-                    print(f"recon : skip {maskName}")
+                    #print(f"recon : skip {maskName}")
                     continue
 
                 maskFullPath = os.path.join(self.InputMaskPath, f"{maskName}.nii.gz")
@@ -188,7 +265,15 @@ class CReconstruction(multiProcessTask.CMultiProcessTask) :
             print("passed recon")
             return
         
-        super().process(self._task, listParam)
+        #super().process(self._task, listParam)
+        super().process(
+            _reconstruction_task_worker,
+            listParam,
+            progress_callback=getattr(self, "progress_callback", None),
+            is_interrupted=getattr(self, "is_interrupted", None),
+            status_prefix="Remove Stricture",
+            chunksize=1
+        )
 
 
     # param (contour, gaussian, algorithm, resampling, listReconParam, maskFullPath, blenderFullPath, phaseInfo, triCnt)

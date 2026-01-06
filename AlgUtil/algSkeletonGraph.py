@@ -549,7 +549,7 @@ class CSkeleton :
             for centerline in self.m_listCenterline :
                 if centerline == rootCenterline :
                     continue
-
+                
                 srcGraphID = centerline.GraphID
                 graphNode = self.get_graph(srcGraphID)
                 # 현재 node가 이미 tree로 구축된 상황이므로 건너뛴다. 
@@ -748,6 +748,25 @@ class CSkeleton :
 
     # private
     def __init_conn_centerline(self, centerline) :
+        for inx in [0, -1] :
+            branch = centerline.get_conn(inx)
+            if branch is not None :
+                continue
+
+            vertex = centerline.get_vertex(inx)
+            listNeighborCenterline = self.find_conn_centerline(vertex)
+            if listNeighborCenterline is None :
+                continue
+            # 연결된 것이 자신밖에 없으므로 branch가 아니다. 
+            if len(listNeighborCenterline) == 1 :
+                continue
+
+            branch = CSkeletonBranch(len(self.m_listBranch))
+            branch.BranchPoint = vertex
+            self.m_listBranch.append(branch)
+            for neighborCenterline in listNeighborCenterline :
+                self.attach_branch_centerline(branch, neighborCenterline)
+    def init_conn_centerline(self, centerline) :
         for inx in [0, -1] :
             branch = centerline.get_conn(inx)
             if branch is not None :

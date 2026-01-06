@@ -135,8 +135,8 @@ class CSelectionVertexStateSelection(CSelectionVertexState) :
         
         tempCenterline1 = algSkeletonGraph.CSkeletonCenterline(splitCenterlineID)
         tempCenterline1.Name = skeleton.m_listCenterline[splitCenterlineID].Name
-        tempCenterline1.Vertex = skeleton.m_listCenterline[splitCenterlineID].Vertex[:splitVertexInx].copy()
-        tempCenterline1.Radius = skeleton.m_listCenterline[splitCenterlineID].Radius[:splitVertexInx].copy()
+        tempCenterline1.Vertex = skeleton.m_listCenterline[splitCenterlineID].Vertex[:splitVertexInx+1].copy()
+        tempCenterline1.Radius = skeleton.m_listCenterline[splitCenterlineID].Radius[:splitVertexInx+1].copy()
         tempCenterline2 = algSkeletonGraph.CSkeletonCenterline(len(skeleton.m_listCenterline))
         tempCenterline2.Name = skeleton.m_listCenterline[splitCenterlineID].Name
         tempCenterline2.Vertex = skeleton.m_listCenterline[splitCenterlineID].Vertex[splitVertexInx:].copy()
@@ -195,42 +195,43 @@ class CSelectionVertexStateSelection(CSelectionVertexState) :
             CSubStateSkelEditSelectionVertex.s_guideVertexType
         ]
         selKey, vid = self.m_mediator.App.picking_point(clickX, clickY, listExceptKeyType)
-        
-        # opSelectionEP = self.m_mediator.get_operator_selection_ep()
-        # opSelectionCL = self.m_mediator.get_operator_selection_cl()
-        # opSelectionEP.process_reset()
-        # opSelectionCL.process_reset()
-        # self.m_mediator.remove_guide_key()
 
         if selKey == "" :
+            self.m_mediator.set_state(0)
             return
-         
-        
-        skeleton = self.m_mediator._get_skeleton()
         if self.m_mediator.m_firstSelectedVertexkey == "" :
+            self.m_mediator.set_state(0)
             return
         if self.m_mediator.m_firstSelectedVertexID == "" :
+            self.m_mediator.set_state(0)
             return
         
-        # branch guide create
+        
+        dataInst = self.m_mediator._get_data()
+        
+        firstGroupID = data.CData.get_groupID_from_key(self.m_mediator.m_firstSelectedVertexkey)
+        firstSkeleton = dataInst.get_skeleton(firstGroupID)
         firstSelectedCLID = data.CData.get_id_from_key(self.m_mediator.m_firstSelectedVertexkey)
-        firstSelectedCL = skeleton.get_centerline(firstSelectedCLID)
+        firstSelectedCL = firstSkeleton.get_centerline(firstSelectedCLID)
         firstV = firstSelectedCL.get_vertex(self.m_mediator.m_firstSelectedVertexID)
         firstR = firstSelectedCL.get_radius(self.m_mediator.m_firstSelectedVertexID)
         
+        secondGroupID = data.CData.get_groupID_from_key(selKey)
+        secondSkeleton = dataInst.get_skeleton(secondGroupID)
+        secondSelectedCLID = data.CData.get_id_from_key(selKey)
+        secondSelectedCL = secondSkeleton.get_centerline(secondSelectedCLID)
+        secondV = secondSelectedCL.get_vertex(vid)
+        secondR = secondSelectedCL.get_radius(vid)
         
+        if firstGroupID == secondGroupID and firstSelectedCLID == secondSelectedCLID:
+            self.m_mediator.set_state(0)
+            return 
         
         firstVNeedSplitCenterline = True
         secondVNeedSplitCenterline = True
         '''
         fitstV나 secondV가 branch 혹은 ep 가 아니면 cl를 분리해야 함. 
         '''
-        #if firstSelectedCL.get_conn_inx(firstV) == -1 이 아니면 endpoint임
-        secondSelectedCLID = data.CData.get_id_from_key(selKey)
-        secondSelectedCL = skeleton.get_centerline(secondSelectedCLID)
-        secondV = secondSelectedCL.get_vertex(vid)
-        secondR = secondSelectedCL.get_radius(vid)
-        
         
         if firstSelectedCL.get_conn_inx(firstV) != -1:
             firstVNeedSplitCenterline = False
@@ -238,12 +239,13 @@ class CSelectionVertexStateSelection(CSelectionVertexState) :
         if secondSelectedCL.get_conn_inx(secondV) != -1:
             secondVNeedSplitCenterline = False
         
-        for bi in range(skeleton.get_branch_count()):
-            if algLinearMath.CScoMath.is_equal_vec(skeleton.get_branch(bi).BranchPoint, firstV) == True:
+        for bi in range(firstSkeleton.get_branch_count()):
+            if algLinearMath.CScoMath.is_equal_vec(firstSkeleton.get_branch(bi).BranchPoint, firstV) == True:
                 firstVNeedSplitCenterline = False
-            if algLinearMath.CScoMath.is_equal_vec(skeleton.get_branch(bi).BranchPoint, secondV) == True:
+                
+        for bi in range(secondSkeleton.get_branch_count()):
+            if algLinearMath.CScoMath.is_equal_vec(secondSkeleton.get_branch(bi).BranchPoint, secondV) == True:
                 secondVNeedSplitCenterline = False
-        
         
         refinedVertex = np.concatenate((firstV, secondV), axis=0)
         
@@ -252,119 +254,86 @@ class CSelectionVertexStateSelection(CSelectionVertexState) :
         refinedVertex = commandSkelEdit.CCommandSkelEdit.resample_points(refinedVertex)
         #print(f"resampled refinedVertex shape : {refinedVertex.shape}", file=sys.__stdout__,flush=True)
         
-        bridgeCLID = len(skeleton.m_listCenterline)
+        
+        bridgeCLID = len(firstSkeleton.m_listCenterline) + len(secondSkeleton.m_listCenterline)
         bridgeCenterline = algSkeletonGraph.CSkeletonCenterline(bridgeCLID)
         bridgeCenterline.Name = firstSelectedCL.Name
         bridgeCenterline.Vertex = refinedVertex
         bridgeCenterline.Radius = refinedRadius
-        skeleton.m_listCenterline.append(bridgeCenterline)
-        #skeleton.merge_and_rebuild_centerline(bridgeCenterline)
         
-        print(f"refinedRadius {refinedRadius}", file=sys.__stdout__,flush=True)
-        print(f"firstVNeedSplitCenterline {firstSelectedCL.ID}", file=sys.__stdout__,flush=True)
-        print(f"secondVNeedSplitCenterline {secondSelectedCL.ID}", file=sys.__stdout__,flush=True)
-        print(f"done!!!!selKey!!!!!!!!!!!!!{selKey}", file=sys.__stdout__,flush=True)
+        #skeleton.m_listCenterline.append(bridgeCenterline)
+        #skeleton.merge_and_rebuild_centerline(bridgeCenterline)
         
         '''
         firstVNeedSplitCenterline 와 secondVNeedSplitCenterline 에 따라서 firstCL과 secondCL을 나눠야할 지 말지 정해야 함.
         그리고 나눈 후에 bridge Centerline과 기존의 centerline list 와 합쳐서 skeleton을 다시 build 해야 함
         '''
-        print(f"skeleton.m_listCenterline : {len(skeleton.m_listCenterline)}", file=sys.__stdout__, flush=True)
-        print(self.m_mediator.m_firstSelectedVertexID, file=sys.__stdout__, flush=True)
-        print(vid, file=sys.__stdout__, flush=True)
-        
-        
-        dataInst = self.m_mediator._get_data()
         
         if firstVNeedSplitCenterline:
-            self.split_centerline(skeleton, firstSelectedCL, int(self.m_mediator.m_firstSelectedVertexID))
-            cmdSplitClVertex = commandSkelEdit.CCommandSplitClVertex(self.m_mediator.App)
-            cmdSplitClVertex.InputData = dataInst
-            cmdSplitClVertex.InputSkeleton = skeleton
-            cmdSplitClVertex.InputClID = firstSelectedCL.ID
-            cmdSplitClVertex.process()
-                
+            self.split_centerline(firstSkeleton, firstSelectedCL, int(self.m_mediator.m_firstSelectedVertexID))
             
         if secondVNeedSplitCenterline:
-            self.split_centerline(skeleton, secondSelectedCL, int(vid))
-            cmdSplitClVertex = commandSkelEdit.CCommandSplitClVertex(self.m_mediator.App)
-            cmdSplitClVertex.InputData = dataInst
-            cmdSplitClVertex.InputSkeleton = skeleton
-            cmdSplitClVertex.InputClID = secondSelectedCL.ID
-            cmdSplitClVertex.process()
-            
-        #self.save_vertices_as_spheres_stl(bridgeCenterline.Vertex, f"C:/Users/hutom/Desktop/jh_test/data/test/bridge.stl")            
-        print(f"skeleton.m_listCenterline : {len(skeleton.m_listCenterline)}", file=sys.__stdout__, flush=True)
-        if firstVNeedSplitCenterline or secondVNeedSplitCenterline:
-            self.rebuild_skeleton(skeleton)
-            
-        cmdContainer = commandInterface.CCommandContainer(self.m_mediator.App)
-        cmdContainer.InputData = dataInst
-            
-        cmdAddClVertex = commandSkelEdit.CCommandAddClVertex(self.m_mediator.App)
-        cmdAddClVertex.InputData = dataInst
-        cmdAddClVertex.InputSkeleton = skeleton
-        cmdAddClVertex.InputClID = bridgeCLID
-        cmdContainer.add_cmd(cmdAddClVertex)
-        cmdContainer.process()
+            self.split_centerline(secondSkeleton, secondSelectedCL, int(vid))
         
-        if firstVNeedSplitCenterline or secondVNeedSplitCenterline:
-            pass
+        mergedskeleton = self.merge_centerline(secondSkeleton, firstSkeleton, bridgeCenterline)
         
-
+        ################### 임시로 첫번째 group ID로 덮어씌워서테스트 ########################
+        dataInst.m_listSkelInfo[firstGroupID].Skeleton = mergedskeleton
+        self.m_mediator.m_mediator.m_mediator.add_skeleton_obj(firstGroupID)
+        
         # #dataInst = self.m_mediator.get_data()
-        # #self.m_mediator.App.unref_key_type(data.CData.s_skelTypeCenterline)
-            
-        # self.m_mediator.App.unref_key_type(data.CData.s_skelTypeVertex)
-        # for clinfoInx in clinfoInxs:
-        #     self.m_mediator.App.ref_key_type_groupID(data.CData.s_skelTypeCenterline, clinfoInx)
-        #self.m_mediator.App.update_viewer()
-        clinfoInxs = self.m_mediator.get_clinfo_indices()
-        self.m_mediator.set_state(0)
-        for clinfoInx in clinfoInxs:
-            self.m_mediator.App.ref_key_type_groupID(data.CData.s_skelTypeVertex, clinfoInx)
+        self.m_mediator.App.unref_key_type(data.CData.s_skelTypeCenterline)
+        self.m_mediator.App.unref_key_type(data.CData.s_skelTypeVertex)
+        self.m_mediator.App.ref_key_type_groupID(data.CData.s_skelTypeVertex, firstGroupID)
+        
         self.m_mediator.App.update_viewer()
-        # for clinfoInx in clinfoInxs:
-        #     #self.App.ref_key_type_groupID(data.CData.s_skelTypeVertex, clinfoInx)
-
-        #     for clID in range(len(skeleton.m_listCenterline)):
-                    
-        #         key = data.CData.make_key(data.CData.s_skelTypeCenterline, clinfoInx, clID)
-        #         obj = dataInst.find_obj_by_key(key)
-                    
-        #         if obj is None :
-        #             return
-        #         self.m_mediator.unref_key(key)
-
-
-
-
-
-                # clID = data.CData.get_id_from_key(key)
-                # cl = skeleton.get_centerline(clID)
-                # clPtCnt = cl.get_vertex_count()
-                # if clPtCnt <= 0 :
-                #     return
-                
-                # appendFilter = vtk.vtkAppendPolyData()
-                # for clPtInx in range(0, clPtCnt) :
-                #     pos = cl.get_vertex(clPtInx)
-                #     polyData = algVTK.CVTK.create_poly_data_sphere(pos, dataInst.CLSize)
-                #     appendFilter.AddInputData(polyData)
-                # appendFilter.Update()
-                # mergedPolyData = appendFilter.GetOutput()
-                # obj.PolyData = mergedPolyData
-                # self.m_mediator.ref_key(key)
-
-                # if cl.is_leaf() == False :
-                #     return  
-
-            
-            
-        print("!!!!!!!!!!!!!!!!!!!!!!!!!done", file=sys.__stdout__, flush=True)
+        self.m_mediator.set_state(0)
 
         return
     
+    def merge_centerline(self, srcSkeleton, tgtSkeleton, bridgeCenterline):
+        mergedskeleton = algSkeletonGraph.CSkeleton()
+        
+        rootcenterlineID = 0
+        for centerline in tgtSkeleton.m_listCenterline:
+            _centerline = algSkeletonGraph.CSkeletonCenterline(len(mergedskeleton.m_listCenterline))
+            _centerline.Name = centerline.Name
+            _centerline.Vertex = centerline.Vertex.copy()
+            _centerline.Radius = centerline.Radius.copy()
+            mergedskeleton.m_listCenterline.append(_centerline)
+            if tgtSkeleton.m_rootCenterline.ID == centerline.ID:
+                rootcenterlineID = _centerline.ID
+            
+        _centerline = algSkeletonGraph.CSkeletonCenterline(len(mergedskeleton.m_listCenterline))
+        _centerline.Name = bridgeCenterline.Name
+        _centerline.Vertex = bridgeCenterline.Vertex.copy()
+        _centerline.Radius = bridgeCenterline.Radius.copy()
+        mergedskeleton.m_listCenterline.append(_centerline)
+
+        if len(srcSkeleton.m_listBranch) == len(tgtSkeleton.m_listBranch) and len(srcSkeleton.m_listCenterline) == len(tgtSkeleton.m_listCenterline):
+            pass
+        else:
+            for centerline in srcSkeleton.m_listCenterline:
+                _centerline = algSkeletonGraph.CSkeletonCenterline(len(mergedskeleton.m_listCenterline))
+                _centerline.Name = centerline.Name
+                _centerline.Vertex = centerline.Vertex.copy()
+                _centerline.Radius = centerline.Radius.copy()
+                mergedskeleton.m_listCenterline.append(_centerline)
+            
+        # conn branch and centerline
+        for centerline in mergedskeleton.ListCenterline :
+            mergedskeleton.init_conn_centerline(centerline)
+        # leaf centerline
+        mergedskeleton.extract_leaf_centerline()
+        print("passed extracting centerline & branch")
+
+        mergedskeleton.build_graph()
+        mergedskeleton.build_kd_tree()
+        mergedskeleton.build_tree(rootcenterlineID)
+        
+        return mergedskeleton
+
+
 
     def save_vertices_as_spheres_stl(self, vertices: np.ndarray,
                                     out_path: str) -> None:
@@ -489,9 +458,9 @@ class CSubStateSkelEditSelectionVertex(subStateSkelEdit.CSubStateSkelEdit) :
         
         self.m_secondSelectedVertexkey = ""
         self.m_secondSelectedVertexID = ""
-        
 
         self.m_selVertexKey = ""
+        self.m_guideVertexKey = ""
         self.m_guideRangeKey = ""
         self.m_range = 1
     def clear(self) :
@@ -519,10 +488,10 @@ class CSubStateSkelEditSelectionVertex(subStateSkelEdit.CSubStateSkelEdit) :
         clinfoInxs = self.get_clinfo_indices()
         
         self.App.unref_key_type(data.CData.s_skelTypeCenterline)
+        self.App.unref_key_type(self.m_mediator.s_rootPointType)
         for clinfoInx in clinfoInxs:
             self.App.ref_key_type_groupID(data.CData.s_skelTypeVertex, clinfoInx)
         
-        self.setui_range(self.m_range)
         self.get_state().init()
         #
         #self.App.update_viewer()
@@ -534,9 +503,7 @@ class CSubStateSkelEditSelectionVertex(subStateSkelEdit.CSubStateSkelEdit) :
         self.App.unref_key_type(data.CData.s_skelTypeVertex)
         for clinfoInx in clinfoInxs:
             self.App.ref_key_type_groupID(data.CData.s_skelTypeCenterline, clinfoInx)
-        
-    def setui_range(self, range : int) :
-        self._setui_range(range)
+            self.App.ref_key_type_groupID(self.m_mediator.s_rootPointType, clinfoInx)
 
     def clicked_mouse_rb(self, clickX, clickY) :
         self.get_state().clicked_mouse_rb(clickX, clickY)
@@ -620,7 +587,7 @@ class CSubStateSkelEditSelectionVertex(subStateSkelEdit.CSubStateSkelEdit) :
             self.m_guideRangeKey = ""
     def create_guide_key(self, guideColor : np.ndarray) :
         dataInst = self._get_data()
-        skeleton = self._get_skeleton()
+
         if self.m_firstSelectedVertexkey == "" :
             return
         if self.m_firstSelectedVertexID == "" :
@@ -630,6 +597,9 @@ class CSubStateSkelEditSelectionVertex(subStateSkelEdit.CSubStateSkelEdit) :
         
         # branch guide create
         selectedCLID = data.CData.get_id_from_key(self.m_selVertexKey)
+        selectedGroupID = data.CData.get_groupID_from_key(self.m_selVertexKey)
+        
+        skeleton = dataInst.get_skeleton(selectedGroupID)
         selectedCL = skeleton.get_centerline(selectedCLID)
         
         guideVertexKey = data.CData.make_key(CSubStateSkelEditSelectionVertex.s_guideVertexType, 0, 0)

@@ -126,7 +126,8 @@ class CSelectionEPStateSelection(CSelectionEPState) :
         # cl update 
         if selKey == "" :
             dataInst = self.m_mediator.get_data()
-            skeleton = self.m_mediator.get_skeleton()
+            clinfoInx = data.CData.get_groupID_from_key(self.m_mediator.m_selEPKey)
+            skeleton = dataInst.get_skeleton(clinfoInx)
 
             selectedEPID = data.CData.get_id_from_key(self.m_mediator.m_selEPKey)
             leafCL = skeleton.get_centerline(selectedEPID) 
@@ -143,6 +144,7 @@ class CSelectionEPStateSelection(CSelectionEPState) :
                 cmd.InputVertex = guideCL.ModifiedVertex
                 cmd.InputMinInx = guideCL.MinInx
                 cmd.InputReverse = guideCL.Reverse
+                cmd.SelectedGroupID = clinfoInx
                 cmd.process()
                 self.m_mediator.App.add_cmd(cmd)
 
@@ -174,7 +176,7 @@ class CSelectionEPStateSelection(CSelectionEPState) :
             guideCellObj.set_cellid(None, -1)
             return
         
-        clinfoInx = self.m_mediator.get_clinfo_index()
+        clinfoInx = data.CData.get_groupID_from_key(self.m_mediator.m_selEPKey)
         vesselKey = data.CData.make_key(data.CData.s_vesselType, clinfoInx, 0)
         vesselObj = dataInst.find_obj_by_key(vesselKey) 
         if vesselObj is None :
@@ -186,26 +188,31 @@ class CSelectionEPStateSelection(CSelectionEPState) :
 
         cellCenter = [0.0, 0.0, 0.0]
         num_points = points.GetNumberOfPoints()
-        for i in range(num_points):
-            p = points.GetPoint(i)
-            cellCenter[0] += p[0]
-            cellCenter[1] += p[1]
-            cellCenter[2] += p[2]
         
-        cellCenter = [c / num_points for c in cellCenter]
-        cellCenter = algLinearMath.CScoMath.to_vec3(cellCenter)
+        if num_points != 0:
+            for i in range(num_points):
+                p = points.GetPoint(i)
+                cellCenter[0] += p[0]
+                cellCenter[1] += p[1]
+                cellCenter[2] += p[2]
+            
+            cellCenter = [c / num_points for c in cellCenter]
+            cellCenter = algLinearMath.CScoMath.to_vec3(cellCenter)
 
-        # update
-        obj = dataInst.find_obj_by_key(self.m_mediator.m_guideEPKey)
-        obj.Pos = cellCenter
+            # update
+            obj = dataInst.find_obj_by_key(self.m_mediator.m_guideEPKey)
+            obj.Pos = cellCenter
 
-        weight = 0.9
-        obj = dataInst.find_obj_by_key(self.m_mediator.m_guideCLKey)
-        obj.process(cellCenter, weight)
+            weight = 0.9
+            obj = dataInst.find_obj_by_key(self.m_mediator.m_guideCLKey)
+            obj.process(cellCenter, weight)
 
-        obj = dataInst.find_obj_by_key(self.m_mediator.m_guideCellKey)
-        obj.set_cellid(vesselPolyData, selCellID)
-        self.m_mediator.App.ref_key(self.m_mediator.m_guideCellKey)
+            obj = dataInst.find_obj_by_key(self.m_mediator.m_guideCellKey)
+            obj.set_cellid(vesselPolyData, selCellID)
+            self.m_mediator.App.ref_key(self.m_mediator.m_guideCellKey)
+            
+        else:
+            pass
 
         self.m_mediator.App.update_viewer()
 
@@ -254,9 +261,11 @@ class CSubStateSkelEditSelectionEP(subStateSkelEdit.CSubStateSkelEdit) :
         opSelectionCL.ChildSelectionMode = False
         opSelectionCL.ParentSelectionMode = False
 
-        clinfoInx = self.get_clinfo_index()
-        self._setui_ep_range(self.m_range)
-        self.App.ref_key_type_groupID(data.CData.s_skelTypeEndPoint, clinfoInx)
+        clinfoInxs = self.get_clinfo_indices()
+
+        for clinfoInx in clinfoInxs:
+            self.App.ref_key_type_groupID(data.CData.s_skelTypeEndPoint, clinfoInx)
+        self.setui_range(self.m_range)
         self.get_state().init()
     def process(self) :
         pass
@@ -305,12 +314,16 @@ class CSubStateSkelEditSelectionEP(subStateSkelEdit.CSubStateSkelEdit) :
         return self._get_data()
     def get_skeleton(self)  -> algSkeletonGraph.CSkeleton :
         return self._get_skeleton()
+    def setui_range(self, range : int) :
+        self._setui_ep_range(range)
     def get_operator_selection_cl(self) -> operation.COperationSelectionCL :
         return self._get_operator_selection_cl()
     def get_operator_selection_ep(self) -> operation.COperationSelectionEP:
         return self._get_operator_selection_ep()
     def get_clinfo_index(self) -> int :
         return self._get_clinfo_index()
+    def get_clinfo_indices(self) -> int :
+        return self._get_clinfo_indices()
     def remove_guide_key(self) :
         if self.m_guideEPKey != "" :
             self.App.remove_key(self.m_guideEPKey)
@@ -333,7 +346,8 @@ class CSubStateSkelEditSelectionEP(subStateSkelEdit.CSubStateSkelEdit) :
             self.App.ref_key(self.m_guideCellKey)
     def create_guide_key(self, guideColor : np.ndarray, guideCellColor : np.ndarray) :
         dataInst = self._get_data()
-        skeleton = self._get_skeleton()
+        clinfoInx = data.CData.get_groupID_from_key(self.m_selEPKey)
+        skeleton = dataInst.get_skeleton(clinfoInx)
         if self.m_selEPKey == "" :
             return
         
@@ -341,7 +355,7 @@ class CSubStateSkelEditSelectionEP(subStateSkelEdit.CSubStateSkelEdit) :
         selectedEPID = data.CData.get_id_from_key(self.m_selEPKey)
         leafCL = skeleton.get_centerline(selectedEPID)
 
-        guideEPKey = data.CData.make_key(CSubStateSkelEditSelectionEP.s_guideEPType, 0, 0)
+        guideEPKey = data.CData.make_key(CSubStateSkelEditSelectionEP.s_guideEPType, clinfoInx, 0)
         guideEPObj = vtkObjGuideEP.CVTKObjGuideEP(leafCL, 0.1)
         guideEPObj.KeyType = CSubStateSkelEditSelectionEP.s_guideEPType
         guideEPObj.Key = guideEPKey
@@ -350,7 +364,7 @@ class CSubStateSkelEditSelectionEP(subStateSkelEdit.CSubStateSkelEdit) :
         dataInst.add_vtk_obj(guideEPObj)
         self.m_guideEPKey = guideEPKey
 
-        guideCLKey = data.CData.make_key(CSubStateSkelEditSelectionEP.s_guideClType, 0, 0)
+        guideCLKey = data.CData.make_key(CSubStateSkelEditSelectionEP.s_guideClType, clinfoInx, 0)
         guideCLObj = vtkObjGuideCL.CVTKObjGuideCL(leafCL, leafCL.get_end_point(), self.m_range)
         guideCLObj.KeyType = CSubStateSkelEditSelectionEP.s_guideClType
         guideCLObj.Key = guideCLKey
@@ -360,7 +374,7 @@ class CSubStateSkelEditSelectionEP(subStateSkelEdit.CSubStateSkelEdit) :
         self.m_guideCLKey = guideCLKey
         dataInst.add_vtk_obj(guideCLObj)
         
-        guideRangeKey = data.CData.make_key(CSubStateSkelEditSelectionEP.s_guideRangeType, 0, 0)
+        guideRangeKey = data.CData.make_key(CSubStateSkelEditSelectionEP.s_guideRangeType, clinfoInx, 0)
         guideRangeObj = vtkObjGuideRange.CVTKObjGuideRange(leafCL.get_end_point(), self.m_range)
         guideRangeObj.KeyType = CSubStateSkelEditSelectionEP.s_guideRangeType
         guideRangeObj.Key = guideRangeKey
@@ -369,7 +383,7 @@ class CSubStateSkelEditSelectionEP(subStateSkelEdit.CSubStateSkelEdit) :
         self.m_guideRangeKey = guideRangeKey
         dataInst.add_vtk_obj(guideRangeObj)
 
-        guideCellKey = data.CData.make_key(CSubStateSkelEditSelectionEP.s_guideCellType, 0, 0)
+        guideCellKey = data.CData.make_key(CSubStateSkelEditSelectionEP.s_guideCellType, clinfoInx, 0)
         guideCellObj = vtkObjGuideCell.CVTKObjGuideCell()
         guideCellObj.KeyType = CSubStateSkelEditSelectionEP.s_guideCellType
         guideCellObj.Key = guideCellKey

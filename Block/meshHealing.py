@@ -57,14 +57,14 @@ class CMeshHealing() :
             stlFullPath = os.path.join(self.InputPath, f"{stlName}.stl")
 
             if os.path.exists(stlFullPath) == False :
-                print(f"not found stl file : {stlName}")
+                #print(f"not found stl file : {stlName}")
                 continue
 
             mesh = algMeshLib.CMeshLib.meshlib_load_stl(stlFullPath)
             mesh = algMeshLib.CMeshLib.meshlib_healing(mesh)
             algMeshLib.CMeshLib.meshlib_save_stl(stlFullPath, mesh)
 
-            print(f"completed healing : {stlName}")
+            #print(f"completed healing : {stlName}")
 
 
     @property

@@ -61,10 +61,10 @@ class CMeshBoolean() :
             outStlFullPath = os.path.join(self.InputPath, f"{outBlenderName}.stl")
 
             if os.path.exists(stlFullPath0) == False :
-                print(f"not found stl file 0  : {blenderName0}")
+                #print(f"not found stl file 0  : {blenderName0}")
                 continue
             if os.path.exists(stlFullPath1) == False :
-                print(f"not found stl file 1  : {blenderName0}")
+                #print(f"not found stl file 1  : {blenderName0}")
                 continue
 
             mesh0 = algMeshLib.CMeshLib.meshlib_load_stl(stlFullPath0)

@@ -148,6 +148,7 @@ class CData :
     s_skelTypeCenterline = "centerline"
     s_skelTypeBranch = "branch"
     s_skelTypeEndPoint = "endPoint"
+    s_skelTypeVertex = "vertex"
     s_outsideKeyType = "outsideCLType"
     s_textType = "text"
 
@@ -163,6 +164,10 @@ class CData :
     s_epSize = 0.5
     s_epColor = algLinearMath.CScoMath.to_vec3([0.0, 1.0, 0.0])
     s_selectionEPColor = algLinearMath.CScoMath.to_vec3([1.0, 0.0, 0.0])
+    
+    s_vertexSize = 0.4
+    s_vertexColor = algLinearMath.CScoMath.to_vec3([0.0, 0.3, 0.3])
+    s_selectionVertexColor = algLinearMath.CScoMath.to_vec3([0.0, 1.0, 0.0])
 
     @staticmethod
     def make_key(type : str, groupID : int, id : int) -> str :
@@ -211,6 +216,7 @@ class CData :
         self.m_dicObj = {}
         self.m_listSkelInfo = []
         self.m_listTerriInfo = []
+        self.m_clinfoIndexList = []
     def clear(self) : 
         self.clear_patient()
 
@@ -233,6 +239,10 @@ class CData :
         for terriInfo in self.m_listTerriInfo :
             terriInfo.clear()
         self.m_listTerriInfo.clear()
+        
+        # for clIndexInfo in self.m_clinfoIndexList :
+        #     clIndexInfo.clear()
+        self.m_clinfoIndexList.clear()
 
         if self.Phase is not None :
             self.Phase.clear()
@@ -334,11 +344,14 @@ class CData :
     def get_terri_out_path(self) -> str :
         terriOutPath = os.path.join(self.get_terri_path(), "out")
         return terriOutPath
-
+    def add_clinfoIndex(self, inx : int):
+        self.m_clinfoIndexList.append(inx)
     def add_userdata(self, key : str, userData) :
         self.m_dicUserData[key] = userData
     def get_userdata_count(self) -> int :
         return len(self.m_dicUserData)
+    def get_clinfoIndex_count(self) -> int :
+        return len(self.m_clinfoIndexList)
     def find_userdata(self, key : str) :
         if key in self.m_dicUserData : 
             return self.m_dicUserData[key]
@@ -424,7 +437,11 @@ class CData :
         for key, obj in self.m_dicObj.items() :
             obj.clear()
         self.m_dicObj.clear()
-
+        
+    def get_clinfoIndex(self, inx : int) -> CTerritoryInfo :
+        return self.m_clinfoIndexList[inx]
+    def clear_clinfoIndex(self) :
+        self.m_clinfoIndexList = []
         
     def add_skelinfo(self, skelinfo : CSkelInfo) :
         self.m_listSkelInfo.append(skelinfo)
@@ -432,6 +449,8 @@ class CData :
         return len(self.m_listSkelInfo)
     def get_skelinfo(self, inx : int) -> CSkelInfo :
         return self.m_listSkelInfo[inx]
+    def remove_skelinfo(self, inx : int):
+        self.m_listSkelInfo.pop(inx)
     def get_skeleton(self, inx : int) -> algSkeletonGraph.CSkeleton :
         skelinfo = self.get_skelinfo(inx)
         if skelinfo is None :

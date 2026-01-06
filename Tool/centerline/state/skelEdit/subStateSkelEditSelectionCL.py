@@ -30,6 +30,7 @@ import VtkObj.vtkObjLine as vtkObjLine
 import VtkObj.vtkObjSphere as vtkObjSphere
 import vtkObjGuideCL as vtkObjGuideCL
 import vtkObjRadius as vtkObjRadius
+import vtkObjVertex as vtkObjVertex
 
 import data as data
 
@@ -80,7 +81,22 @@ class CSubStateSkelEditSelectionCL(subStateSkelEdit.CSubStateSkelEdit) :
         if self.m_comDragSelCL is None :
             return
         self.m_comDragSelCL.click(clickX, clickY, listExceptKeyType)
+        
+        key = self.App.picking(clickX, clickY, listExceptKeyType)
+        if key == "" or data.CData.get_type_from_key(key) != data.CData.s_skelTypeCenterline :
+            key = ""
+        operation.COperationSelectionCL.clicked(self.m_opSelectionCL, key)
+        
         self.App.update_viewer()
+        
+        dataInst = self._get_data()
+        if dataInst.Ready == False :
+            return
+        
+        clinfoInx = self.m_opSelectionCL.get_selection_groupID()
+        if clinfoInx is None :
+            return
+        dataInst.CLInfoIndex = clinfoInx
     def clicked_mouse_rb_shift(self, clickX, clickY) :
         listExceptKeyType = [
             data.CData.s_vesselType,
@@ -117,8 +133,10 @@ class CSubStateSkelEditSelectionCL(subStateSkelEdit.CSubStateSkelEdit) :
         if dataInst.Ready == False :
             return
         
-        clinfoInx = self._get_clinfo_index()
-        skeleton = self._get_skeleton()
+        #clinfoInx = self._get_clinfo_index()
+        clinfoInx = self.m_opSelectionCL.get_selection_groupID()
+        #skeleton = self._get_skeleton()
+        skeleton = dataInst.get_skeleton(clinfoInx)
         if skeleton is None :
             return
         
@@ -126,6 +144,7 @@ class CSubStateSkelEditSelectionCL(subStateSkelEdit.CSubStateSkelEdit) :
         if retList is None :
             print("not selecting centerline")
             return
+        
         
         clID = retList[0]
         skeleton.build_tree(clID)
@@ -150,18 +169,20 @@ class CSubStateSkelEditSelectionCL(subStateSkelEdit.CSubStateSkelEdit) :
             return
         
         retList = self.m_opSelectionCL.get_all_selection_cl()
-        self.m_opSelectionCL.process_reset()
+        clinfoInx = self.m_opSelectionCL.get_selection_groupID()
         if retList is None :
             return
-
+        
         cmd = commandSkelEdit.CCommandAutoRemoveCL(self.App)
         cmd.InputData = dataInst
-        cmd.InputSkeleton = self._get_skeleton()
+        #cmd.InputSkeleton = self._get_skeleton()
+        cmd.InputSkeleton = dataInst.get_skeleton(clinfoInx)
         for clID in retList :
             cmd.add_clID(clID)
         cmd.process()
 
-        skeleton = self._get_skeleton()
+        #skeleton = self._get_skeleton()
+        skeleton = dataInst.get_skeleton(clinfoInx)
         skeleton.extract_leaf_centerline()
         skeleton.build_graph()
         skeleton.init_kd_anchor()
@@ -172,7 +193,24 @@ class CSubStateSkelEditSelectionCL(subStateSkelEdit.CSubStateSkelEdit) :
         self._setui_rootid(rootID)
         self._setui_cl_count(clCount)
         self._setui_br_count(brCount)
-
+        
+        self.App.remove_key_type_groupID(data.CData.s_skelTypeVertex, clinfoInx)
+        clcnt = skeleton.get_centerline_count()
+        for clInx in range(0, clcnt):
+            skeletonCL = skeleton.get_centerline(clInx)
+            
+            vertexObj = vtkObjVertex.CVTKObjVertex(skeletonCL, dataInst.s_vertexSize, dataInst.s_vertexColor.flatten())
+            if vertexObj.Ready == False :
+                continue
+            
+            vertexObj.KeyType = data.CData.s_skelTypeVertex
+            vertexObj.Key = data.CData.make_key(vertexObj.KeyType, clinfoInx, skeletonCL.ID)
+            #vertexObj.Color = dataInst.VertexColor
+            vertexObj.Opacity = 1.0
+            vertexObj.Visibility = True
+            dataInst.add_vtk_obj(vertexObj)
+        
+        self.m_opSelectionCL.process_reset()
         self.App.update_viewer()
 
     

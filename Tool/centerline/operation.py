@@ -60,10 +60,10 @@ class COperationSelectionBr(COperationSelection) :
         super().clear()
     def process(self) :
         dataInst = self.Data
-        self._color_setting(self.m_listSelectionKey, dataInst.SelectionBrColor)
+        self._color_setting(self.m_listSelectionKey, dataInst.s_selectionBrColor)
     def process_reset(self) :
         dataInst = self.Data
-        self._color_setting(self.m_listSelectionKey, dataInst.BrColor)
+        self._color_setting(self.m_listSelectionKey, dataInst.s_brColor)
         self.m_listSelectionKey.clear()
 
     def _color_setting(self, listSelectionKey : list, color : np.ndarray) :
@@ -79,10 +79,10 @@ class COperationSelectionEP(COperationSelection) :
         super().clear()
     def process(self) :
         dataInst = self.Data
-        self._color_setting(self.m_listSelectionKey, dataInst.SelectionCLColor)
+        self._color_setting(self.m_listSelectionKey, dataInst.s_selectionCLColor)
     def process_reset(self) :
         dataInst = self.Data
-        self._color_setting(self.m_listSelectionKey, dataInst.CLColor)
+        self._color_setting(self.m_listSelectionKey, dataInst.s_clColor)
         self.m_listSelectionKey.clear()
 
     def _color_setting(self, listSelectionKey : list, color : np.ndarray) :
@@ -98,10 +98,10 @@ class COperationSelectionVertex(COperationSelection) :
         super().clear()
     def process(self) :
         dataInst = self.Data
-        self._color_setting(self.m_listSelectionKey, dataInst.SelectionCLColor)
+        self._color_setting(self.m_listSelectionKey, dataInst.s_selectionCLColor)
     def process_reset(self) :
         dataInst = self.Data
-        self._color_setting(self.m_listSelectionKey, dataInst.CLColor)
+        self._color_setting(self.m_listSelectionKey, dataInst.s_clColor)
         self.m_listSelectionKey.clear()
 
     def _color_setting(self, listSelectionKey : list, color : np.ndarray) :
@@ -157,29 +157,29 @@ class COperationSelectionCL(COperationSelection) :
     def process(self) :
         dataInst = self.Data
 
-        self._color_setting(self.m_listSelectionKey, dataInst.SelectionCLColor, dataInst.SelectionCLColor)
+        self._color_setting(self.m_listSelectionKey, dataInst.s_selectionCLColor, dataInst.s_selectionCLColor)
 
         if self.m_bChildSelectionMode == True :
             self._update_child_selection_key()
-            self._color_setting(self.m_listChildSelectionKey, dataInst.SelectionCLColor, dataInst.SelectionCLColor)
+            self._color_setting(self.m_listChildSelectionKey, dataInst.s_selectionCLColor, dataInst.s_selectionCLColor)
         else :
-            self._color_setting(self.m_listChildSelectionKey, dataInst.RootCLColor, dataInst.CLColor)
+            self._color_setting(self.m_listChildSelectionKey, dataInst.s_rootCLColor, dataInst.s_clColor)
             self.m_listChildSelectionKey.clear()
 
         if self.m_bParentSelectionMode == True :
             self._update_parent_selection_key()
-            self._color_setting(self.m_listParentSelectionKey, dataInst.SelectionCLColor, dataInst.SelectionCLColor)
+            self._color_setting(self.m_listParentSelectionKey, dataInst.s_selectionCLColor, dataInst.s_selectionCLColor)
         else :
-            self._color_setting(self.m_listParentSelectionKey, dataInst.RootCLColor, dataInst.CLColor)
+            self._color_setting(self.m_listParentSelectionKey, dataInst.s_rootCLColor, dataInst.s_clColor)
             self.m_listParentSelectionKey.clear()
     def process_reset(self) :
         dataInst = self.Data
 
-        self._color_setting(self.m_listSelectionKey, dataInst.RootCLColor, dataInst.CLColor)
+        self._color_setting(self.m_listSelectionKey, dataInst.s_rootCLColor, dataInst.s_clColor)
         if self.m_bChildSelectionMode == True :
-            self._color_setting(self.m_listChildSelectionKey, dataInst.RootCLColor, dataInst.CLColor)
+            self._color_setting(self.m_listChildSelectionKey, dataInst.s_rootCLColor, dataInst.s_clColor)
         if self.m_bParentSelectionMode == True :
-            self._color_setting(self.m_listParentSelectionKey, dataInst.RootCLColor, dataInst.CLColor)
+            self._color_setting(self.m_listParentSelectionKey, dataInst.s_rootCLColor, dataInst.s_clColor)
         self.m_listSelectionKey.clear()
         self.m_listChildSelectionKey.clear()
         self.m_listParentSelectionKey.clear()
@@ -320,10 +320,10 @@ class COperationDragSelectionCL(COperationSelection) :
 
     def process(self) :
         dataInst = self.Data
-        self._color_setting(self.m_listSelectionKey, dataInst.SelectionCLColor, dataInst.SelectionCLColor)
+        self._color_setting(self.m_listSelectionKey, dataInst.s_selectionCLColor, dataInst.s_selectionCLColor)
     def process_reset(self) :
         dataInst = self.Data
-        self._color_setting(self.m_listSelectionKey, dataInst.RootCLColor, dataInst.CLColor)
+        self._color_setting(self.m_listSelectionKey, dataInst.s_rootCLColor, dataInst.s_clColor)
         self.m_listSelectionKey.clear()
 
 
@@ -360,6 +360,18 @@ class COperationDragSelectionCL(COperationSelection) :
             return None
         return retList
     
+    def get_selection_groupID(self):
+        groupIDSet = set()
+        iCnt = self.get_selection_key_count()
+        for inx in range(0, iCnt) :
+            key = self.get_selection_key(inx)
+            groupID = data.CData.get_groupID_from_key(key)
+            groupIDSet.add(groupID)
+            
+        if len(groupIDSet) > 1:
+            print("selectied multy group")
+            return list(groupIDSet)[0]
+        return list(groupIDSet)[0]
 
     # protected
     def _get_child_key(self, key : str) -> list :

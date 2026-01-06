@@ -105,7 +105,9 @@ class CTabState :
     def process_end(self) :
         pass
 
-
+    def get_clinfo_indices(self) -> int :
+        dataInst = self.get_data()
+        return dataInst.m_clinfoIndexList
     def get_btn_stylesheet(self) -> str :
         return self.m_mediator.m_styleSheetBtn
     def get_main_widget(self) -> QWidget :
@@ -152,6 +154,7 @@ class CTabState :
         return len(self.m_listRenderEntity)
     def get_render_entity(self, inx : int) -> CRenderEntity :
         return self.m_listRenderEntity[inx]
+
 
 
     # mediator message

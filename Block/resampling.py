@@ -15,8 +15,36 @@ import multiProcessTask as multiProcessTask
 import niftiContainer as niftiContainer
 import optionInfo as optionInfo
 
+def _resampling_task_worker(param: tuple):
+    inMaskFullPath = param[0]
+    outMaskFullPath = param[1]
+    srcPhaseInfo = param[2]
+    targetPhaseInfo = param[3]
+
+    targetOffset = targetPhaseInfo.Offset
+    srcOffset = srcPhaseInfo.Offset
+    targetTrans = algLinearMath.CScoMath.translation_mat4(targetOffset)
+    srcTrans = algLinearMath.CScoMath.translation_mat4(srcOffset)
+    srcTrans = algLinearMath.CScoMath.inv_mat4(srcTrans)
+    resamplingTrans = algLinearMath.CScoMath.mul_mat4_mat4(srcTrans, targetTrans)
+
+    npImgSrc, originSrc, scalingSrc, directionSrc, sizeSrc = algImage.CAlgImage.get_np_from_nifti(inMaskFullPath)
+    sitkSrc = algImage.CAlgImage.get_sitk_from_np(npImgSrc, originSrc, scalingSrc, directionSrc)
+    sitkSrcResampled = algImage.CAlgImage.resampling_sitkimg_with_mat(
+        sitkSrc, 
+        targetPhaseInfo.Origin, targetPhaseInfo.Spacing, targetPhaseInfo.Direction, targetPhaseInfo.Size, 
+        sitkSrc.GetPixelID(), sitk.sitkNearestNeighbor, 
+        resamplingTrans
+        )
+    
+    npImgRet, originRet, scalingRet, directionRet, sizeRet = algImage.CAlgImage.get_np_from_sitk(sitkSrcResampled, np.uint8)
+    algImage.CAlgImage.save_nifti_from_np(outMaskFullPath, npImgRet, originRet, scalingRet, directionRet, (2, 1, 0))
+    print(f"completed resampling to phase {os.path.basename(outMaskFullPath)}", file=sys.__stdout__, flush=True)
+
+
+
         
-class CResamplingToPhase(multiProcessTask.CMultiProcessTask) :
+class CResamplingToPhase(multiProcessTask.CMultiProcessTaskProgress) :
     def __init__(self) :
         super().__init__()
         self.m_inputOptionInfo = None
@@ -58,22 +86,29 @@ class CResamplingToPhase(multiProcessTask.CMultiProcessTask) :
             outMaskFullPath = os.path.join(self.OutputMaskPath, f"{outMaskName}.nii.gz")
 
             if os.path.exists(inMaskFullPath) == False :
-                print(f"skip resampling : {inMaskName}")
+                #print(f"skip resampling : {inMaskName}")
                 continue
             targetPhaseInfo = self.InputPhase.find_phaseinfo(targetPhase)
             if targetPhaseInfo is None or targetPhaseInfo.is_valid() == False :
-                print(f"skip resampling : {inMaskName}")
+                #print(f"skip resampling : {inMaskName}")
                 continue
             srcPhaseInfo = self.InputPhase.find_phaseinfo(srcPhase)
             if srcPhaseInfo is None or srcPhaseInfo.is_valid() == False :
-                print(f"skip resampling : {inMaskName}")
+                #print(f"skip resampling : {inMaskName}")
                 continue
 
             listParam.append((inMaskFullPath, outMaskFullPath, srcPhaseInfo, targetPhaseInfo))
         
         if len(listParam) > 0 :
-            super().process(self._task, listParam)
-
+            #super().process(self._task, listParam)
+            super().process(
+                _resampling_task_worker,
+                listParam,
+                progress_callback=getattr(self, "progress_callback", None),
+                is_interrupted=getattr(self, "is_interrupted", None),
+                status_prefix="Resampling",
+                chunksize=1
+            )
 
     # param (inMaskFullPath, outMaskFullPath, srcPhaseInfo, targetPhaseInfo)
     def _task(self, param : tuple) :
@@ -132,7 +167,23 @@ class CResamplingToPhase(multiProcessTask.CMultiProcessTask) :
 
 
 
-class CResamplingToMinSpacing(multiProcessTask.CMultiProcessTask) :
+def _resampling_to_min_spacing_task_worker(param: tuple):
+        inMaskFullPath = param[0]
+        outMaskFullPath = param[1]
+
+        npImg, origin, spacing, direction, size = algImage.CAlgImage.get_np_from_nifti(inMaskFullPath)
+        sitkImg = algImage.CAlgImage.get_sitk_from_np(npImg, origin, spacing, direction)
+        minSpacing = min(spacing)
+        newSpacing = [minSpacing, minSpacing, minSpacing]
+        sitkImg = algImage.CAlgImage.resampling_sitkimg(sitkImg, origin, newSpacing, direction)
+        npImg, origin, spacing, direction, size = algImage.CAlgImage.get_np_from_sitk(sitkImg, np.uint8)
+
+        algImage.CAlgImage.save_nifti_from_np(outMaskFullPath, npImg, origin, spacing, direction, (2, 1, 0))
+        print(f"completed resampling to min spacing {os.path.basename(outMaskFullPath)}", file=sys.__stdout__, flush=True)
+
+
+
+class CResamplingToMinSpacing(multiProcessTask.CMultiProcessTaskProgress) :
     def __init__(self) :
         super().__init__()
         self.m_inputOptionInfo = None
@@ -175,8 +226,15 @@ class CResamplingToMinSpacing(multiProcessTask.CMultiProcessTask) :
             listParam.append((inMaskFullPath, outMaskFullPath))
         
         if len(listParam) > 0 :
-            super().process(self._task, listParam)
-
+            #super().process(self._task, listParam)
+            super().process(
+                _resampling_to_min_spacing_task_worker,
+                listParam,
+                progress_callback=getattr(self, "progress_callback", None),
+                is_interrupted=getattr(self, "is_interrupted", None),
+                status_prefix="Resampling",
+                chunksize=1
+            )
 
     # param (inMaskFullPath, outMaskFullPath)
     def _task(self, param : tuple) :

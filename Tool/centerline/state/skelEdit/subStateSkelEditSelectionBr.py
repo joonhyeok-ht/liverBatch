@@ -31,6 +31,7 @@ import VtkObj.vtkObjSphere as vtkObjSphere
 import vtkObjGuideBr as vtkObjGuideBr
 import vtkObjGuideCL as vtkObjGuideCL
 import vtkObjGuideRange as vtkObjGuideRange
+import vtkObjVertex as vtkObjVertex
 
 import data as data
 
@@ -75,9 +76,11 @@ class CSubStateSkelEditSelectionBr(subStateSkelEdit.CSubStateSkelEdit) :
         opSelectionCL.ChildSelectionMode = False
         opSelectionCL.ParentSelectionMode = False
 
-        clinfoInx = self._get_clinfo_index()
+        clinfoInxs = self.get_clinfo_indices()
+
+        for clinfoInx in clinfoInxs:
+            self.App.ref_key_type_groupID(data.CData.s_skelTypeBranch, clinfoInx)
         self._setui_branch_range(self.m_range)
-        self.App.ref_key_type_groupID(data.CData.s_skelTypeBranch, clinfoInx)
         self.App.update_viewer()
     def process(self) :
         pass
@@ -119,11 +122,13 @@ class CSubStateSkelEditSelectionBr(subStateSkelEdit.CSubStateSkelEdit) :
                 self._ref_guide_key()
 
                 dataInst = self._get_data()
+                dataInst.CLInfoIndex = data.CData.get_groupID_from_key(self.m_guideBrKey)
                 obj = dataInst.find_obj_by_key(self.m_guideBrKey)
                 self.m_anchorX = clickX
                 self.m_anchorY = clickY
                 self.m_anchorPos = obj.Pos.copy()
         else :
+            
             listExceptKeyType = [
                 data.CData.s_vesselType,
                 data.CData.s_skelTypeCenterline,
@@ -157,6 +162,7 @@ class CSubStateSkelEditSelectionBr(subStateSkelEdit.CSubStateSkelEdit) :
                 self._ref_guide_key()
             
             dataInst = self._get_data()
+            dataInst.CLInfoIndex = data.CData.get_groupID_from_key(self.m_selBrKey)
             obj = dataInst.find_obj_by_key(self.m_guideBrKey)
             self.m_anchorX = clickX
             self.m_anchorY = clickY
@@ -169,7 +175,8 @@ class CSubStateSkelEditSelectionBr(subStateSkelEdit.CSubStateSkelEdit) :
         if self.m_selBrKey != "" :
             # update가 수행됨
             dataInst = self._get_data()
-            skeleton = self._get_skeleton()
+            clinfoInx = data.CData.get_groupID_from_key(self.m_selBrKey)
+            skeleton = dataInst.get_skeleton(clinfoInx)
 
             selectedBrID = data.CData.get_id_from_key(self.m_selBrKey)
             br = skeleton.get_branch(selectedBrID) 
@@ -180,11 +187,13 @@ class CSubStateSkelEditSelectionBr(subStateSkelEdit.CSubStateSkelEdit) :
                 cmdContainer = commandInterface.CCommandContainer(self.App)
                 cmdContainer.InputData = dataInst
 
+                
                 cmd = commandSkelEdit.CCommandUpdateBr(self.App)
                 cmd.InputData = dataInst
                 cmd.InputSkeleton = skeleton
                 cmd.InputBrID = br.ID
                 cmd.InputPos = guideBr.Pos
+                cmd.SelectedGroupID = clinfoInx
                 cmdContainer.add_cmd(cmd)
 
                 iCnt = br.get_conn_count()
@@ -199,6 +208,7 @@ class CSubStateSkelEditSelectionBr(subStateSkelEdit.CSubStateSkelEdit) :
                     cmd.InputVertex = guideCL.ModifiedVertex
                     cmd.InputMinInx = guideCL.MinInx
                     cmd.InputReverse = guideCL.Reverse
+                    cmd.SelectedGroupID = clinfoInx
                     cmdContainer.add_cmd(cmd)
             
                 cmdContainer.process()
@@ -210,7 +220,25 @@ class CSubStateSkelEditSelectionBr(subStateSkelEdit.CSubStateSkelEdit) :
                 opSelectionCL.process_reset()
                 self._remove_guide_key()
                 self.m_selBrKey = ""
+                
+                self.App.remove_key_type_groupID(data.CData.s_skelTypeVertex, clinfoInx)
+                clcnt = skeleton.get_centerline_count()
+                for clInx in range(0, clcnt):
+                    skeletonCL = skeleton.get_centerline(clInx)
+                    
+                    vertexObj = vtkObjVertex.CVTKObjVertex(skeletonCL, dataInst.s_vertexSize, dataInst.s_vertexColor.flatten())
+                    if vertexObj.Ready == False :
+                        continue
+                    
+                    vertexObj.KeyType = data.CData.s_skelTypeVertex
+                    vertexObj.Key = data.CData.make_key(vertexObj.KeyType, clinfoInx, skeletonCL.ID)
+                    #vertexObj.Color = dataInst.VertexColor
+                    vertexObj.Opacity = 1.0
+                    vertexObj.Visibility = True
+                    dataInst.add_vtk_obj(vertexObj)
+                
                 self.App.update_viewer()
+                
     def mouse_move_rb(self, clickX, clickY) :
         if self.m_selBrKey == "" :
             return
@@ -258,7 +286,8 @@ class CSubStateSkelEditSelectionBr(subStateSkelEdit.CSubStateSkelEdit) :
         
         self.App.update_viewer()
 
-
+    def get_clinfo_indices(self) -> int :
+        return self._get_clinfo_indices()
     # protected
     def _remove_guide_key(self) :
         if self.m_guideBrKey != "" :
@@ -277,7 +306,8 @@ class CSubStateSkelEditSelectionBr(subStateSkelEdit.CSubStateSkelEdit) :
         self.App.ref_key(self.m_guideRangeKey)
     def _create_guide_key(self, guideColor : np.ndarray) :
         dataInst = self._get_data()
-        skeleton = self._get_skeleton()
+        clinfoInx = data.CData.get_groupID_from_key(self.m_selBrKey)
+        skeleton = dataInst.get_skeleton(clinfoInx)
         if self.m_selBrKey == "" :
             return
         
@@ -285,8 +315,8 @@ class CSubStateSkelEditSelectionBr(subStateSkelEdit.CSubStateSkelEdit) :
         selectedBrID = data.CData.get_id_from_key(self.m_selBrKey)
         br = skeleton.get_branch(selectedBrID)
 
-        guideBrKey = data.CData.make_key(CSubStateSkelEditSelectionBr.s_guideBrType, 0, 0)
-        guideBrObj = vtkObjGuideBr.CVTKObjGuideBr(br, data.CData.s_brSize)
+        guideBrKey = data.CData.make_key(CSubStateSkelEditSelectionBr.s_guideBrType, clinfoInx, 0)
+        guideBrObj = vtkObjGuideBr.CVTKObjGuideBr(br, dataInst.BrSize)
         guideBrObj.KeyType = CSubStateSkelEditSelectionBr.s_guideBrType
         guideBrObj.Key = guideBrKey
         guideBrObj.Color = guideColor
@@ -297,7 +327,7 @@ class CSubStateSkelEditSelectionBr(subStateSkelEdit.CSubStateSkelEdit) :
         iCnt = br.get_conn_count()
         for inx in range(0, iCnt) :
             cl = br.get_conn(inx)
-            guideKey = data.CData.make_key(CSubStateSkelEditSelectionBr.s_guideClType, 0, inx)
+            guideKey = data.CData.make_key(CSubStateSkelEditSelectionBr.s_guideClType, clinfoInx, inx)
             guideObj = vtkObjGuideCL.CVTKObjGuideCL(cl, br.BranchPoint, self.m_range)
             guideObj.KeyType = CSubStateSkelEditSelectionBr.s_guideClType
             guideObj.Key = guideKey
@@ -307,7 +337,7 @@ class CSubStateSkelEditSelectionBr(subStateSkelEdit.CSubStateSkelEdit) :
             self.m_listGuideCLKey.append(guideKey)
             dataInst.add_vtk_obj(guideObj)
         
-        guideRangeKey = data.CData.make_key(CSubStateSkelEditSelectionBr.s_guideRangeType, 0, 0)
+        guideRangeKey = data.CData.make_key(CSubStateSkelEditSelectionBr.s_guideRangeType, clinfoInx, 0)
         guideRangeObj = vtkObjGuideRange.CVTKObjGuideRange(br.BranchPoint, self.m_range)
         guideRangeObj.KeyType = CSubStateSkelEditSelectionBr.s_guideRangeType
         guideRangeObj.Key = guideRangeKey

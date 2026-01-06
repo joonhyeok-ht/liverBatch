@@ -203,6 +203,7 @@ class CBlenderScriptLiver :
                 bpy.data.objects.remove(obj, do_unlink=True)
                 
     def _import_stl(self, path : str) -> bool : 
+        
         if not os.path.exists(path) :
             print(f"Not found stl path({path}). Return.")
             return False
@@ -306,6 +307,8 @@ class CBlenderScriptLiver :
         self.m_listStlNameCleanUp.clear()
         for cleanupName in listCleanup :
             if cleanupName in bpy.data.objects :
+                if cleanupName == "Wall_Liver":
+                    continue
                 self.m_listStlNameCleanUp.append([cleanupName, 0])
                 print(f"CleanUp Name : {cleanupName}")
         
@@ -759,14 +762,13 @@ class CBlenderScriptStomachMeshClean(CBlenderScriptLiver) :
         
         self._recalc_normal(["Diaphragm"], toInside=True)
         self._make_flat("Diaphragm")
-
+        
         valid_clean_list = self._get_valid_object_list(self.m_optionInfo.CleanUp)
         self._init_cleanup(valid_clean_list)
-        
-        self.triangulate_all_objects_no_ops()
-        
         self._cleanup()
+        self.triangulate_all_objects_no_ops()
         #self._shade_smooth_all()
+        self.fix_normals_selected_objects()
         self._apply_all_transforms_and_shade_smooth()
 
         valid_smartuv_list = self._get_valid_object_list(self.m_optionInfo.SmartUV)
@@ -782,6 +784,33 @@ class CBlenderScriptStomachMeshClean(CBlenderScriptLiver) :
         # self._save_blender_with_bak(self.m_auto03Path, self.m_patientID)
         bpy.ops.wm.quit_blender()
         return True 
+    
+    def fix_normals_selected_objects(self):
+        # 시작 컨텍스트 정리
+        if bpy.context.mode != 'OBJECT':
+            bpy.ops.object.mode_set(mode='OBJECT')
+
+        for obj in list(bpy.context.selected_objects):
+            if obj.type != 'MESH':
+                continue
+            if obj.name.startswith("Diaphragm"):
+                continue
+            
+            if obj.name.startswith("Wall_Liver") or obj.name.startswith("Skin"):
+                inside = True
+            else:
+                inside = False
+
+            # 컨텍스트 보장
+            bpy.ops.object.select_all(action='DESELECT')
+            obj.select_set(True)
+            bpy.context.view_layer.objects.active = obj
+
+            bpy.ops.object.mode_set(mode='EDIT')
+            bpy.ops.mesh.select_all(action='SELECT')
+            bpy.ops.mesh.normals_make_consistent(inside=inside)
+            bpy.ops.object.mode_set(mode='OBJECT')
+    
     
     # kidney,stomach 공통
     def _switch_to_collection(self) :

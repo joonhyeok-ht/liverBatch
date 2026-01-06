@@ -13,8 +13,24 @@ import multiProcessTask as multiProcessTask
 import optionInfo as optionInfo
 
 
+def _remove_stricture_task_worker(param: tuple):
+    inx = param[0]
+    inputMaskFullPath = param[1]
+    outputMaskFullPath = param[2]
 
-class CRemoveStricture(multiProcessTask.CMultiProcessTask) :
+    npImg, origin, spacing, direction, size = algImage.CAlgImage.get_np_from_nifti(inputMaskFullPath)
+    vertex = algImage.CAlgImage.get_vertex_from_np(npImg, np.int32)
+
+    vesselVertex = algImage.CAlgImage.get_removed_stricture_voxel_index_from_vertex(vertex, size)
+    algImage.CAlgImage.set_clear(npImg, 0)
+    algImage.CAlgImage.set_value(npImg, vesselVertex, 255)
+    algImage.CAlgImage.save_nifti_from_np(outputMaskFullPath, npImg, origin, spacing, direction, (2, 1, 0))
+
+    print(f"completed removed stricture vessel {outputMaskFullPath}")
+
+
+
+class CRemoveStricture(multiProcessTask.CMultiProcessTaskProgress) :
     def __init__(self) -> None:
         super().__init__()
         # input your code
@@ -56,8 +72,15 @@ class CRemoveStricture(multiProcessTask.CMultiProcessTask) :
             print("passed removed vessel stricture")
             return
         
-        super().process(self._task, listParam)
-
+        #super().process(self._task, listParam)
+        super().process(
+            _remove_stricture_task_worker,
+            listParam,
+            progress_callback=getattr(self, "progress_callback", None),
+            is_interrupted=getattr(self, "is_interrupted", None),
+            status_prefix="Remove Stricture",
+            chunksize=1
+        )
     
     # param (inx, inputMaskFullPath, outputMaskFullPath)
     def _task(self, param : tuple) :

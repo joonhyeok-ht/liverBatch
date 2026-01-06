@@ -107,8 +107,12 @@ class CSubStateSkelEdit() :
         return self.m_mediator.m_opSelectionBr
     def _get_operator_selection_ep(self) -> operation.COperationSelectionEP :
         return self.m_mediator.m_opSelectionEP
+    def _get_operator_selection_vertex(self) -> operation.COperationSelectionVertex :
+        return self.m_mediator.m_opSelectionVertex
     def _get_clinfo_index(self) -> int :
         return self.m_mediator.get_clinfo_index()
+    def _get_clinfo_indices(self) -> int :
+        return self.m_mediator.get_clinfo_indices()
     def _get_skeleton(self) -> algSkeletonGraph.CSkeleton :
         return self.m_mediator.Skeleton
     

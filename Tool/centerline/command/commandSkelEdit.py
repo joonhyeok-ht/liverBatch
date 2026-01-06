@@ -61,6 +61,26 @@ class CCommandSkelEdit(commandInterface.CCommand) :
         print(f"resampled_points : {resampled_points} len: {len(resampled_points)}")    
         return resampled_points
     @staticmethod
+    def resample_radius(input_points, input_radius: np.ndarray) -> np.ndarray:
+        desired_distance = 1.0
+
+        cumulative_distance = np.cumsum(np.r_[0, np.sqrt(np.sum(np.diff(input_points, axis=0)**2, axis=1))])
+        total_distance = cumulative_distance[-1]
+
+        num_samples = int(total_distance / desired_distance)
+        uniform_distances = np.linspace(0, total_distance, num_samples)
+
+        # 3) radius를 arc-length 기준으로 보간
+        resampled_radius = np.interp(uniform_distances,
+                                    cumulative_distance,
+                                    input_radius)
+
+        # 4) 시작/끝 원본 유지(optional)
+        resampled_radius[0] = input_radius[0]
+        resampled_radius[-1] = input_radius[-1]
+
+        return resampled_radius
+    @staticmethod
     def gaussian_smoothing(input_points : np.ndarray, sigma=1) -> np.ndarray :
         from scipy.ndimage import gaussian_filter1d
         from scipy.interpolate import interp1d
