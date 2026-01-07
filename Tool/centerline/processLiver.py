@@ -229,6 +229,53 @@ QPushButton {
         self.m_filePath = fileAbsPath
         self.m_commonPipelinePath = fileCommonPipelinePath
 
+
+        self.m_colorList = [    
+            # [1.00, 0.00, 0.00],  # #FF0000 기사용중
+            # [0.00, 1.00, 0.00],  # #00FF00 기사용중
+            # [0.50, 0.50, 0.50],  # #808080 기사용중
+            # [1.00, 1.00, 0.00],  # #FFFF00 기사용중   
+            [0.00, 0.00, 1.00],  # #0000FF
+            [1.00, 0.00, 1.00],  # #FF00FF
+            [0.00, 1.00, 1.00],  # #00FFFF
+            [1.00, 0.50, 0.00],  # #FF8000
+            [0.50, 0.00, 1.00],  # #8000FF
+            [0.00, 0.50, 1.00],  # #0080FF
+            [0.63, 1.00, 0.00],  # #a0FF00 
+            [1.00, 0.00, 0.50],  # #FF007F 
+            [0.50, 0.00, 0.50],  # #800080
+            [0.50, 0.63, 0.00],  # #80a000 
+            [0.00, 0.50, 0.50],  # #008080
+            [0.75, 0.25, 0.50],  # #BF4080
+            [0.25, 0.75, 0.50],  # #40BF80 
+            [0.50, 0.25, 0.75],  # #8040BF
+            [0.75, 0.50, 0.25],  # #BF8040
+            [0.25, 0.50, 0.75],  # #4080BF
+            [1.00, 0.75, 0.50],  # #FFC080
+            [0.19, 0.44, 0.19],  # #306F30
+            [0.63, 0.75, 1.00],  # #a0C0FF
+            [1.00, 0.50, 0.75],  # #FF80C0
+            [0.82, 0.63, 1.00],  # #d0a0FF
+            [0.25, 1.00, 0.75],  # #40FFBF
+            [0.75, 0.25, 1.00],  # #BF40FF
+            [1.00, 0.25, 0.75],  # #FF40BF
+            [0.25, 0.75, 1.00],  # #40BFFF
+            [1.00, 1.00, 0.50],   # #FFFF80
+            [1.0, 0.753, 0.796], # #FFC0CB
+            [0.980, 0.502, 0.447],# #FA8072
+            [0.604, 0.804, 0.196],# #9ACD32
+            [0.18, 0.545, 0.341], # #2E8B57
+            [0.545, 0.271, 0.075],# #8B4513
+            [0.753, 0.753, 0.224], # #C0C03A
+            [0.678, 0.847, 0.902], # #ADEDDF
+            [0.933, 0.510, 0.933], # #EE83EE
+            [0.961, 0.624, 0.075], # #F59F13
+        ]
+        #sally
+        self.m_clColorDic = {}
+        self.m_clColorDicCnt = 0
+
+
         self.m_data = data.CData()
         self.m_listUndoCmd = []
         self.m_listRedoCmd = []
@@ -545,7 +592,19 @@ QPushButton {
         if retList is not None :
             for obj in retList :
                 obj.Color = color
-
+    def get_cl_color(self, clName) :
+        if clName == '' :
+            color = self.m_data.m_clColor
+        else :
+            # name을 가지고 있는 경우 해당 색상 부여, name이 없으면 디폴트색
+            if clName not in self.m_clColorDic.keys() :
+                cnt = self.m_clColorDicCnt % len(self.m_colorList)
+                self.m_clColorDic[clName] = self.m_colorList[cnt]
+                color = algLinearMath.CScoMath.to_vec3(self.m_colorList[cnt])
+                self.m_clColorDicCnt = self.m_clColorDicCnt + 1
+            else : 
+                color = algLinearMath.CScoMath.to_vec3(self.m_clColorDic[clName])
+        return color
     def load_userdata(self) :
         # projectType에 따라 userData를 로딩해야 한다. 
         self.Data.remove_all_userdata()

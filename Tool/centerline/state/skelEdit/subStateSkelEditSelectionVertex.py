@@ -131,8 +131,6 @@ class CSelectionVertexStateSelection(CSelectionVertexState) :
         
         splitCenterlineID = centerline.ID
         
-        #range_cl = range(len(skeleton.m_listCenterline))
-        
         tempCenterline1 = algSkeletonGraph.CSkeletonCenterline(splitCenterlineID)
         tempCenterline1.Name = skeleton.m_listCenterline[splitCenterlineID].Name
         tempCenterline1.Vertex = skeleton.m_listCenterline[splitCenterlineID].Vertex[:splitVertexInx+1].copy()
@@ -144,32 +142,6 @@ class CSelectionVertexStateSelection(CSelectionVertexState) :
         
         skeleton.m_listCenterline[splitCenterlineID] = tempCenterline1
         skeleton.m_listCenterline.append(tempCenterline2)
-        
-        
-        # for inx in range_cl:
-        #     if skeleton.m_listCenterline[inx].ID == splitCenterlineID:
-        #         tempCenterline1 = algSkeletonGraph.CSkeletonCenterline(inx)
-        #         tempCenterline1.Name = skeleton.m_listCenterline[inx].Name
-        #         tempCenterline1.Vertex = skeleton.m_listCenterline[inx].Vertex[:splitVertexInx].copy()
-        #         tempCenterline1.Radius = skeleton.m_listCenterline[inx].Radius[:splitVertexInx].copy()
-        #         tempCenterline2 = algSkeletonGraph.CSkeletonCenterline(len(skeleton.m_listCenterline))
-        #         tempCenterline2.Name = skeleton.m_listCenterline[inx].Name
-        #         tempCenterline2.Vertex = skeleton.m_listCenterline[inx].Vertex[splitVertexInx:].copy()
-        #         tempCenterline2.Radius = skeleton.m_listCenterline[inx].Radius[splitVertexInx:].copy()
-                
-        #         skeleton.m_listCenterline[inx] = tempCenterline1
-        #         skeleton.m_listCenterline.append(tempCenterline2)
-                
-                # self.save_vertices_as_spheres_stl(tempCenterline1.Vertex, f"C:/Users/hutom/Desktop/jh_test/data/test/{centerline.ID}_1.stl")
-                # self.save_vertices_as_spheres_stl(tempCenterline2.Vertex, f"C:/Users/hutom/Desktop/jh_test/data/test/{centerline.ID}_2.stl")
-                
-                # if inx < len(skeleton.m_listCenterline):
-                #     skeleton.m_listCenterline[inx+1] = tempCenterline2
-                # elif inx == len(skeleton.m_listCenterline):
-            #     skeleton.m_listCenterline.append(tempCenterline2)
-            # elif inx > splitCenterlineID:
-            #     skeleton.m_listCenterline[inx].ID = skeleton.m_listCenterline[inx].ID + 1
-
         return
     
     def rebuild_skeleton(self, skeleton):               
@@ -183,8 +155,6 @@ class CSelectionVertexStateSelection(CSelectionVertexState) :
         if skeleton.m_rootCenterline != -1 :
             skeleton.build_tree(skeleton.m_rootCenterline.ID)
         return
-        
-
 
     def clicked_mouse_rb(self, clickX, clickY):
         listExceptKeyType = [
@@ -197,6 +167,7 @@ class CSelectionVertexStateSelection(CSelectionVertexState) :
         selKey, vid = self.m_mediator.App.picking_point(clickX, clickY, listExceptKeyType)
 
         if selKey == "" :
+            #print("!!!!!!!!!!!!!!!!!!!!!!", file=sys.__stdout__, flush=True)
             self.m_mediator.set_state(0)
             return
         if self.m_mediator.m_firstSelectedVertexkey == "" :
@@ -205,7 +176,6 @@ class CSelectionVertexStateSelection(CSelectionVertexState) :
         if self.m_mediator.m_firstSelectedVertexID == "" :
             self.m_mediator.set_state(0)
             return
-        
         
         dataInst = self.m_mediator._get_data()
         
@@ -253,8 +223,6 @@ class CSelectionVertexStateSelection(CSelectionVertexState) :
         refinedRadius = commandSkelEdit.CCommandSkelEdit.resample_radius(refinedVertex, refinedRadius)
         refinedVertex = commandSkelEdit.CCommandSkelEdit.resample_points(refinedVertex)
         #print(f"resampled refinedVertex shape : {refinedVertex.shape}", file=sys.__stdout__,flush=True)
-        
-        
         bridgeCLID = len(firstSkeleton.m_listCenterline) + len(secondSkeleton.m_listCenterline)
         bridgeCenterline = algSkeletonGraph.CSkeletonCenterline(bridgeCLID)
         bridgeCenterline.Name = firstSelectedCL.Name
@@ -277,7 +245,9 @@ class CSelectionVertexStateSelection(CSelectionVertexState) :
         
         mergedskeleton = self.merge_centerline(secondSkeleton, firstSkeleton, bridgeCenterline)
         
-        ################### 임시로 첫번째 group ID로 덮어씌워서테스트 ########################
+        ''' 
+        임시로 첫번째 group ID로 덮어씌우는 방향으로 설정 
+        '''
         dataInst.m_listSkelInfo[firstGroupID].Skeleton = mergedskeleton
         self.m_mediator.m_mediator.m_mediator.add_skeleton_obj(firstGroupID)
         

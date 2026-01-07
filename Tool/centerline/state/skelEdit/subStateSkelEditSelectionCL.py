@@ -50,7 +50,8 @@ class CSubStateSkelEditSelectionCL(subStateSkelEdit.CSubStateSkelEdit) :
     def __init__(self, mediator):
         super().__init__(mediator)
         # input your code
-        self.m_opSelectionCL = operation.COperationDragSelectionCL(self.App)
+        self.m_opDragSelectionCL = operation.COperationDragSelectionCL(self.App)
+        #self.m_opDragSelectionCL = operation.COperationSelectionCL(self.App)
         self.m_comDragSelCL = None
     def clear(self) :
         # input your code
@@ -58,9 +59,9 @@ class CSubStateSkelEditSelectionCL(subStateSkelEdit.CSubStateSkelEdit) :
         super().clear()
 
     def process_init(self) :
-        self.m_opSelectionCL.Skeleton = self._get_skeleton()
+        self.m_opDragSelectionCL.Skeleton = self._get_skeleton()
         self.m_comDragSelCL = componentSelectionCL.CComDragSelCL(self.m_mediator)
-        self.m_comDragSelCL.InputOPDragSelCL = self.m_opSelectionCL
+        self.m_comDragSelCL.InputOPDragSelCL = self.m_opDragSelectionCL
         self.m_comDragSelCL.InputUIRBSelSingle = self.m_mediator.m_rbSingle
         self.m_comDragSelCL.InputUIRBSelDescendant = self.m_mediator.m_rbDescendant
         self.m_comDragSelCL.process_init()
@@ -71,7 +72,7 @@ class CSubStateSkelEditSelectionCL(subStateSkelEdit.CSubStateSkelEdit) :
         if self.m_comDragSelCL is not None :
             self.m_comDragSelCL.process_end()
             self.m_comDragSelCL = None
-        self.m_opSelectionCL.process_reset()
+        self.m_opDragSelectionCL.process_reset()
 
     def clicked_mouse_rb(self, clickX, clickY) :
         listExceptKeyType = [
@@ -85,7 +86,18 @@ class CSubStateSkelEditSelectionCL(subStateSkelEdit.CSubStateSkelEdit) :
         key = self.App.picking(clickX, clickY, listExceptKeyType)
         if key == "" or data.CData.get_type_from_key(key) != data.CData.s_skelTypeCenterline :
             key = ""
-        operation.COperationSelectionCL.clicked(self.m_opSelectionCL, key)
+        
+        
+        if self.m_mediator.m_rbSingle.isChecked(): 
+            self.m_opDragSelectionCL.ChildSelectionMode = False
+        elif self.m_mediator.m_rbDescendant.isChecked():
+            self.m_opDragSelectionCL.ChildSelectionMode = True
+        if key == "" :
+            pass
+        else :
+            self.m_opDragSelectionCL.process_reset()
+            self.m_opDragSelectionCL.add_selection_keys([key])
+            self.m_opDragSelectionCL.process()
         
         self.App.update_viewer()
         
@@ -93,10 +105,11 @@ class CSubStateSkelEditSelectionCL(subStateSkelEdit.CSubStateSkelEdit) :
         if dataInst.Ready == False :
             return
         
-        clinfoInx = self.m_opSelectionCL.get_selection_groupID()
-        if clinfoInx is None :
+        clinfoInx = self.m_opDragSelectionCL.get_selection_groupID()
+        if clinfoInx is None:
             return
-        dataInst.CLInfoIndex = clinfoInx
+        else:
+            dataInst.CLInfoIndex = clinfoInx
     def clicked_mouse_rb_shift(self, clickX, clickY) :
         listExceptKeyType = [
             data.CData.s_vesselType,
@@ -134,13 +147,15 @@ class CSubStateSkelEditSelectionCL(subStateSkelEdit.CSubStateSkelEdit) :
             return
         
         #clinfoInx = self._get_clinfo_index()
-        clinfoInx = self.m_opSelectionCL.get_selection_groupID()
+        clinfoInx = self.m_opDragSelectionCL.get_selection_groupID()
+        if clinfoInx is None :
+            return
         #skeleton = self._get_skeleton()
         skeleton = dataInst.get_skeleton(clinfoInx)
         if skeleton is None :
             return
         
-        retList = self.m_opSelectionCL.get_all_selection_cl()
+        retList = self.m_opDragSelectionCL.get_all_selection_cl()
         if retList is None :
             print("not selecting centerline")
             return
@@ -168,8 +183,8 @@ class CSubStateSkelEditSelectionCL(subStateSkelEdit.CSubStateSkelEdit) :
         if dataInst.Ready == False :
             return
         
-        retList = self.m_opSelectionCL.get_all_selection_cl()
-        clinfoInx = self.m_opSelectionCL.get_selection_groupID()
+        retList = self.m_opDragSelectionCL.get_all_selection_cl()
+        clinfoInx = self.m_opDragSelectionCL.get_selection_groupID()
         if retList is None :
             return
         
@@ -210,7 +225,7 @@ class CSubStateSkelEditSelectionCL(subStateSkelEdit.CSubStateSkelEdit) :
             vertexObj.Visibility = True
             dataInst.add_vtk_obj(vertexObj)
         
-        self.m_opSelectionCL.process_reset()
+        self.m_opDragSelectionCL.process_reset()
         self.App.update_viewer()
 
     

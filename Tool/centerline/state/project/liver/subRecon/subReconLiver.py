@@ -177,7 +177,7 @@ class CSubReconLiver(commandRecon.CCommandRecon) :
             originOffsetBlock.InputOptionInfo = self.InputData.OptionInfo
             originOffsetBlock.InputPhase = phase
             originOffsetBlock.process()
-            if not self.update_progress_value(1):
+            if not self.update_progress_value(1, "Registration..."):
                 return False
 
             registrationBlock = registration.CRegistration()
@@ -203,7 +203,7 @@ class CSubReconLiver(commandRecon.CCommandRecon) :
             fileSavePhaseInfoBlock.OutputSavePath = self.InputData.OutputPatientPath
             fileSavePhaseInfoBlock.OutputFileName = commandRecon.CCommandReconInterface.s_phaseInfoFileName
             fileSavePhaseInfoBlock.process()
-            if not self.update_progress_value(2):
+            if not self.update_progress_value(2, "Resampling..."):
                 return False
 
         resamplingToPhaseBlock = resamplingB.CResamplingToPhase()
@@ -379,9 +379,9 @@ class CSubReconLiver(commandRecon.CCommandRecon) :
         
         return True
     
-    def update_progress_value(self, progressVal):
+    def update_progress_value(self, progressVal, s = ""):
         self.ProgressValue += int(progressVal / self.TotalPatientCnt)
-        self.progress_callback(self.ProgressValue)
+        self.progress_callback(self.ProgressValue, s)
         if self.is_interrupted():
             return False
         return True

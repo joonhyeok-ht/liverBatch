@@ -106,7 +106,7 @@ class CResamplingToPhase(multiProcessTask.CMultiProcessTaskProgress) :
                 listParam,
                 progress_callback=getattr(self, "progress_callback", None),
                 is_interrupted=getattr(self, "is_interrupted", None),
-                status_prefix="Resampling",
+                status_prefix="Resampling...",
                 chunksize=1
             )
 
@@ -232,7 +232,7 @@ class CResamplingToMinSpacing(multiProcessTask.CMultiProcessTaskProgress) :
                 listParam,
                 progress_callback=getattr(self, "progress_callback", None),
                 is_interrupted=getattr(self, "is_interrupted", None),
-                status_prefix="Resampling",
+                status_prefix="Resampling...",
                 chunksize=1
             )
 

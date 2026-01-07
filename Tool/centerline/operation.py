@@ -101,7 +101,7 @@ class COperationSelectionVertex(COperationSelection) :
         self._color_setting(self.m_listSelectionKey, dataInst.s_selectionCLColor)
     def process_reset(self) :
         dataInst = self.Data
-        self._color_setting(self.m_listSelectionKey, dataInst.s_clColor)
+        self._color_setting(self.m_listSelectionKey, dataInst.CLColor)
         self.m_listSelectionKey.clear()
 
     def _color_setting(self, listSelectionKey : list, color : np.ndarray) :
@@ -204,10 +204,11 @@ class COperationSelectionCL(COperationSelection) :
             groupID = data.CData.get_groupID_from_key(key)
             groupIDSet.add(groupID)
             
-        if len(groupIDSet) > 1:
+        if len(groupIDSet) >= 1:
             print("selectied multy group")
             return list(groupIDSet)[0]
-        return list(groupIDSet)[0]
+        else:
+            return None
     
     def get_all_selection_cl(self) -> list :
         retList = self.get_selection_cl_list()
@@ -368,10 +369,12 @@ class COperationDragSelectionCL(COperationSelection) :
             groupID = data.CData.get_groupID_from_key(key)
             groupIDSet.add(groupID)
             
-        if len(groupIDSet) > 1:
-            print("selectied multy group")
+        if len(groupIDSet) >= 1:
+            #print("selectied multy group")
             return list(groupIDSet)[0]
-        return list(groupIDSet)[0]
+        else:
+            return None
+        #return list(groupIDSet)[0]
 
     # protected
     def _get_child_key(self, key : str) -> list :

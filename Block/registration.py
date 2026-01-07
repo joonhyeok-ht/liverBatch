@@ -192,7 +192,7 @@ class CRegistration(multiProcessTask.CMultiProcessTaskProgress) :
             listParam2,
             progress_callback=getattr(self, "progress_callback", None),
             is_interrupted=getattr(self, "is_interrupted", None),
-            status_prefix="Registration",
+            status_prefix="Registration...",
             chunksize=1
         )
         if not ok:
