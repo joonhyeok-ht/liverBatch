@@ -453,11 +453,11 @@ QPushButton {
             cmd.clear()
         self.m_listUndoCmd.clear()
         self.m_listRedoCmd.clear()
-    def undo(self) :
+    def undo(self, state = 0) :
         if len(self.m_listUndoCmd) == 0 :
             return
         cmd = self.m_listUndoCmd.pop()
-        cmd.process_undo()
+        cmd.process_undo(state)
         self.m_listRedoCmd.append(cmd)
         self.update_viewer()
     def redo(self) :
@@ -799,7 +799,7 @@ QPushButton {
             self.visibility_key_type(keyType, True)
         return clKey
     
-    def picking_point(self, clickX, clickY, listKeyType: list) -> str:
+    def picking_point(self, clickX, clickY, listKeyType: list, vertexColor : np.ndarray = None) -> str:
         renderer = self.get_viewercl_renderer()
 
         saved_pickable = []  # [(actor, old_pickable)]
@@ -864,9 +864,11 @@ QPushButton {
         if self.m_lastPickedVertexId == picked_vid and self.m_lastPickedVertexKey == clKey:
             pass
         else:
-            dataInst = self.m_data
-            self.highlight_vertex_by_actor_and_id(self.m_lastPickedVertexKey, self.m_lastPickedVertexId, dataInst.s_vertexColor.flatten())
-            
+            if isinstance(vertexColor, np.ndarray):
+                self.highlight_vertex_by_actor_and_id(self.m_lastPickedVertexKey, self.m_lastPickedVertexId, vertexColor.flatten())
+            else:
+                dataInst = self.m_data
+                self.highlight_vertex_by_actor_and_id(self.m_lastPickedVertexKey, self.m_lastPickedVertexId, dataInst.s_vertexColor.flatten())
             self.m_lastPickedVertexId = picked_vid
             self.m_lastPickedVertexKey = clKey
 

@@ -124,6 +124,8 @@ class CSubStateSkelEdit() :
         self.m_mediator.setui_br_count(brCount)
     def _setui_branch_range(self, range : int) :
         self.m_mediator.setui_branch_range(range)
+    def _setui_vertex_range(self, range : int) :
+        self.m_mediator.setui_vertex_range(range)
     def _setui_ep_range(self, range : int) :
         self.m_mediator.setui_ep_range(range)
 

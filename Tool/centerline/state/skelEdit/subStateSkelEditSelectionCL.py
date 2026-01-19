@@ -37,6 +37,7 @@ import data as data
 import operation as operation
 
 import command.commandSkelEdit as commandSkelEdit
+import command.commandInterface as commandInterface
 
 import com.componentSelectionCL as componentSelectionCL
 
@@ -73,7 +74,11 @@ class CSubStateSkelEditSelectionCL(subStateSkelEdit.CSubStateSkelEdit) :
             self.m_comDragSelCL.process_end()
             self.m_comDragSelCL = None
         self.m_opDragSelectionCL.process_reset()
-
+    def key_press_with_ctrl(self, keyCode : str) :
+        if keyCode == "z" :
+            self.App.undo(0)
+        if keyCode == "r" :
+            self.App.redo()
     def clicked_mouse_rb(self, clickX, clickY) :
         listExceptKeyType = [
             data.CData.s_vesselType
@@ -188,15 +193,25 @@ class CSubStateSkelEditSelectionCL(subStateSkelEdit.CSubStateSkelEdit) :
         if retList is None :
             return
         
+        cmdContainer = commandInterface.CCommandContainer(self.App)
+        cmdContainer.InputData = dataInst
+        
         cmd = commandSkelEdit.CCommandAutoRemoveCL(self.App)
+        cmd.m_clinfoInx = clinfoInx
         cmd.InputData = dataInst
         #cmd.InputSkeleton = self._get_skeleton()
         cmd.InputSkeleton = dataInst.get_skeleton(clinfoInx)
         for clID in retList :
             cmd.add_clID(clID)
-        cmd.process()
+            
+        #cmd.process()
+        cmdContainer.add_cmd(cmd)
+        cmdContainer.process()
+        self.App.add_cmd(cmdContainer)
 
         #skeleton = self._get_skeleton()
+        
+        ## centerline 다시 빌드
         skeleton = dataInst.get_skeleton(clinfoInx)
         skeleton.extract_leaf_centerline()
         skeleton.build_graph()

@@ -40,6 +40,8 @@ import skelEdit.subStateSkelEditSelectionCL as subStateSkelEditSelectionCL
 import skelEdit.subStateSkelEditSelectionBr as subStateSkelEditSelectionBr
 import skelEdit.subStateSkelEditSelectionEP as subStateSkelEditSelectionEP
 import skelEdit.subStateSkelEditSelectionVertex as subStateSkelEditSelectionVertex
+import skelEdit.subStateSkelEditSelectionConnect as subStateSkelEditSelectionConnect
+import skelEdit.subStateSkelEditSelectionReAttach as subStateSkelEditSelectionReAttach
 
 
 class CTabStateSkelEditLiver(tabState.CTabState) :
@@ -67,6 +69,8 @@ class CTabStateSkelEditLiver(tabState.CTabState) :
         self.m_listSubState.append(subStateSkelEditSelectionBr.CSubStateSkelEditSelectionBr(self))
         self.m_listSubState.append(subStateSkelEditSelectionEP.CSubStateSkelEditSelectionEP(self))
         self.m_listSubState.append(subStateSkelEditSelectionVertex.CSubStateSkelEditSelectionVertex(self))
+        self.m_listSubState.append(subStateSkelEditSelectionConnect.CSubStateSkelEditSelectionConnect(self))
+        self.m_listSubState.append(subStateSkelEditSelectionReAttach.CSubStateSkelEditSelectionReAttach(self))
 
         self.m_bReady = True
     def clear(self) :
@@ -189,8 +193,26 @@ class CTabStateSkelEditLiver(tabState.CTabState) :
         subTabLayout.addStretch()
         tabUI.addTab(tab, title)
 
+        title = "Vertex"
+        tab = QWidget()
+        subTabLayout = QVBoxLayout(tab)
+        
+        layout, self.m_sliderVertexRange, self.m_editVertexRange = self.m_mediator.create_layout_label_slider_editbox("EndPoint Range", CTabStateSkelEditLiver.s_minRange, CTabStateSkelEditLiver.s_maxRange, 1, True)
+        self.m_sliderVertexRange.setValue(1)
+        self.m_sliderVertexRange.valueChanged.connect(self._on_slider_changed_value_vertex)
+        subTabLayout.addLayout(layout)
 
-        title = "Merge"
+        subTabLayout.addStretch()
+        tabUI.addTab(tab, title)
+
+        title = "Connect"
+        tab = QWidget()
+        subTabLayout = QVBoxLayout(tab)
+
+        subTabLayout.addStretch()
+        tabUI.addTab(tab, title)
+        
+        title = "ReAttach"
         tab = QWidget()
         subTabLayout = QVBoxLayout(tab)
 
@@ -275,13 +297,16 @@ class CTabStateSkelEditLiver(tabState.CTabState) :
         self.m_sliderEpRange.setValue(range)
         self.m_sliderEpRange.blockSignals(False)
         self.m_editEpRange.setText(f"{range}")
+    def setui_vertex_range(self, range : int) :
+        self.m_sliderVertexRange.blockSignals(True)
+        self.m_sliderVertexRange.setValue(range)
+        self.m_sliderVertexRange.blockSignals(False)
+        self.m_editVertexRange.setText(f"{range}")
 
     def getui_branch_range(self) -> int :
         return self.m_sliderBranchRange.value()
     def getui_ep_range(self) -> int :
         return self.m_sliderBranchRange.value()
-    
-
 
     # protected 
     def _get_substate(self, inx : int) -> subStateSkelEdit.CSubStateSkelEdit :
@@ -385,6 +410,11 @@ class CTabStateSkelEditLiver(tabState.CTabState) :
         value = self.m_sliderEpRange.value()
         self.m_editEpRange.setText(f"{value}")
         self._get_substate(self.m_state).change_range(value)
+    def _on_slider_changed_value_vertex(self) :
+        value = self.m_sliderVertexRange.value()
+        self.m_editVertexRange.setText(f"{value}")
+        self._get_substate(self.m_state).change_range(value)
+
 
     # private
     def __apply_root_point(self) :

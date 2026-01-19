@@ -36,7 +36,9 @@ import commandInterface as commandInterface
 # import territory as territory
 
 import vtkObjEP as vtkObjEP
-
+import vtkObjVertex as vtkObjVertex
+import copy
+from collections import deque
 
 
 class CCommandSkelEdit(commandInterface.CCommand) :
@@ -58,7 +60,6 @@ class CCommandSkelEdit(commandInterface.CCommand) :
         # 시작, 끝점 원본 유지
         resampled_points[0] = input_points[0]
         resampled_points[-1] = input_points[-1]
-        print(f"resampled_points : {resampled_points} len: {len(resampled_points)}")    
         return resampled_points
     @staticmethod
     def resample_radius(input_points, input_radius: np.ndarray) -> np.ndarray:
@@ -81,17 +82,54 @@ class CCommandSkelEdit(commandInterface.CCommand) :
 
         return resampled_radius
     @staticmethod
-    def gaussian_smoothing(input_points : np.ndarray, sigma=1) -> np.ndarray :
+    def gaussian_smoothing(vertex: np.ndarray,
+                           radius: np.ndarray | None = None,
+                           sigma: float = 1.0):
+        """
+        vertex: (N,3)
+        radius: (N,) or (N,1)  (optional)
+        return:
+          - if radius is None: smoothed_vertex
+          - else: (smoothed_vertex, smoothed_radius)
+        """
         from scipy.ndimage import gaussian_filter1d
-        from scipy.interpolate import interp1d
-        # 각 좌표의 가우시안 스무딩
-        # sigma = 2  # 가우시안 커널의 표준 편차, #TUNING-POINT
-        smoothed_x = gaussian_filter1d(input_points[:, 0], sigma)
-        smoothed_y = gaussian_filter1d(input_points[:, 1], sigma)
-        smoothed_z = gaussian_filter1d(input_points[:, 2], sigma)
-        smoothed_points = np.vstack((smoothed_x, smoothed_y, smoothed_z)).T
-        smoothed_points2 = np.concatenate((np.array([input_points[0]]), smoothed_points, np.array([input_points[-1]])), axis=0)
-        return smoothed_points2
+
+        if vertex.ndim != 2 or vertex.shape[1] != 3:
+            raise ValueError(f"vertex must be (N,3). got {vertex.shape}")
+
+        n = vertex.shape[0]
+        if n < 3:
+            # 너무 짧으면 스무딩 의미가 없으니 그대로 반환
+            if radius is None:
+                return vertex.copy()
+            r = radius.reshape(-1) if radius is not None else None
+            return vertex.copy(), r.copy()
+
+        # --- Vertex smoothing ---
+        smoothed_x = gaussian_filter1d(vertex[:, 0], sigma)
+        smoothed_y = gaussian_filter1d(vertex[:, 1], sigma)
+        smoothed_z = gaussian_filter1d(vertex[:, 2], sigma)
+        smoothed_vertex = np.vstack((smoothed_x, smoothed_y, smoothed_z)).T
+
+        # 끝점은 원본 유지
+        smoothed_vertex[0]  = vertex[0]
+        smoothed_vertex[-1] = vertex[-1]
+
+        # --- Radius smoothing (optional) ---
+        if radius is None:
+            return smoothed_vertex
+
+        r = np.asarray(radius).reshape(-1)
+        if r.shape[0] != n:
+            raise ValueError(f"radius length must match vertex N={n}. got {r.shape[0]}")
+
+        smoothed_radius = gaussian_filter1d(r, sigma)
+
+        # 끝점은 원본 유지
+        smoothed_radius[0]  = r[0]
+        smoothed_radius[-1] = r[-1]
+
+        return smoothed_vertex, smoothed_radius
 
 
     def __init__(self, mediator) :
@@ -142,6 +180,75 @@ class CCommandSkelEdit(commandInterface.CCommand) :
         brInx = self._find_deactive_br_inx()
         if brInx > -1 :
             del self.InputSkeleton.ListBranch[brInx : ]
+            
+    def _refresh_changed_cl_data_by_vertex(self, clID : int) :
+        dataInst = self.InputData
+        groupID = dataInst.CLInfoIndex
+        skeleton = dataInst.get_skeleton(groupID)
+
+        key = data.CData.make_key(data.CData.s_skelTypeCenterline, groupID, clID)
+        obj = dataInst.find_obj_by_key(key)
+        if obj is None :
+            return
+        self.m_mediator.unref_key(key)
+
+        clID = data.CData.get_id_from_key(key)
+        cl = skeleton.get_centerline(clID)
+        clPtCnt = cl.get_vertex_count()
+        if clPtCnt <= 0 :
+            return
+        
+        appendFilter = vtk.vtkAppendPolyData()
+        for clPtInx in range(0, clPtCnt) :
+            pos = cl.get_vertex(clPtInx)
+            polyData = algVTK.CVTK.create_poly_data_sphere(pos, data.CData.s_clSize)
+            appendFilter.AddInputData(polyData)
+        appendFilter.Update()
+        mergedPolyData = appendFilter.GetOutput()
+        obj.PolyData = mergedPolyData
+        #self.m_mediator.ref_key(key)
+        
+        key = data.CData.make_key(data.CData.s_skelTypeVertex, groupID, clID)
+        # if obj is None :
+            
+        vertexObj = vtkObjVertex.CVTKObjVertex(cl, dataInst.s_vertexSize, dataInst.s_vertexColor.flatten())
+        if vertexObj.Ready == False :
+            return
+        
+        self.m_mediator.unref_key(key)
+        
+        vertexObj.KeyType = data.CData.s_skelTypeVertex
+        vertexObj.Key = data.CData.make_key(vertexObj.KeyType, groupID, cl.ID)
+        #vertexObj.Color = dataInst.VertexColor
+        vertexObj.Opacity = 1.0
+        vertexObj.Visibility = True
+        dataInst.add_vtk_obj(vertexObj)
+        
+        self.m_mediator.ref_key(key)
+        
+
+        if cl.is_leaf() == False :
+            return
+
+        # endPoint refresh
+        key = data.CData.make_key(data.CData.s_skelTypeEndPoint, groupID, clID)
+        obj = dataInst.find_obj_by_key(key)
+        if obj is None :
+            obj = vtkObjEP.CVTKObjEP(cl, data.CData.s_epSize)
+            if obj.Ready == False :
+                return
+
+            obj.KeyType = data.CData.s_skelTypeEndPoint
+            obj.Key = data.CData.make_key(obj.KeyType, groupID, cl.ID)
+            obj.Color = data.CData.s_epColor
+            obj.Opacity = 1.0
+            obj.Visibility = True
+            dataInst.add_vtk_obj(obj)
+        endPt = cl.get_end_point()
+        obj.Pos = endPt
+
+        
+            
     def _refresh_changed_cl_data(self, clID : int) :
         dataInst = self.InputData
         groupID = dataInst.CLInfoIndex
@@ -168,6 +275,20 @@ class CCommandSkelEdit(commandInterface.CCommand) :
         mergedPolyData = appendFilter.GetOutput()
         obj.PolyData = mergedPolyData
         self.m_mediator.ref_key(key)
+        
+        key = data.CData.make_key(data.CData.s_skelTypeVertex, groupID, clID)
+        # if obj is None :
+            
+        vertexObj = vtkObjVertex.CVTKObjVertex(cl, dataInst.s_vertexSize, dataInst.s_vertexColor.flatten())
+        if vertexObj.Ready == False :
+            return
+        
+        vertexObj.KeyType = data.CData.s_skelTypeVertex
+        vertexObj.Key = data.CData.make_key(vertexObj.KeyType, groupID, cl.ID)
+        #vertexObj.Color = dataInst.VertexColor
+        vertexObj.Opacity = 1.0
+        vertexObj.Visibility = True
+        dataInst.add_vtk_obj(vertexObj)
 
         if cl.is_leaf() == False :
             return
@@ -189,7 +310,6 @@ class CCommandSkelEdit(commandInterface.CCommand) :
         endPt = cl.get_end_point()
         obj.Pos = endPt
 
-    # private
 
     @property
     def InputSkeleton(self) -> algSkeletonGraph.CSkeleton :
@@ -620,11 +740,687 @@ class CCommandRemoveBr(CCommandSkelEdit) :
         self.m_inputBrID = inputBrID
 
     
+class CCommandReAttach(CCommandSkelEdit) :
+    def __init__(self, mediator) :
+        super().__init__(mediator)
+        # input your code
+        self.m_inputData = None
+        self.m_pivotVertexKey = ""
+        self.m_newBranchVertexKey = ""
+        self.m_selectedBranchKey = ""
+        self.m_numOfConnCl = 0
+        
+        self.m_piviotVertexID = -1
+        self.m_newBranchVertexID = -1
+        
+        self.m_undoSkeleton = None
+        self.m_inputSkeleton = None
+        self.m_inputClID = -1
+        
+    def clear(self) :
+        # input your code
+        self.m_inputData = None
+        self.m_pivotVertexKey = ""
+        self.m_newBranchVertexKey = ""
+        self.m_selectedBranchKey = ""
+        self.m_numOfConnCl = 0
+        
+        self.m_piviotVertexID = -1
+        self.m_newBranchVertexID = -1
+        
+        self.m_undoSkeleton = None
+        self.m_inputSkeleton = None
+        self.m_inputClID = -1
+        
+        super().clear()
+    def process(self) :
+        groupID = data.CData.get_groupID_from_key(self.PivotVertexKey)
+        clID  = data.CData.get_id_from_key(self.PivotVertexKey)
+        self.m_inputSkeleton = self.InputData.get_skeleton(groupID)
+        self.m_undoSkeleton = copy.deepcopy(self.m_inputSkeleton)
+        
+        cl = self.m_inputSkeleton.get_centerline(clID)
+        selectedBrID = data.CData.get_id_from_key(self.m_selectedBranchKey)
+        br = self.m_inputSkeleton.get_branch(selectedBrID)
+        
+        newBranchClID = data.CData.get_id_from_key(self.NewBranchVertexKey)
+        newBranchCl = self.m_inputSkeleton.get_centerline(newBranchClID)
+        
+        refinedDirection = ""
+        
+        if algLinearMath.CScoMath.is_equal_vec(cl.get_vertex(0), br.BranchPoint):
+            minInx = 0
+            maxInx = self.m_piviotVertexID
+            refinedDirection = "left"
+        else:
+            minInx = self.m_piviotVertexID
+            maxInx = cl.Vertex.shape[0]-1
+            refinedDirection = "right"
+        
+        refinedVertex = np.concatenate((newBranchCl.get_vertex(self.NewBranchVertexID), cl.get_vertex(self.m_piviotVertexID)), axis=0)
+        refinedRadius = np.array([newBranchCl.get_radius(self.NewBranchVertexID), cl.get_radius(self.m_piviotVertexID)])
+        
+        refinedRadius = CCommandSkelEdit.resample_radius(refinedVertex, refinedRadius)
+        refinedVertex = CCommandSkelEdit.resample_points(refinedVertex)
+        
+        modifiedVertex, modifiedRadius = None, None
+        
+        if refinedDirection == "left":
+            modifiedVertex = np.concatenate((refinedVertex, cl.Vertex[self.m_piviotVertexID:]))
+            modifiedRadius = np.concatenate((refinedRadius, cl.Radius[self.m_piviotVertexID:]))
+        else:
+            modifiedVertex = np.concatenate((cl.Vertex[:self.m_piviotVertexID], refinedVertex))
+            modifiedRadius = np.concatenate((cl.Radius[:self.m_piviotVertexID], refinedRadius))
+            
+        modifiedVertex, modifiedRadius = CCommandSkelEdit.gaussian_smoothing(modifiedVertex, modifiedRadius, sigma=5)
+        modifiedRadius = CCommandSkelEdit.resample_radius(modifiedVertex, modifiedRadius)
+        modifiedVertex = CCommandSkelEdit.resample_points(modifiedVertex)
+        
+        cl.Vertex = modifiedVertex.copy()
+        cl.Radius = modifiedRadius.copy()
+        
+        newBranchNeedSplitCenterline = True
+        
+        if newBranchCl.get_conn_inx(newBranchCl.get_vertex(self.NewBranchVertexID)) != -1:
+            newBranchNeedSplitCenterline = False
+        
+        for bi in range(self.m_inputSkeleton.get_branch_count()):
+            if algLinearMath.CScoMath.is_equal_vec(self.m_inputSkeleton.get_branch(bi).BranchPoint, newBranchCl.get_vertex(self.NewBranchVertexID)) == True:
+                newBranchNeedSplitCenterline = False
+        
+        if newBranchNeedSplitCenterline:
+            self.split_centerline(self.m_inputSkeleton, newBranchCl, int(self.NewBranchVertexID))
+            
+        newSkeleton = algSkeletonGraph.CSkeleton()
+        #self.m_inputSkeleton.m_listCenterline[clID] = cl
+        rootcenterlineID = 0
+        for centerline in self.m_inputSkeleton.m_listCenterline:
+            _centerline = algSkeletonGraph.CSkeletonCenterline(len(newSkeleton.m_listCenterline))
+            _centerline.Name = centerline.Name
+            _centerline.Vertex = centerline.Vertex.copy()
+            _centerline.Radius = centerline.Radius.copy()
+            newSkeleton.m_listCenterline.append(_centerline)
+            if self.m_inputSkeleton.m_rootCenterline.ID == centerline.ID:
+                rootcenterlineID = _centerline.ID
+        
+        for cl in newSkeleton.ListCenterline :
+            newSkeleton.init_conn_centerline(cl)
+        # leaf centerline
+        newSkeleton.extract_leaf_centerline()
+
+        newSkeleton.build_graph()
+        newSkeleton.build_kd_tree()
+        newSkeleton.build_tree(rootcenterlineID)
+        
+        self.InputData.m_listSkelInfo[groupID].Skeleton = newSkeleton
+        self.m_mediator.add_skeleton_obj(groupID)
+        
+    def process_undo(self, state):
+        clinfoInx = data.CData.get_groupID_from_key(self.PivotVertexKey)
+
+        if state in [0, 1, 2]:
+            self.m_mediator.unref_key_type_groupID(data.CData.s_skelTypeCenterline, clinfoInx)
+            if state == 1:
+                self.m_mediator.unref_key_type_groupID(data.CData.s_skelTypeBranch, clinfoInx)
+            elif state == 2:
+                self.m_mediator.unref_key_type_groupID(data.CData.s_skelTypeEndPoint, clinfoInx)
+        else:
+            self.m_mediator.unref_key_type_groupID(data.CData.s_skelTypeVertex, clinfoInx)
+        self.InputData.remove_all_key_by_type_groupID(data.CData.s_skelTypeCenterline, clinfoInx)
+        self.InputData.remove_all_key_by_type_groupID(data.CData.s_skelTypeBranch, clinfoInx)
+        self.InputData.remove_all_key_by_type_groupID(data.CData.s_skelTypeEndPoint, clinfoInx)
+        self.InputData.remove_all_key_by_type_groupID(data.CData.s_skelTypeVertex, clinfoInx)
+        self.InputData.m_listSkelInfo[clinfoInx].Skeleton = self.m_undoSkeleton
+        self.m_mediator.add_skeleton_obj(clinfoInx)
+        
+        if state in [0, 1, 2]:
+            self.m_mediator.ref_key_type_groupID(data.CData.s_skelTypeCenterline, clinfoInx)
+            if state == 1:
+                self.m_mediator.ref_key_type_groupID(data.CData.s_skelTypeBranch, clinfoInx)
+            elif state == 2:
+                self.m_mediator.ref_key_type_groupID(data.CData.s_skelTypeEndPoint, clinfoInx)
+        else:
+            self.m_mediator.ref_key_type_groupID(data.CData.s_skelTypeVertex, clinfoInx)
+
+            
+        
+    def split_centerline(self, skeleton, centerline, splitVertexInx):
+        splitCenterlineID = centerline.ID
+        
+        tempCenterline1 = algSkeletonGraph.CSkeletonCenterline(splitCenterlineID)
+        tempCenterline1.Name = skeleton.m_listCenterline[splitCenterlineID].Name
+        tempCenterline1.Vertex = skeleton.m_listCenterline[splitCenterlineID].Vertex[:splitVertexInx+1].copy()
+        tempCenterline1.Radius = skeleton.m_listCenterline[splitCenterlineID].Radius[:splitVertexInx+1].copy()
+        tempCenterline2 = algSkeletonGraph.CSkeletonCenterline(len(skeleton.m_listCenterline))
+        tempCenterline2.Name = skeleton.m_listCenterline[splitCenterlineID].Name
+        tempCenterline2.Vertex = skeleton.m_listCenterline[splitCenterlineID].Vertex[splitVertexInx:].copy()
+        tempCenterline2.Radius = skeleton.m_listCenterline[splitCenterlineID].Radius[splitVertexInx:].copy()
+        
+        skeleton.m_listCenterline[splitCenterlineID] = tempCenterline1
+        skeleton.m_listCenterline.append(tempCenterline2)
+        return
+        
+    def merge_centerline(self, srcSkeleton, tgtSkeleton, bridgeCenterline):
+        mergedskeleton = algSkeletonGraph.CSkeleton()
+        
+        rootcenterlineID = 0
+        for centerline in tgtSkeleton.m_listCenterline:
+            _centerline = algSkeletonGraph.CSkeletonCenterline(len(mergedskeleton.m_listCenterline))
+            _centerline.Name = centerline.Name
+            _centerline.Vertex = centerline.Vertex.copy()
+            _centerline.Radius = centerline.Radius.copy()
+            mergedskeleton.m_listCenterline.append(_centerline)
+            if tgtSkeleton.m_rootCenterline.ID == centerline.ID:
+                rootcenterlineID = _centerline.ID
+            
+        _centerline = algSkeletonGraph.CSkeletonCenterline(len(mergedskeleton.m_listCenterline))
+        _centerline.Name = bridgeCenterline.Name
+        _centerline.Vertex = bridgeCenterline.Vertex.copy()
+        _centerline.Radius = bridgeCenterline.Radius.copy()
+        mergedskeleton.m_listCenterline.append(_centerline)
+
+        if len(srcSkeleton.m_listBranch) == len(tgtSkeleton.m_listBranch) and len(srcSkeleton.m_listCenterline) == len(tgtSkeleton.m_listCenterline):
+            pass
+        else:
+            for centerline in srcSkeleton.m_listCenterline:
+                _centerline = algSkeletonGraph.CSkeletonCenterline(len(mergedskeleton.m_listCenterline))
+                _centerline.Name = centerline.Name
+                _centerline.Vertex = centerline.Vertex.copy()
+                _centerline.Radius = centerline.Radius.copy()
+                mergedskeleton.m_listCenterline.append(_centerline)
+            
+        # conn branch and centerline
+        for centerline in mergedskeleton.ListCenterline :
+            mergedskeleton.init_conn_centerline(centerline)
+        # leaf centerline
+        mergedskeleton.extract_leaf_centerline()
+        print("passed extracting centerline & branch")
+
+        mergedskeleton.build_graph()
+        mergedskeleton.build_kd_tree()
+        mergedskeleton.build_tree(rootcenterlineID)
+        
+        return mergedskeleton
+
+
+    @property
+    def InputData(self) :
+        return self.m_inputData
+    @InputData.setter
+    def InputData(self, inputData) :
+        self.m_inputData = inputData
+        
+    @property
+    def PivotVertexKey(self) :
+        return self.m_pivotVertexKey
+    @PivotVertexKey.setter
+    def PivotVertexKey(self, pivotVertexKey):
+        self.m_pivotVertexKey = pivotVertexKey
+        
+    @property
+    def NewBranchVertexKey(self) :
+        return self.m_newBranchVertexKey
+    @NewBranchVertexKey.setter
+    def NewBranchVertexKey(self, newBranchVertexKey):
+        self.m_newBranchVertexKey = newBranchVertexKey
+        
+    @property
+    def PiviotVertexID(self) :
+        return self.m_piviotVertexID
+    @PiviotVertexID.setter
+    def PiviotVertexID(self, piviotVertexID):
+        self.m_piviotVertexID = piviotVertexID
+        
+    @property
+    def NewBranchVertexID(self) :
+        return self.m_newBranchVertexID
+    @NewBranchVertexID.setter
+    def NewBranchVertexID(self, newBranchVertexID):
+        self.m_newBranchVertexID = newBranchVertexID
+        
+        
+    
+    
+class CCommandConnect(CCommandSkelEdit) :
+    def __init__(self, mediator) :
+        super().__init__(mediator)
+        # input your code
+        self.m_inputData = None
+        self.m_firstSelectedVertexKey = ""
+        self.m_secondSelectedVertexKey = ""
+        
+        self.m_firstSelectedVertexID = -1
+        self.m_secondSelectedVertexID = -1
+        
+        self.m_undoSkeleton = None
+        self.m_secondSkeleton = None
+        
+        self.m_inputSkeleton = None
+        self.m_inputClID = -1
+        
+        self.m_undoSecondCLVertex = None
+        self.m_undoSecondCLRadius = None
+    def clear(self) :
+        # input your code
+        self.m_inputData = None
+        self.m_firstSelectedVertexKey = ""
+        self.m_secondSelectedVertexKey = ""
+        
+        self.m_firstSelectedVertexID = -1
+        self.m_secondSelectedVertexID = -1
+        
+        self.m_undoSkeleton = None
+        self.m_secondSkeleton = None
+        
+        self.m_inputSkeleton = None
+        self.m_inputClID = -1
+        
+        self.m_undoSecondCLVertex = None
+        self.m_undoSecondCLRadius = None
+        super().clear()
+    def process(self) :
+        firstGroupID = data.CData.get_groupID_from_key(self.FirstSelectedVertexKey)
+        firstSkeleton = self.InputData.get_skeleton(firstGroupID)
+        firstSelectedCLID = data.CData.get_id_from_key(self.FirstSelectedVertexKey)
+        firstSelectedCL = firstSkeleton.get_centerline(firstSelectedCLID)
+        firstV = firstSelectedCL.get_vertex(self.FirstSelectedVertexID)
+        firstR = firstSelectedCL.get_radius(self.FirstSelectedVertexID)
+        
+        self.m_undoSkeleton = copy.deepcopy(firstSkeleton)
+        
+        secondGroupID = data.CData.get_groupID_from_key(self.SecondSelectedVertexKey)
+        secondSkeleton = self.InputData.get_skeleton(secondGroupID)
+        secondSelectedCLID = data.CData.get_id_from_key(self.SecondSelectedVertexKey)
+        secondSelectedCL = secondSkeleton.get_centerline(secondSelectedCLID)
+        secondV = secondSelectedCL.get_vertex(self.SecondSelectedVertexID)
+        secondR = secondSelectedCL.get_radius(self.SecondSelectedVertexID)
+        
+        self.m_secondSkeleton = secondSkeleton
+        self.m_undoSecondCLVertex = secondSelectedCL.Vertex.copy()
+        self.m_undoSecondCLRadius = secondSelectedCL.Radius.copy()
+        
+        if firstGroupID == secondGroupID and firstSelectedCLID == secondSelectedCLID:
+            self.m_mediator.set_state(0)
+            return 
+        
+        firstVNeedSplitCenterline = True
+        secondVNeedSplitCenterline = True
+        '''
+        fitstV나 secondV가 branch 혹은 ep 가 아니면 cl를 분리해야 함. 
+        '''
+        
+        if firstSelectedCL.get_conn_inx(firstV) != -1:
+            firstVNeedSplitCenterline = False
+            
+        if secondSelectedCL.get_conn_inx(secondV) != -1:
+            secondVNeedSplitCenterline = False
+        
+        for bi in range(firstSkeleton.get_branch_count()):
+            if algLinearMath.CScoMath.is_equal_vec(firstSkeleton.get_branch(bi).BranchPoint, firstV) == True:
+                firstVNeedSplitCenterline = False
+                
+        for bi in range(secondSkeleton.get_branch_count()):
+            if algLinearMath.CScoMath.is_equal_vec(secondSkeleton.get_branch(bi).BranchPoint, secondV) == True:
+                secondVNeedSplitCenterline = False
+        
+        refinedVertex = np.concatenate((firstV, secondV), axis=0)
+        
+        refinedRadius = np.array([firstR, secondR])
+        refinedRadius = CCommandSkelEdit.resample_radius(refinedVertex, refinedRadius)
+        refinedVertex = CCommandSkelEdit.resample_points(refinedVertex)
+        #print(f"resampled refinedVertex shape : {refinedVertex.shape}", file=sys.__stdout__,flush=True)
+        bridgeCLID = len(firstSkeleton.m_listCenterline) + len(secondSkeleton.m_listCenterline)
+        bridgeCenterline = algSkeletonGraph.CSkeletonCenterline(bridgeCLID)
+        bridgeCenterline.Name = firstSelectedCL.Name
+        bridgeCenterline.Vertex = refinedVertex
+        bridgeCenterline.Radius = refinedRadius
+        
+        '''
+        firstVNeedSplitCenterline 와 secondVNeedSplitCenterline 에 따라서 firstCL과 secondCL을 나눠야할 지 말지 정해야 함.
+        그리고 나눈 후에 bridge Centerline과 기존의 centerline list 와 합쳐서 skeleton을 다시 build 해야 함
+        '''
+        if firstVNeedSplitCenterline:
+            self.split_centerline(firstSkeleton, firstSelectedCL, int(self.FirstSelectedVertexID))
+            
+        if secondVNeedSplitCenterline:
+            self.split_centerline(secondSkeleton, secondSelectedCL, int(self.SecondSelectedVertexID))
+        mergedskeleton = self.merge_centerline(secondSkeleton, firstSkeleton, bridgeCenterline)
+        ''' 
+        임시로 첫번째 group ID로 덮어씌우는 방향으로 설정 
+        '''
+        self.InputData.m_listSkelInfo[firstGroupID].Skeleton = mergedskeleton
+        self.m_mediator.add_skeleton_obj(firstGroupID)
+        
+    def process_undo(self, state):
+        firstGroupID = data.CData.get_groupID_from_key(self.FirstSelectedVertexKey)
+        secondGroupID = data.CData.get_groupID_from_key(self.SecondSelectedVertexKey)
+        if state in [0, 1, 2]:
+            self.m_mediator.unref_key_type_groupID(data.CData.s_skelTypeCenterline, firstGroupID)
+            if state == 1:
+                self.m_mediator.unref_key_type_groupID(data.CData.s_skelTypeBranch, firstGroupID)
+            elif state == 2:
+                self.m_mediator.unref_key_type_groupID(data.CData.s_skelTypeEndPoint, firstGroupID)
+        else:
+            self.m_mediator.unref_key_type_groupID(data.CData.s_skelTypeVertex, firstGroupID)
+        self.InputData.remove_all_key_by_type_groupID(data.CData.s_skelTypeCenterline, firstGroupID)
+        self.InputData.remove_all_key_by_type_groupID(data.CData.s_skelTypeBranch, firstGroupID)
+        self.InputData.remove_all_key_by_type_groupID(data.CData.s_skelTypeEndPoint, firstGroupID)
+        self.InputData.remove_all_key_by_type_groupID(data.CData.s_skelTypeVertex, firstGroupID)
+        self.InputData.m_listSkelInfo[firstGroupID].Skeleton = self.m_undoSkeleton
+        self.m_mediator.add_skeleton_obj(firstGroupID)
+            
+        if state in [0, 1, 2]:
+            self.m_mediator.ref_key_type_groupID(data.CData.s_skelTypeCenterline, firstGroupID)
+            if firstGroupID != secondGroupID:
+                self.m_mediator.ref_key_type_groupID(data.CData.s_skelTypeCenterline, secondGroupID)
+                
+            if state == 1:
+                self.m_mediator.ref_key_type_groupID(data.CData.s_skelTypeBranch, firstGroupID)
+                if firstGroupID != secondGroupID:
+                    self.m_mediator.ref_key_type_groupID(data.CData.s_skelTypeBranch, secondGroupID)
+            elif state == 2:
+                self.m_mediator.ref_key_type_groupID(data.CData.s_skelTypeEndPoint, firstGroupID)
+                if firstGroupID != secondGroupID:
+                    self.m_mediator.ref_key_type_groupID(data.CData.s_skelTypeEndPoint, secondGroupID)
+        else:
+            self.m_mediator.ref_key_type_groupID(data.CData.s_skelTypeVertex, firstGroupID)
+            if firstGroupID != secondGroupID:
+                self.m_mediator.ref_key_type_groupID(data.CData.s_skelTypeVertex, secondGroupID)
+        
+    def split_centerline(self, skeleton, centerline, splitVertexInx):
+        splitCenterlineID = centerline.ID
+        
+        tempCenterline1 = algSkeletonGraph.CSkeletonCenterline(splitCenterlineID)
+        tempCenterline1.Name = skeleton.m_listCenterline[splitCenterlineID].Name
+        tempCenterline1.Vertex = skeleton.m_listCenterline[splitCenterlineID].Vertex[:splitVertexInx+1].copy()
+        tempCenterline1.Radius = skeleton.m_listCenterline[splitCenterlineID].Radius[:splitVertexInx+1].copy()
+        tempCenterline2 = algSkeletonGraph.CSkeletonCenterline(len(skeleton.m_listCenterline))
+        tempCenterline2.Name = skeleton.m_listCenterline[splitCenterlineID].Name
+        tempCenterline2.Vertex = skeleton.m_listCenterline[splitCenterlineID].Vertex[splitVertexInx:].copy()
+        tempCenterline2.Radius = skeleton.m_listCenterline[splitCenterlineID].Radius[splitVertexInx:].copy()
+        
+        skeleton.m_listCenterline[splitCenterlineID] = tempCenterline1
+        skeleton.m_listCenterline.append(tempCenterline2)
+        return
+        
+    def merge_centerline(self, srcSkeleton, tgtSkeleton, bridgeCenterline):
+        mergedskeleton = algSkeletonGraph.CSkeleton()
+        
+        rootcenterlineID = 0
+        for centerline in tgtSkeleton.m_listCenterline:
+            _centerline = algSkeletonGraph.CSkeletonCenterline(len(mergedskeleton.m_listCenterline))
+            _centerline.Name = centerline.Name
+            _centerline.Vertex = centerline.Vertex.copy()
+            _centerline.Radius = centerline.Radius.copy()
+            mergedskeleton.m_listCenterline.append(_centerline)
+            if tgtSkeleton.m_rootCenterline.ID == centerline.ID:
+                rootcenterlineID = _centerline.ID
+            
+        _centerline = algSkeletonGraph.CSkeletonCenterline(len(mergedskeleton.m_listCenterline))
+        _centerline.Name = bridgeCenterline.Name
+        _centerline.Vertex = bridgeCenterline.Vertex.copy()
+        _centerline.Radius = bridgeCenterline.Radius.copy()
+        mergedskeleton.m_listCenterline.append(_centerline)
+
+        if len(srcSkeleton.m_listBranch) == len(tgtSkeleton.m_listBranch) and len(srcSkeleton.m_listCenterline) == len(tgtSkeleton.m_listCenterline):
+            pass
+        else:
+            for centerline in srcSkeleton.m_listCenterline:
+                _centerline = algSkeletonGraph.CSkeletonCenterline(len(mergedskeleton.m_listCenterline))
+                _centerline.Name = centerline.Name
+                _centerline.Vertex = centerline.Vertex.copy()
+                _centerline.Radius = centerline.Radius.copy()
+                mergedskeleton.m_listCenterline.append(_centerline)
+            
+        # conn branch and centerline
+        for centerline in mergedskeleton.ListCenterline :
+            mergedskeleton.init_conn_centerline(centerline)
+        # leaf centerline
+        mergedskeleton.extract_leaf_centerline()
+        print("passed extracting centerline & branch")
+
+        mergedskeleton.build_graph()
+        mergedskeleton.build_kd_tree()
+        mergedskeleton.build_tree(rootcenterlineID)
+        
+        return mergedskeleton
+
+
+    @property
+    def InputData(self) :
+        return self.m_inputData
+    @InputData.setter
+    def InputData(self, inputData) :
+        self.m_inputData = inputData
+        
+    @property
+    def FirstSelectedVertexKey(self) :
+        return self.m_firstSelectedVertexKey
+    @FirstSelectedVertexKey.setter
+    def FirstSelectedVertexKey(self, firstSelectedVertexKey):
+        self.m_firstSelectedVertexKey = firstSelectedVertexKey
+        
+    @property
+    def SecondSelectedVertexKey(self) :
+        return self.m_secondSelectedVertexKey
+    @SecondSelectedVertexKey.setter
+    def SecondSelectedVertexKey(self, secondSelectedVertexKey):
+        self.m_secondSelectedVertexKey = secondSelectedVertexKey
+        
+    @property
+    def FirstSelectedVertexID(self) :
+        return self.m_firstSelectedVertexID
+    @FirstSelectedVertexID.setter
+    def FirstSelectedVertexID(self, firstSelectedVertexID):
+        self.m_firstSelectedVertexID = firstSelectedVertexID
+        
+    @property
+    def SecondSelectedVertexID(self) :
+        return self.m_secondSelectedVertexID
+    @SecondSelectedVertexID.setter
+    def SecondSelectedVertexID(self, secondSelectedVertexID):
+        self.m_secondSelectedVertexID = secondSelectedVertexID
+        
+class CCommandAutoRemoveCL(CCommandSkelEdit) :
+    '''
+    only remove leaf centerline
+    '''
+    def __init__(self, mediator) :
+        super().__init__(mediator)
+        # input your code
+        self.m_inputListCLID = []
+        self.m_listCmd = []
+        self.m_undoSkeleton = None
+        self.m_clinfoInx = -1
+    def clear(self) :
+        # input your code
+        self.m_inputListCLID.clear()
+        for cmd in self.m_listCmd :
+            cmd.clear()
+        self.m_listCmd.clear()
+        self.m_undoSkeleton = None
+        self.m_clinfoInx = -1
+        super().clear()
+    # def process_undo(self) :
+    #     reverseListCmd = self.m_listCmd[ : : -1]
+    #     for cmd in reverseListCmd :
+    #         cmd.process_undo()
+    def process(self) :
+        super().process()
+        # input your code
+        self.m_undoSkeleton = copy.deepcopy(self.InputSkeleton)
+        if len(self.m_inputListCLID) == 0 :
+            print("not setting cl id")
+            return
+        
+        retListCL = []
+        for clID in self.m_inputListCLID :
+            cl = self.InputSkeleton.get_centerline(clID)
+            retListCL.append(cl)
+        
+        retListBrID = []
+        leafCL = []
+        for cl in retListCL :
+            if cl.is_leaf() == False :
+                if self.check_is_loop_centerline(cl) and len(retListCL)==1:
+                    cmd = CCommandRemoveCL(self.m_mediator)
+                    cmd.InputData = self.InputData
+                    cmd.InputSkeleton = self.InputSkeleton
+                    cmd.InputCLID = cl.ID
+                    cmd.process()
+                    self.m_listCmd.append(cmd)
+                    
+                    brIDSet = set([])
+                    for disCmd in cmd.ListCmdDisconn :
+                        brIDSet.add(disCmd.InputBrID)
+                        
+                    for brID in brIDSet:
+                        br = self.InputSkeleton.get_branch(brID)
+                        if br.get_conn_count() == 2 :
+                            cmd = CCommandMergeCL(self.m_mediator)
+                            cmd.InputData = self.InputData
+                            cmd.InputSkeleton = self.InputSkeleton
+                            cmd.InputBrID = br.ID
+                            cmd.m_gaussianSmoothing = False
+                            cmd.process()
+                            self.m_listCmd.append(cmd)
+                    return
+                continue
+            else:
+                leafCL.append(cl)
+            
+        for cl in leafCL:
+            cmd = CCommandRemoveCL(self.m_mediator)
+            cmd.InputData = self.InputData
+            cmd.InputSkeleton = self.InputSkeleton
+            cmd.InputCLID = cl.ID
+            cmd.process()
+            self.m_listCmd.append(cmd)
+
+            for disCmd in cmd.ListCmdDisconn :
+                retListBrID.append(disCmd.InputBrID)
+        
+        if len(retListBrID) == 0 :
+            print("skel edit : error")
+            return
+        
+        retListBrID = list(set(retListBrID))
+        retListBr = []
+        for brID in retListBrID :
+            br = self.InputSkeleton.get_branch(brID)
+            retListBr.append(br)
+        
+        for br in retListBr :
+            if br.get_conn_count() == 1 :
+                cmd = CCommandRemoveBr(self.m_mediator)
+                cmd.InputData = self.InputData
+                cmd.InputSkeleton = self.InputSkeleton
+                cmd.InputBrID = br.ID
+                cmd.process()
+                self.m_listCmd.append(cmd)
+            elif br.get_conn_count() == 2 :
+                cmd = CCommandMergeCL(self.m_mediator)
+                cmd.InputData = self.InputData
+                cmd.InputSkeleton = self.InputSkeleton
+                cmd.InputBrID = br.ID
+                cmd.process()
+                self.m_listCmd.append(cmd)
+                
+                
+
+    def process_undo(self, state):
+            super().process_undo()
+            
+            clinfoInx = self.m_clinfoInx
+
+            if state in [0, 1, 2]:
+                self.m_mediator.unref_key_type_groupID(data.CData.s_skelTypeCenterline, clinfoInx)
+                if state == 1:
+                    self.m_mediator.unref_key_type_groupID(data.CData.s_skelTypeBranch, clinfoInx)
+                elif state == 2:
+                    self.m_mediator.unref_key_type_groupID(data.CData.s_skelTypeEndPoint, clinfoInx)
+            else:
+                self.m_mediator.unref_key_type_groupID(data.CData.s_skelTypeVertex, clinfoInx)
+            self.InputData.remove_all_key_by_type_groupID(data.CData.s_skelTypeCenterline, clinfoInx)
+            self.InputData.remove_all_key_by_type_groupID(data.CData.s_skelTypeBranch, clinfoInx)
+            self.InputData.remove_all_key_by_type_groupID(data.CData.s_skelTypeEndPoint, clinfoInx)
+            self.InputData.remove_all_key_by_type_groupID(data.CData.s_skelTypeVertex, clinfoInx)
+            self.InputData.m_listSkelInfo[clinfoInx].Skeleton = self.m_undoSkeleton
+            self.m_mediator.add_skeleton_obj(clinfoInx)
+            
+            if state in [0, 1, 2]:
+                self.m_mediator.ref_key_type_groupID(data.CData.s_skelTypeCenterline, clinfoInx)
+                if state == 1:
+                    self.m_mediator.ref_key_type_groupID(data.CData.s_skelTypeBranch, clinfoInx)
+                elif state == 2:
+                    self.m_mediator.ref_key_type_groupID(data.CData.s_skelTypeEndPoint, clinfoInx)
+            else:
+                self.m_mediator.ref_key_type_groupID(data.CData.s_skelTypeVertex, clinfoInx)
+
+            
+    def check_is_loop_centerline(self, cl):
+        skeleton = self.InputSkeleton
+        
+        rootCLID = skeleton.RootCenterline.ID
+        
+        ID = 0
+        m_visitedCLID = set()
+        queueCLID = deque([])
+        queueCLID.append(rootCLID)
+        m_visitedCLID.add(rootCLID)
+        
+        # bfs 알고리즘 기반으로 centerline graph 전파
+        
+        while queueCLID:
+            currentCLID = queueCLID.popleft()
+            ID += 1
+            currentCL = skeleton.get_centerline(currentCLID)
+            if currentCL.is_leaf() and currentCLID != rootCLID:
+                continue
+            elif currentCLID == cl.ID:
+                continue
+            else:
+                for bi in range(2):
+                    currentBR = currentCL.get_conn(bi)
+                    if currentBR == None:
+                        continue
+                    listAdjCLID = [currentBR.get_conn(inx).ID for inx in range(currentBR.get_conn_count())]
+                    for adjCLID in listAdjCLID:
+                        adjCL = skeleton.get_centerline(adjCLID)
+                        if adjCLID in m_visitedCLID:
+                            continue
+                        else:
+                            m_visitedCLID.add(adjCLID)
+                            queueCLID.append(adjCLID)
+        
+        if ID == skeleton.get_centerline_count():
+            return True
+        else:
+            return False
+
+            
+            
+            
+            
+    def add_clID(self, clID : int) :
+        self.m_inputListCLID.append(clID)
+    def get_clID_count(self) -> int :
+        return len(self.m_inputListCLID)
+    def get_clID(self, inx : int) -> int :
+        return self.m_inputListCLID[inx]
+    
+    @property
+    def ListCmd(self) -> list :
+        return self.m_listCmd
+    
+
+    
 class CCommandMergeCL(CCommandSkelEdit) :
     def __init__(self, mediator) :
         super().__init__(mediator)
         # input your code
         self.m_inputBrID = -1
+        self.m_gaussianSmoothing = True
     def clear(self) :
         # input your code
         self.m_inputBrID = -1
@@ -677,7 +1473,11 @@ class CCommandMergeCL(CCommandSkelEdit) :
         # modified dst_cl & refresh
         concat_vertex = np.concatenate((dst_cl.Vertex, src_cl.Vertex[1:]), axis=0)
         concat_radius = np.concatenate((dst_cl.Radius, src_cl.Radius[1:]), axis=0)
-        concat_vertex = CCommandSkelEdit.gaussian_smoothing(concat_vertex, sigma=5)
+        
+        if self.m_gaussianSmoothing:
+            concat_vertex, concat_radius = CCommandSkelEdit.gaussian_smoothing(concat_vertex, concat_radius, sigma=5)
+        
+        concat_radius = CCommandSkelEdit.resample_radius(concat_vertex, concat_radius)
         concat_vertex = CCommandSkelEdit.resample_points(concat_vertex)
         dst_cl.Vertex = concat_vertex
         dst_cl.Radius = concat_radius
@@ -692,7 +1492,6 @@ class CCommandMergeCL(CCommandSkelEdit) :
         cmdRemoveCL.InputCLID = src_cl.ID
         cmdRemoveCL.process()
 
-
     # protected
     def _decide_src_and_dst(self, cl1 : algSkeletonGraph.CSkeletonCenterline, cl2 : algSkeletonGraph.CSkeletonCenterline) :
         '''
@@ -704,7 +1503,6 @@ class CCommandMergeCL(CCommandSkelEdit) :
             return cl2, cl1
         else :
             return cl1, cl2
-    
 
     @property
     def InputBrID(self) -> int :
@@ -713,99 +1511,15 @@ class CCommandMergeCL(CCommandSkelEdit) :
     def InputBrID(self, inputBrID : int) :
         self.m_inputBrID = inputBrID
 
-class CCommandAutoRemoveCL(CCommandSkelEdit) :
-    '''
-    only remove leaf centerline
-    '''
-    def __init__(self, mediator) :
-        super().__init__(mediator)
-        # input your code
-        self.m_inputListCLID = []
-        self.m_listCmd = []
-    def clear(self) :
-        # input your code
-        self.m_inputListCLID.clear()
-        for cmd in self.m_listCmd :
-            cmd.clear()
-        self.m_listCmd.clear()
-        super().clear()
-    # def process_undo(self) :
-    #     reverseListCmd = self.m_listCmd[ : : -1]
-    #     for cmd in reverseListCmd :
-    #         cmd.process_undo()
-    def process(self) :
-        super().process()
-        # input your code
-        if len(self.m_inputListCLID) == 0 :
-            print("not setting cl id")
-            return
-        
-        retListCL = []
-        for clID in self.m_inputListCLID :
-            cl = self.InputSkeleton.get_centerline(clID)
-            retListCL.append(cl)
-        
-        retListBrID = []
-        for cl in retListCL :
-            if cl.is_leaf() == False :
-                continue
-
-            cmd = CCommandRemoveCL(self.m_mediator)
-            cmd.InputData = self.InputData
-            cmd.InputSkeleton = self.InputSkeleton
-            cmd.InputCLID = cl.ID
-            cmd.process()
-            self.m_listCmd.append(cmd)
-
-            for disCmd in cmd.ListCmdDisconn :
-                retListBrID.append(disCmd.InputBrID)
-        
-        if len(retListBrID) == 0 :
-            print("skel edit : error")
-            return
-        
-        retListBrID = list(set(retListBrID))
-        retListBr = []
-        for brID in retListBrID :
-            br = self.InputSkeleton.get_branch(brID)
-            retListBr.append(br)
-        
-        for br in retListBr :
-            if br.get_conn_count() == 1 :
-                cmd = CCommandRemoveBr(self.m_mediator)
-                cmd.InputData = self.InputData
-                cmd.InputSkeleton = self.InputSkeleton
-                cmd.InputBrID = br.ID
-                cmd.process()
-                self.m_listCmd.append(cmd)
-            elif br.get_conn_count() == 2 :
-                cmd = CCommandMergeCL(self.m_mediator)
-                cmd.InputData = self.InputData
-                cmd.InputSkeleton = self.InputSkeleton
-                cmd.InputBrID = br.ID
-                cmd.process()
-                self.m_listCmd.append(cmd)
-
-
-    def add_clID(self, clID : int) :
-        self.m_inputListCLID.append(clID)
-    def get_clID_count(self) -> int :
-        return len(self.m_inputListCLID)
-    def get_clID(self, inx : int) -> int :
-        return self.m_inputListCLID[inx]
-    
-    @property
-    def ListCmd(self) -> list :
-        return self.m_listCmd
-    
-
 class CCommandUpdateCL(CCommandSkelEdit) :
     def __init__(self, mediator):
         super().__init__(mediator)
         # input your code
         self.m_inputCLID = -1
         self.m_inputVertex = None
+        self.m_inputRadius = None
         self.m_inputMinInx = -1
+        self.m_inputEndInx = -1
         self.m_inputReverse = False
 
         self.m_undoCLVertex = None
@@ -814,7 +1528,9 @@ class CCommandUpdateCL(CCommandSkelEdit) :
         # input your code
         self.m_inputCLID = -1
         self.m_inputVertex = None
+        self.m_inputRadius = None
         self.m_inputMinInx = -1
+        self.m_inputEndInx = -1
         self.m_inputReverse = False
 
         self.m_undoCLVertex = None
@@ -840,32 +1556,47 @@ class CCommandUpdateCL(CCommandSkelEdit) :
         startInx = -1
         endInx = -1
         reverseVertex = None
+        reverseRadius = None
         if self.InputReverse == True :
             reverseVertex = self.InputVertex[ : : -1].copy()
+            reverseRadius = self.InputRadius[ : : -1].copy()
             startInx = 0
             endInx = self.InputVertex.shape[0]
         else :
             reverseVertex = self.InputVertex.copy()
+            reverseRadius = self.InputRadius.copy()
             startInx = self.InputMinInx
-            endInx = cl.Vertex.shape[0]
-        
+            if self.m_inputEndInx == -1:
+                endInx = cl.Vertex.shape[0]
+            else:
+                endInx = self.m_inputEndInx
         clVertex = cl.Vertex.copy()
         clVertex[startInx : endInx] = reverseVertex[ : ].copy()
+        clRadius = cl.Radius.copy()
+        clRadius[startInx : endInx] = reverseRadius[ : ].copy()
         # refinedVertex = CCommandSkelEdit.gaussian_smoothing(clVertex, sigma=5)
         # refinedVertex = CCommandSkelEdit.resample_points(refinedVertex)
         refinedVertex = CCommandSkelEdit.resample_points(clVertex)
+        refinedRadius = CCommandSkelEdit.resample_radius(clVertex, clRadius)
 
-        # 나중에 radius도 고려해야 함 
         cl.Vertex = refinedVertex
+        cl.Radius = refinedRadius
 
-        self._refresh_changed_cl_data(cl.ID)
-    def process_undo(self):
+        
+        if self.m_inputEndInx == -1:
+            self._refresh_changed_cl_data(cl.ID)
+        else:
+            self._refresh_changed_cl_data_by_vertex(cl.ID)
+    def process_undo(self, state):
         super().process_undo()
         # input your code
         cl = self.InputSkeleton.get_centerline(self.InputCLID)
         cl.Vertex = self.m_undoCLVertex.copy()
         cl.Radius = self.m_undoCLRadius.copy()
-        self._refresh_changed_cl_data(cl.ID)
+        if state in [0, 1, 2]:
+            self._refresh_changed_cl_data(cl.ID)
+        else:
+            self._refresh_changed_cl_data_by_vertex(cl.ID)
 
     
     # protected
@@ -884,11 +1615,23 @@ class CCommandUpdateCL(CCommandSkelEdit) :
     def InputVertex(self, inputVertex : np.ndarray) :
         self.m_inputVertex = inputVertex
     @property
+    def InputRadius(self) -> np.ndarray :
+        return self.m_inputRadius
+    @InputRadius.setter
+    def InputRadius(self, inputRadius : np.ndarray) :
+        self.m_inputRadius = inputRadius
+    @property
     def InputMinInx(self) -> int :
         return self.m_inputMinInx
     @InputMinInx.setter
     def InputMinInx(self, inputMinInx : int) :
         self.m_inputMinInx = inputMinInx
+    @property
+    def InputEndInx(self) -> int :
+        return self.m_inputEndInx
+    @InputEndInx.setter
+    def InputEndInx(self, inputEndInx : int) :
+        self.m_inputEndInx = inputEndInx
     @property
     def InputReverse(self) -> bool :
         return self.m_inputReverse
@@ -925,7 +1668,7 @@ class CCommandUpdateBr(CCommandSkelEdit) :
         self.m_undoPos = br.BranchPoint.copy()
         br.BranchPoint = self.InputPos.copy()
         self._refresh_changed_br_data(br.ID)
-    def process_undo(self):
+    def process_undo(self, state):
         super().process_undo()
         br = self.InputSkeleton.get_branch(self.InputBrID)
         br.BranchPoint = self.m_undoPos.copy()

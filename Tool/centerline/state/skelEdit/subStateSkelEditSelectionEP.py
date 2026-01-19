@@ -142,6 +142,7 @@ class CSelectionEPStateSelection(CSelectionEPState) :
                 cmd.InputSkeleton = skeleton
                 cmd.InputCLID = leafCL.ID
                 cmd.InputVertex = guideCL.ModifiedVertex
+                cmd.InputRadius = guideCL.ModifiedRadius
                 cmd.InputMinInx = guideCL.MinInx
                 cmd.InputReverse = guideCL.Reverse
                 cmd.SelectedGroupID = clinfoInx
@@ -285,7 +286,7 @@ class CSubStateSkelEditSelectionEP(subStateSkelEdit.CSubStateSkelEdit) :
         pass
     def key_press_with_ctrl(self, keyCode : str) :
         if keyCode == "z" :
-            self.App.undo()
+            self.App.undo(2)
         if keyCode == "r" :
             self.App.redo()
     def change_range(self, range : int) :

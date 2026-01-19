@@ -428,6 +428,12 @@ class CData :
         if detachedObj is not None :
             return detachedObj
         return None
+    def remove_all_key_by_type_groupID(self, type, groupID):
+        dictKeys = [k for k in self.m_dicObj.keys()]
+        for key in dictKeys :
+            _type, _groupID, _id = CData.get_keyinfo(key)
+            if _type == type and _groupID == groupID :
+                self.remove_key(key)
     def remove_key(self, key : str) :
         removedObj = self.m_dicObj.pop(key, None)
         if removedObj is not None :

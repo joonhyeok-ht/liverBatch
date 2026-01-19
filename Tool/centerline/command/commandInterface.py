@@ -31,6 +31,7 @@ import Block.niftiContainer as niftiContainer
 import Block.reconstruction as reconstruction
 
 import data as data
+from collections import deque
 # import territory as territory
 
 
@@ -77,7 +78,7 @@ class CCommandContainer(CCommand) :
     def __init__(self, mediator):
         super().__init__(mediator)
         # input your code
-        self.m_listCmd = []
+        self.m_listCmd = deque(maxlen=20)
     def clear(self) :
         for cmd in self.m_listCmd :
             cmd.clear()
@@ -85,9 +86,9 @@ class CCommandContainer(CCommand) :
     def process(self) :
         for cmd in self.m_listCmd :
             cmd.process()
-    def process_undo(self) :
+    def process_undo(self, state = 0) :
         for cmd in reversed(self.m_listCmd) :
-            cmd.process_undo()
+            cmd.process_undo(state)
 
     def add_cmd(self, cmd : CCommand) :
         self.m_listCmd.append(cmd)

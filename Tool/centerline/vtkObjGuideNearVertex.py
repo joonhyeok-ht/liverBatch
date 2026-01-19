@@ -29,8 +29,8 @@ import VtkUI.vtkUI as vtkUI
 import vtkObjInterface as vtkObjInterface
 
 
-class CVTKObjGuideCL(vtkObjInterface.CVTKObjInterface) :
-    def __init__(self, cl : algSkeletonGraph.CSkeletonCenterline, anchorPt : np.ndarray, range : int) -> None:
+class CVTKObjGuideNearVertex(vtkObjInterface.CVTKObjInterface) :
+    def __init__(self, cl : algSkeletonGraph.CSkeletonCenterline, anchorPt : np.ndarray, range : int, state) -> None:
         super().__init__()
         # input your code
         self.m_cl = cl
@@ -44,6 +44,9 @@ class CVTKObjGuideCL(vtkObjInterface.CVTKObjInterface) :
         self.m_modifiedRadius = None
         self.m_index = None
         self.m_minInx = -1
+        self.m_endInx = -1
+        
+        self.m_state = state
         
         self._update_range()
     def clear(self) :
@@ -59,6 +62,10 @@ class CVTKObjGuideCL(vtkObjInterface.CVTKObjInterface) :
         self.m_modifiedRadius = None
         self.m_index = None
         self.m_minInx = -1
+        self.m_endInx = -1
+        
+        self.m_state = ""
+        
         super().clear()
     # def process(self, moveVec : np.ndarray, weightDecay = 0.5) : 
     #     self.m_anchorPt = moveVec.copy()
@@ -95,28 +102,54 @@ class CVTKObjGuideCL(vtkObjInterface.CVTKObjInterface) :
     #     for i, vertex in enumerate(self.m_vertex):
     #         points.SetPoint(i, vertex)
     #     points.Modified()
+    
+    
+    
     def process(self, newEndPoint : np.ndarray, weightDecay=0.9) :
-        npRet = np.diff(self.m_vertex, axis=0)
-        npRet = np.linalg.norm(npRet, axis=1)
-        npRet = npRet[ : : -1]
-        npRet = np.cumsum(npRet)
-        npRet = np.concatenate(([0], npRet))
-        
-        curveLen = npRet[-1]
-        distFromEnd = curveLen - npRet
-        maxDistFromEnd = distFromEnd.max()
-        weights = 1.0 - (distFromEnd / maxDistFromEnd)
+        if self.m_state == "left":
+            npRet = np.diff(self.m_vertex, axis=0)
+            npRet = np.linalg.norm(npRet, axis=1)
+            npRet = npRet[ : : -1]
+            npRet = np.cumsum(npRet)
+            npRet = np.concatenate(([0], npRet))
+            
+            curveLen = npRet[-1]
+            distFromEnd = curveLen - npRet
+            maxDistFromEnd = distFromEnd.max()
+            weights = 1.0 - (distFromEnd / maxDistFromEnd)
 
-        movingVec = newEndPoint - self.m_vertex[-1].reshape(-1, 3)
-        for i in range(len(self.m_vertex)):
-            npTmp = (movingVec * weights[i]).reshape(-1)
-            self.m_modifiedVertex[i] = self.m_vertex[i] + npTmp
-        
-        points = self.m_polyData.GetPoints()
-        for i, vertex in enumerate(self.m_modifiedVertex):
-            points.SetPoint(i, vertex)
-        points.Modified()
-        
+            movingVec = newEndPoint - self.m_vertex[-1].reshape(-1, 3)
+            for i in range(len(self.m_vertex)):
+                npTmp = (movingVec * weights[i]).reshape(-1)
+                self.m_modifiedVertex[i] = self.m_vertex[i] + npTmp
+            
+            points = self.m_polyData.GetPoints()
+            for i, vertex in enumerate(self.m_modifiedVertex):
+                points.SetPoint(i, vertex)
+            points.Modified()
+        elif self.m_state == "right":
+            npRet = np.diff(self.m_vertex, axis=0)
+            npRet = np.linalg.norm(npRet, axis=1)
+            npRet = np.cumsum(npRet)
+            npRet = npRet[ : : -1]
+            npRet = np.concatenate((npRet, [0]))
+            
+            curveLen = npRet[0]
+            distFromEnd = curveLen - npRet
+            maxDistFromEnd = max(distFromEnd.max(), 1e-20)
+            weights = 1.0 - (distFromEnd / maxDistFromEnd)
+
+            movingVec = newEndPoint - self.m_vertex[0].reshape(-1, 3)
+            for i in range(len(self.m_vertex)):
+                npTmp = (movingVec * weights[i]).reshape(-1)
+                self.m_modifiedVertex[i] = self.m_vertex[i] + npTmp
+            
+            points = self.m_polyData.GetPoints()
+            for i, vertex in enumerate(self.m_modifiedVertex):
+                points.SetPoint(i, vertex)
+            points.Modified()
+    
+
     def set_line_width(self, width : float) :
         self.m_actor.GetProperty().SetLineWidth(width)
         self.m_width = width
@@ -124,36 +157,61 @@ class CVTKObjGuideCL(vtkObjInterface.CVTKObjInterface) :
 
     # protected
     def _update_range(self) :
-        npVertex = None 
+        npVertex =  self.m_cl.Vertex.copy()
         npRadius = None
         # 끝점이 이동되어야 한다. 
-        if self.m_cl.find_vertex_inx_by_vertex(self.m_anchorPt) == 0 :
-            self.m_bReverse = True
-            npVertex = self.m_cl.Vertex[ : : -1].copy()
-            npRadius = self.m_cl.Radius[ : : -1].copy()
-        else :
-            npVertex = self.m_cl.Vertex.copy()
-            npRadius = self.m_cl.Radius.copy()
-
-        self.m_minInx = self._find_first_vertex_outside_radius(npVertex, self.m_anchorPt, self.m_range)
         
-        # all point in radius
-        if self.m_minInx == -1 :
-            self.m_minInx = 1
-        else :
-            self.m_minInx += 1
-
-        self.m_vertex = npVertex[self.m_minInx : ].copy()
-        self.m_radius = npRadius[self.m_minInx : ].copy()
+        vi = self.m_cl.find_vertex_inx_by_vertex(self.m_anchorPt)
         
-        self.m_modifiedVertex = self.m_vertex.copy()
-        self.m_modifiedRadius = self.m_radius.copy()
+        leftInx = -1
+        rightInx = -1
+        
+
+        if self.m_state == "left":
+            leftInx = self._find_first_left_vertex_inside_radius(npVertex, self.m_anchorPt, self.m_range)
+            rightInx = vi + 1
+            self.m_vertex = self.m_cl.Vertex[leftInx:rightInx].copy()
+            self.m_radius = self.m_cl.Radius[leftInx:rightInx].copy()
+            
+            self.m_modifiedVertex = self.m_vertex.copy()
+            self.m_modifiedRadius = self.m_radius.copy()
+            if leftInx == -1:
+                leftInx = 1
+            
+        elif self.m_state == "right":
+            rightInx = self._find_first_right_vertex_inside_radius(npVertex, self.m_anchorPt, self.m_range)
+            leftInx = vi
+            
+            if rightInx + 1 <= npVertex.shape[0]:
+                rightInx += 1
+                
+            self.m_vertex = self.m_cl.Vertex[vi:rightInx].copy()
+            self.m_radius = self.m_cl.Radius[vi:rightInx].copy()
+            
+            self.m_modifiedVertex = self.m_vertex.copy()
+            self.m_modifiedRadius = self.m_radius.copy()
+            
+            if rightInx == -1:
+                rightInx = npVertex.shape[0]
+        else:
+            return
+        
+        self.m_minInx = leftInx
+        self.m_endInx = rightInx
+            
         self.m_index = algVTK.CVTK.make_line_strip_index(self.m_vertex.shape[0])
         self.PolyData = algVTK.CVTK.create_poly_data_line(self.m_vertex, self.m_index)
-    def _find_first_vertex_outside_radius(self, npVertex : np.ndarray, anchorPt : np.ndarray, radius : int) -> int :
+
+    def _find_first_left_vertex_inside_radius(self, npVertex : np.ndarray, anchorPt : np.ndarray, radius : int) -> int :
+        for i in range(len(npVertex)) :
+            dist = np.linalg.norm(npVertex[i].reshape(-1, 3) - anchorPt, axis=1)
+            if dist < radius:
+                return i
+        return -1
+    def _find_first_right_vertex_inside_radius(self, npVertex : np.ndarray, anchorPt : np.ndarray, radius : int) -> int :
         for i in range(len(npVertex) - 1, -1, -1) :
             dist = np.linalg.norm(npVertex[i].reshape(-1, 3) - anchorPt, axis=1)
-            if dist > radius:
+            if dist < radius:
                 return i
         return -1
 
@@ -167,13 +225,11 @@ class CVTKObjGuideCL(vtkObjInterface.CVTKObjInterface) :
     @property
     def ModifiedVertex(self) -> np.ndarray :
         return self.m_modifiedVertex
+    
     @property
     def ModifiedRadius(self) -> np.ndarray :
         return self.m_modifiedRadius
     
-    @property
-    def MinInx(self) -> int :
-        return self.m_minInx
     @property
     def Range(self) -> int :
         return self.m_range
@@ -192,4 +248,5 @@ if __name__ == '__main__' :
 
 
 # print ("ok ..")
+
 

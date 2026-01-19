@@ -156,7 +156,6 @@ class CSubStateSkelEditSelectionBr(subStateSkelEdit.CSubStateSkelEdit) :
                 opSelectionBr.process_reset()
                 opSelectionCL.process_reset()
                 self._remove_guide_key()
-
                 self.m_selBrKey = selKey
                 self._create_guide_key(algLinearMath.CScoMath.to_vec3([1.0, 0.0, 0.0]))
                 self._ref_guide_key()
@@ -206,6 +205,7 @@ class CSubStateSkelEditSelectionBr(subStateSkelEdit.CSubStateSkelEdit) :
                     cmd.InputSkeleton = skeleton
                     cmd.InputCLID = cl.ID
                     cmd.InputVertex = guideCL.ModifiedVertex
+                    cmd.InputRadius = guideCL.ModifiedRadius
                     cmd.InputMinInx = guideCL.MinInx
                     cmd.InputReverse = guideCL.Reverse
                     cmd.SelectedGroupID = clinfoInx
@@ -220,22 +220,6 @@ class CSubStateSkelEditSelectionBr(subStateSkelEdit.CSubStateSkelEdit) :
                 opSelectionCL.process_reset()
                 self._remove_guide_key()
                 self.m_selBrKey = ""
-                
-                self.App.remove_key_type_groupID(data.CData.s_skelTypeVertex, clinfoInx)
-                clcnt = skeleton.get_centerline_count()
-                for clInx in range(0, clcnt):
-                    skeletonCL = skeleton.get_centerline(clInx)
-                    
-                    vertexObj = vtkObjVertex.CVTKObjVertex(skeletonCL, dataInst.s_vertexSize, dataInst.s_vertexColor.flatten())
-                    if vertexObj.Ready == False :
-                        continue
-                    
-                    vertexObj.KeyType = data.CData.s_skelTypeVertex
-                    vertexObj.Key = data.CData.make_key(vertexObj.KeyType, clinfoInx, skeletonCL.ID)
-                    #vertexObj.Color = dataInst.VertexColor
-                    vertexObj.Opacity = 1.0
-                    vertexObj.Visibility = True
-                    dataInst.add_vtk_obj(vertexObj)
                 
                 self.App.update_viewer()
                 
@@ -269,7 +253,7 @@ class CSubStateSkelEditSelectionBr(subStateSkelEdit.CSubStateSkelEdit) :
         self.App.update_viewer()
     def key_press_with_ctrl(self, keyCode : str) :
         if keyCode == "z" :
-            self.App.undo()
+            self.App.undo(1)
         if keyCode == "r" :
             self.App.redo()
     def change_range(self, range : int) :
