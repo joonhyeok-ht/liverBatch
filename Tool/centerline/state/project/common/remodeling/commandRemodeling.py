@@ -64,8 +64,8 @@ class CCommandRemodeling :
         self.m_mediator = None
         self.m_undoListRemodelingNode.clear()
         self.m_undoSelectedIndex = -1
-    def undo(self) :
-        pass
+    def undo(self) : 
+        pass 
 
     # protected 
     def _copy_remodeling_node(self, listNode : list) :
@@ -77,10 +77,8 @@ class CCommandRemodeling :
                 copiedNode = remodelingNode.CRemodelingNode()
                 copiedNode.Name = node.Name
                 copiedNode.Key = node.Key
-                copiedNode.SkelKey = node.SkelKey
-                copiedNode.Skeleton = node.Skeleton
+                copiedNode.SkelGroupID = node.SkelGroupID
                 copiedNode.SkeletonEn = node.SkeletonEn
-                copiedNode.RootEntity = node.RootEntity
                 listCopiedNode.append(copiedNode)
         return listCopiedNode
 
@@ -93,8 +91,13 @@ class CCommandRemodelingCutting(CCommandRemodeling) :
     def __init__(self, mediator) :
         super().__init__(mediator)
         # input your code
+        self.m_undoListAddedNode = []
     def clear(self) :
         # input your code
+        for node in self.m_undoListAddedNode : 
+            if node.SkelGroupID >= 0 : 
+                self.App.remove_skeleton_cl_obj(node.SkelGroupID)
+        self.m_undoListAddedNode.clear()
         super().clear()
     def process(self, startX : int, startY : int, endX : int, endY : int) -> bool :
         dataInst = self.m_mediator.get_data()
@@ -138,14 +141,23 @@ class CCommandRemodelingCutting(CCommandRemodeling) :
 
         return True
     def undo(self) :
+        self.m_mediator.select_index_cuttedmesh(-1)
+
+        for node in self.m_undoListAddedNode : 
+            if node.SkelGroupID >= 0 :
+                self.App.remove_skeleton_cl_obj(node.SkelGroupID)
+        self.m_undoListAddedNode.clear()
+
         self.m_mediator.refresh_remodeling_node_list(self.m_undoListRemodelingNode)
         self.m_mediator.select_index_cuttedmesh(self.m_undoSelectedIndex)
     
     # protected
     def _refresh_cutting_key(self, listCuttingKey : list) :
         nowSelectedIndex = self.m_undoSelectedIndex
-        selectedNode = self.m_mediator.getui_lv_cuttednode_selected_node()
+        selectedNode = self.m_mediator.m_listRemodelingNode[self.m_undoSelectedIndex]
         listNode = self._copy_remodeling_node(self.m_mediator.m_listRemodelingNode)
+
+        self.m_mediator.select_index_cuttedmesh(-1)
 
         if selectedNode == self.m_mediator.MainNode :
             for inx, cuttingKey in enumerate(listCuttingKey) :
@@ -153,6 +165,7 @@ class CCommandRemodelingCutting(CCommandRemodeling) :
                 node.Key = cuttingKey
                 node.Name = self.m_mediator.get_node_name()
                 listNode.insert(nowSelectedIndex + inx, node)
+                self.m_undoListAddedNode.append(node)
         else :
             for inx, cuttingKey in enumerate(listCuttingKey) :
                 node = remodelingNode.CRemodelingNode()
@@ -164,6 +177,7 @@ class CCommandRemodelingCutting(CCommandRemodeling) :
                 else :
                     node.Name = self.m_mediator.get_node_name()
                     listNode.insert(nowSelectedIndex + inx, node)
+                self.m_undoListAddedNode.append(node)
         
         self.m_mediator.refresh_remodeling_node_list(listNode)
         self.m_mediator.select_index_cuttedmesh(nowSelectedIndex)
@@ -184,7 +198,8 @@ class CCommandRemodelingRemove(CCommandRemodeling) :
             return False
         selectedNode = self.m_mediator.m_listRemodelingNode[self.m_undoSelectedIndex]
 
-        self.App.unref_key(selectedNode.Key)
+        self.m_mediator.select_index_cuttedmesh(-1)
+
         self.m_mediator.m_listRemodelingNode.remove(selectedNode)
         self.m_mediator.setui_lv_cuttednode_remove_node(selectedNode)
 
@@ -193,6 +208,8 @@ class CCommandRemodelingRemove(CCommandRemodeling) :
 
         return True
     def undo(self) :
+        self.m_mediator.select_index_cuttedmesh(-1)
+
         self.m_mediator.refresh_remodeling_node_list(self.m_undoListRemodelingNode)
         self.m_mediator.select_index_cuttedmesh(self.m_undoSelectedIndex)
 class CCommandRemodelingAdd(CCommandRemodeling) :
@@ -201,10 +218,16 @@ class CCommandRemodelingAdd(CCommandRemodeling) :
         # input your code
         self.m_inputAnchorNode = None
         self.m_inputRemodelingMesh = None
+        self.m_undoAddedNode = None
     def clear(self) :
         # input your code
         self.m_inputAnchorNode = None
         self.m_inputRemodelingMesh = None
+        if self.m_undoAddedNode is not None :
+            if self.m_undoAddedNode.SkelGroupID >= 0 :
+                self.App.remove_skeleton_cl_obj(self.m_undoAddedNode.SkelGroupID)
+            self.m_undoAddedNode = None
+
         super().clear()
     def process(self) -> bool :
         if self.InputAnchorNode is None :
@@ -217,11 +240,15 @@ class CCommandRemodelingAdd(CCommandRemodeling) :
         if self.m_undoSelectedIndex == -1 :
             return False
         
+        self.m_mediator.select_index_cuttedmesh(-1)
+        
         index = self.m_mediator.getui_lv_cuttednode_find_index_by_name(self.InputAnchorNode.Name)
         cuttingKey = self.m_mediator.create_cuttedmesh_key(self.InputRemodelingMesh)
         node = remodelingNode.CRemodelingNode()
         node.Key = cuttingKey
         node.Name = f"{self.InputAnchorNode.Name}_Re"
+        self.m_undoAddedNode = node
+
         self.m_mediator.m_listRemodelingNode.insert(index, node)
 
         self.m_mediator.refresh_remodeling_node_list(self.m_mediator.m_listRemodelingNode)
@@ -229,6 +256,13 @@ class CCommandRemodelingAdd(CCommandRemodeling) :
 
         return True
     def undo(self) :
+        self.m_mediator.select_index_cuttedmesh(-1)
+
+        if self.m_undoAddedNode is not None :
+            if self.m_undoAddedNode.SkelGroupID >= 0 :
+                self.App.remove_skeleton_cl_obj(self.m_undoAddedNode.SkelGroupID)
+        self.m_undoAddedNode = None
+
         self.m_mediator.refresh_remodeling_node_list(self.m_undoListRemodelingNode)
         self.m_mediator.select_index_cuttedmesh(self.m_undoSelectedIndex)
     
@@ -259,11 +293,15 @@ class CCommandRemodelingTreeVessel :
     def __init__(self) :
         self.m_treeVesselRemodeling = remodelingVessel.CTreeVesselRemodeling()
         self.m_inputNode = None
+        self.m_mainSkeleton = None
         self.m_inputRadiusMargin = 0.0
+        self.subToMainClID = {}
     def clear(self) :
         self.m_inputNode = None
+        self.m_mainSkeleton = None
         self.m_inputRadiusMargin = 0.0
         self.m_outputRemodelingMesh = None
+        self.subToMainClID = {}
     def process(self) :
         if self.InputNode is None :
             return
@@ -279,7 +317,9 @@ class CCommandRemodelingTreeVessel :
 
         self.m_treeVesselRemodeling = remodelingVessel.CTreeVesselRemodeling()
         self.m_treeVesselRemodeling.InputSkeleton = skeleton
+        self.m_treeVesselRemodeling.m_mainSkeleton = self.m_mainSkeleton
         self.m_treeVesselRemodeling.InputRadiusMargin = self.InputRadiusMargin
+        self.m_treeVesselRemodeling.subToMainClID = self.subToMainClID
         self.m_treeVesselRemodeling.process()
         print("-- completed remodeling mesh --")
 

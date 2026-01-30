@@ -6,7 +6,6 @@ import subprocess
 import math
 
 
-from sklearn.decomposition import PCA
 from scipy import ndimage
 from scipy.spatial import KDTree
 from scipy.spatial import Delaunay
@@ -62,7 +61,6 @@ import AlgUtil.algSpline as algSpline
 import command.curveInfo as curveInfo
 
 
-
 class CTreeVesselRemodelingAnchorNode :
     def __init__(self) :
         self.m_parent = None
@@ -83,14 +81,14 @@ class CTreeVesselRemodelingAnchorNode :
             childNode = self.child_node(inx)
             childNode.clear()
         self.m_listChildNode.clear()
-    
+
     def add_conn_clid(self, clID : int) :
         self.m_listConnCLID.append(clID)
-    def conn_clid_count(self) -> int : 
+    def conn_clid_count(self) -> int :
         return len(self.m_listConnCLID)
     def conn_clid(self, inx : int) -> int :
         return self.m_listConnCLID[inx]
-    
+
     def add_child_clid(self, clID : int) :
         node = CTreeVesselRemodelingAnchorNode()
         node.add_conn_clid(clID)
@@ -100,7 +98,7 @@ class CTreeVesselRemodelingAnchorNode :
         return len(self.m_listChildNode)
     def child_node(self, inx : int) :
         return self.m_listChildNode[inx]
-    
+
 
     @property
     def Parent(self) :
@@ -132,7 +130,7 @@ class CTreeVesselRemodelingAnchorNode :
 class CResampledFrameCL(curveInfo.CCLCurve) :
     @staticmethod
     def check_intersected_disk(
-        centerP0 : np.ndarray, centerP1 : np.ndarray, 
+        centerP0 : np.ndarray, centerP1 : np.ndarray,
         t0 : np.ndarray, t1 : np.ndarray,
         r0 : float, r1 : float,
         touchAsIntersection = False
@@ -225,7 +223,7 @@ class CResampledFrameCL(curveInfo.CCLCurve) :
         super().clear()
     def process(self, points : np.ndarray, radius : np.ndarray) :
         super().process(points, None, None, None)
-        # input your code 
+        # input your code
 
         self.m_radius = radius
 
@@ -255,7 +253,7 @@ class CResampledFrameCL(curveInfo.CCLCurve) :
         """
         points : (N, 3) numpy array
         radii  : (N,) numpy array
-        resolution : int, number of vertices per circle, 이 부분은 theta 기준으로 바뀌어야 함 
+        resolution : int, number of vertices per circle, 이 부분은 theta 기준으로 바뀌어야 함
         return: vertices (M,3), faces (K,3)
         """
 
@@ -278,8 +276,8 @@ class CResampledFrameCL(curveInfo.CCLCurve) :
             idx_start = len(vertices)
             vertices.extend(circle)
             circle_idx.append(range(idx_start, idx_start + resolution))
-        
-        # Connect circles 
+
+        # Connect circles
         for i in range(N - 1) :
             c1 = circle_idx[i]
             c2 = circle_idx[i + 1]
@@ -326,23 +324,23 @@ class CResampledFrameCL(curveInfo.CCLCurve) :
         vertices.append(self.ResampledVertex[-1])
         for j in range(resolution) :
             faces.append([centerN, cN[j], cN[(j + 1) % resolution]])
-        
+
         vertices = np.array(vertices)
         faces = np.array(faces)
         polydata = algVTK.CVTK.create_poly_data_triangle(vertices, faces)
 
         return polydata
-    
+
 
     # protected
     def _find_resample_index(self) :
-        ''' 
-        - index 0에서 시작 
-        - s_min 만큼 떨어진 지점의 point searching 
-            - s_min : radius * 0.5 
-        - check disk intersection 
-            - true일 경우 다음 point로 넘김 
-            - 끝점일 경우 처리를 깔끔하게 해야 되는데 .. 
+        '''
+        - index 0에서 시작
+        - s_min 만큼 떨어진 지점의 point searching
+            - s_min : radius * 0.5
+        - check disk intersection
+            - true일 경우 다음 point로 넘김
+            - 끝점일 경우 처리를 깔끔하게 해야 되는데 ..
         '''
 
         state = 0
@@ -374,7 +372,7 @@ class CResampledFrameCL(curveInfo.CCLCurve) :
                         break
                     j += 1
 
-                # 이 부분은 마지막 point를 무조건 포함시킬 것인가?에 대한 판단을 따져봐야 함 
+                # 이 부분은 마지막 point를 무조건 포함시킬 것인가?에 대한 판단을 따져봐야 함
                 if state0RetInx == -1 :
                     state1RetInx = len(self.m_point) - 1
                     state = 2
@@ -395,8 +393,8 @@ class CResampledFrameCL(curveInfo.CCLCurve) :
                         state1RetInx = j
                         state = 2
                         break
-                
-                # 이 부분은 마지막 point를 무조건 포함시킬 것인가?에 대한 판단을 따져봐야함 
+
+                # 이 부분은 마지막 point를 무조건 포함시킬 것인가?에 대한 판단을 따져봐야함
                 if state1RetInx == -1 :
                     state1RetInx = len(self.m_point) - 1
                     state = 2
@@ -410,7 +408,7 @@ class CResampledFrameCL(curveInfo.CCLCurve) :
                     s_min = self.m_radius[state0TargetInx] * 0.5
                     state = 0
 
-    
+
     @property
     def ResampledVertex(self) -> np.ndarray :
         return self.m_resampledVertex
@@ -485,22 +483,22 @@ class CTreeVesselRemodeling :
             return None
         if new_dist[-1] < total_length :
             new_dist = np.append(new_dist, total_length)
-        
+
         newPts = np.zeros((len(new_dist), 3))
         for i in range(3) :
             newPts[:, i] = np.interp(new_dist, dist, clPt[:, i])
-        
+
         newRadius = None
         if clRadius is not None :
             newRadius = np.interp(new_dist, dist, clRadius)
 
-        return newPts, newRadius  
+        return newPts, newRadius
     @staticmethod
     def smooth_centerline(vertices: np.ndarray, sigma: float = 1.0) -> np.ndarray:
         smoothed = vertices.copy()
         for i in range(3):
             smoothed[:, i] = gaussian_filter1d(vertices[:, i], sigma=sigma)
-        return smoothed  
+        return smoothed
     @staticmethod
     def bridge_mesh(A : vtk.vtkPolyData, B : vtk.vtkPolyData) -> vtk.vtkPolyData :
         meshA = CTreeVesselRemodeling.get_meshlib(A)
@@ -514,18 +512,21 @@ class CTreeVesselRemodeling :
         mergedPolydata = CTreeVesselRemodeling.get_vtkmesh(mesh)
 
         return mergedPolydata
-    
+
 
     def __init__(self) :
         self.m_inputSkeleton = None
         self.m_inputRadiusMargin = 0.0
         self.m_rootAnchorNode = None
         self.m_mergedMesh = None
+        self.m_mainSkeleton = None
+        self.subToMainClID = {}
 
         self.m_listResampleVertex = None
         self.m_listResampleRadius = None
         self.m_kdTree = None
         self.m_dbgList = []
+
     def clear(self) :
         if self.m_rootAnchorNode is not None :
             self.m_rootAnchorNode.clear()
@@ -533,6 +534,8 @@ class CTreeVesselRemodeling :
         self.m_inputSkeleton = None
         self.m_inputRadiusMargin = 0.0
         self.m_mergedMesh = None
+        self.m_mainSkeleton = None
+        self.subToMainClID = {}
 
         self.m_listResampleVertex = None
         self.m_listResampleRadius = None
@@ -547,12 +550,13 @@ class CTreeVesselRemodeling :
 
         if self.InputSkeleton is None :
             return None
-        
+
+
         rootCLID = self.InputSkeleton.RootCenterline.ID
         self._make_anchor(rootCLID)
         self._make_anchor_mesh()
         self.m_mergedMesh = self._merge_anchor_mesh()
-    
+
     def build_kd_tree(self) -> KDTree :
         if self.m_listResampleVertex is None :
             return None
@@ -577,13 +581,43 @@ class CTreeVesselRemodeling :
         anchorNode = self.m_rootAnchorNode
         anchorNode.add_conn_clid(rootCLID)
         self.__recur_make_anchor(anchorNode)
+        
+    def gaussian_smooth_from_middle(self, values, start_idx, end_value=1.0, sigma=1.0):
+        """
+        values: list or np.ndarray
+        start_idx: 이 index부터 smoothing 시작
+        end_value: 마지막 값 (예: 1)
+        sigma: gaussian 강도
+        """
+        values = np.asarray(values, dtype=np.float64)
+        n = len(values)
+
+        if start_idx < 0 or start_idx >= n - 1:
+            raise ValueError("start_idx must be in [0, n-2]")
+
+        out = values.copy()
+
+        # smoothing 대상 구간
+        tail_len = n - start_idx
+        start_value = values[start_idx]
+
+        # 1) 선형 taper 생성
+        base = np.linspace(start_value, end_value, tail_len)
+
+        # 2) Gaussian smoothing (tail에만)
+        smooth_tail = gaussian_filter1d(base, sigma=sigma, mode="nearest")
+
+        # 3) 끝값 고정
+        smooth_tail[0] = start_value
+        smooth_tail[-1] = end_value
+
+        out[start_idx:] = smooth_tail
+        return out
     def _make_anchor_mesh(self) :
         if self.m_rootAnchorNode is None :
             return
-        
         self.m_listResampleVertex = None
         self.m_listResampleRadius = None
-        
         listNode = [self.m_rootAnchorNode]
         while listNode :
             node = listNode.pop(0)
@@ -595,13 +629,25 @@ class CTreeVesselRemodeling :
                 clID = node.conn_clid(inx)
                 cl = self.InputSkeleton.get_centerline(clID)
                 clippedRadius = self.__refine_cl_radius(cl)
-                if mergedVertex is None :
-                    mergedVertex = cl.Vertex
-                    mergedRadius = clippedRadius
-                else :
-                    mergedVertex = np.vstack((mergedVertex, cl.Vertex[ : ]))
-                    mergedRadius = np.hstack((mergedRadius, clippedRadius[ : ]))
-            
+                if self.m_mainSkeleton is None:
+                    if mergedVertex is None :
+                        mergedVertex = cl.Vertex
+                        mergedRadius = clippedRadius
+                    else :
+                        mergedVertex = np.vstack((mergedVertex, cl.Vertex[ : ]))
+                        mergedRadius = np.hstack((mergedRadius, clippedRadius[ : ]))
+                else:
+                    maincl = self.m_mainSkeleton.get_centerline(self.subToMainClID.get(clID, 0))
+                    if not maincl.is_leaf() and cl.is_leaf():
+                        clippedRadius = self.gaussian_smooth_from_middle(clippedRadius, int(len(clippedRadius)/3), 0.5)
+                        
+                    if mergedVertex is None :
+                        mergedVertex = cl.Vertex
+                        mergedRadius = clippedRadius
+                    else :
+                        mergedVertex = np.vstack((mergedVertex, cl.Vertex[ : ]))
+                        mergedRadius = np.hstack((mergedRadius, clippedRadius[ : ]))
+
             parent = node.Parent
             if parent is not None :
                 startVertex = mergedVertex[0].reshape(-1, 3)
@@ -620,14 +666,14 @@ class CTreeVesselRemodeling :
                     mergedRadius = np.hstack((mergedRadius[outsideInx], mergedRadius[outsideInx : ]))
                     # mergedVertex = np.vstack((spherePos.reshape(-1, 3), mergedVertex[ : ]))
                     # mergedRadius = np.hstack((mergedRadius[outsideInx], mergedRadius[ : ]))
-        
-            # radius margin 적용 
+
+            # radius margin 적용
             mergedRadius = np.maximum(mergedRadius + self.InputRadiusMargin, self.s_minRadius)
-            # 1.0 간격의 resampling 추가 
+            # 1.0 간격의 resampling 추가
             mergedVertex, mergedRadius = CTreeVesselRemodeling.resampling_centerline(mergedVertex, mergedRadius, 1.0)
             # mergedVertex = CTreeVesselRemodeling.smooth_centerline(mergedVertex, 1.0)
-                
-            # resampling 
+
+            # resampling
             if mergedVertex.shape[0] >= 3 :
                 resampledCL = CResampledFrameCL()
                 resampledCL.process(mergedVertex, mergedRadius)
@@ -655,10 +701,69 @@ class CTreeVesselRemodeling :
                 for inx in range(0, iCnt) :
                     childNode = node.child_node(inx)
                     listNode.append(childNode)
+
+    def _get_similar_direction_centerline(self, cl, childClList):
+        """
+        parent centerline 끝 방향과 가장 비슷한 방향을 갖는 child centerline을 반환.
+        - cl.vertex: (N,3)
+        - childClList[i].vertex: (Mi,3)
+        """
+        if cl is None or childClList is None or len(childClList) == 0:
+            return None
+
+        if len(getattr(cl, "Vertex", [])) < 2:
+            return childClList[0]
+
+        def _unit(v: np.ndarray):
+            v = np.asarray(v, dtype=float).reshape(3,)
+            n = np.linalg.norm(v)
+            if n == 0 or not np.isfinite(n):
+                return None
+            return v / n
+
+        def _direction(points: np.ndarray, idx0: int, idx1: int):
+            # points[idx1] - points[idx0]
+            if points is None or len(points) <= max(idx0, idx1):
+                return None
+            return _unit(points[idx1] - points[idx0])
+
+        # ---- parent direction (끝쪽) ----
+        parentVertex = np.asarray(cl.Vertex, dtype=float).reshape(-1, 3)
+        # 끝 방향: [-1] - [-2]
+        parentDir = _direction(parentVertex, -2, -1)
+        if parentDir is None:
+            # fallback: 첫 방향 [1]-[0]
+            parentDir = _direction(parentVertex, 0, 1)
+            if parentDir is None:
+                return childClList[0]
+
+        bestChild = None
+        bestScore = -np.inf  # cos(theta) 최대가 가장 유사
+
+        for child in childClList:
+            childVertex = np.asarray(child.Vertex, dtype=float).reshape(-1, 3)
+            if len(childVertex) < 2:
+                continue
+
+            # child 시작 방향: [1] - [0]
+            childDir = _direction(childVertex, 0, 1)
+            if childDir is None:
+                continue
+
+            # 방향 유사도: cos(theta) = dot(u, v)  (1에 가까울수록 유사)
+            score = float(np.dot(parentDir, childDir))
+
+            if score > bestScore:
+                bestScore = score
+                bestChild = child
+
+        # 다 실패했으면 첫 child 반환
+        return bestChild if bestChild is not None else childClList[0]
+
     def _merge_anchor_mesh(self) -> vtk.vtkPolyData :
         if self.m_rootAnchorNode is None :
             return None
-        
+
         mergedMesh = None
 
         listNode = [self.m_rootAnchorNode]
@@ -678,7 +783,7 @@ class CTreeVesselRemodeling :
                         # algVTK.CVTK.save_poly_data_stl(os.path.join(savePath, "nodePolyData.stl"), node.PolyData)
                     else :
                         mergedMesh = retMesh
-            
+
             iCnt = node.child_node_count()
             for inx in range(0, iCnt) :
                 childNode = node.child_node(inx)
@@ -686,8 +791,8 @@ class CTreeVesselRemodeling :
 
         return mergedMesh
 
-    
-    # private 
+
+    # private
     def __refine_radius(self, parentRadius : float, radius : np.ndarray, outSideInx : int) -> np.ndarray :
         minRadius = np.min(radius[outSideInx : ])
         maxRadius = np.max(radius[outSideInx : ])
@@ -697,7 +802,7 @@ class CTreeVesselRemodeling :
             minRadius = CTreeVesselRemodeling.s_minRadius
         if minRadius > maxRadius :
             minRadius = maxRadius
-        
+
         N = radius.shape[0]
         startInx = outSideInx
 
@@ -710,24 +815,27 @@ class CTreeVesselRemodeling :
     def __refine_leaf_radius(self, radius : np.ndarray, outSideInx : int)  -> np.ndarray :
         refindedRadius = np.sort(radius)[::-1]
         return refindedRadius
-    def __refine_cl_radius(self, cl : algSkeletonGraph.CSkeletonCenterline) -> np.ndarray :
+    def __refine_cl_radius(self, cl : algSkeletonGraph.CSkeletonCenterline, skeleton = None) -> np.ndarray :
         '''
         ret : refined radius (N,)
         '''
+        if skeleton == None:
+            skeleton = self.InputSkeleton
+
         clID = cl.ID
-        connCLIDs = self.InputSkeleton.get_conn_centerline_id(clID)
+        connCLIDs = skeleton.get_conn_centerline_id(clID)
         parentCLID = connCLIDs[0]
 
         parentRadius = 0.0
         radius = 0.0
         spherePos = None
-        # parent가 없으므로 자기 자신을 그대로 return 함 
-        if parentCLID == -1 : 
+        # parent가 없으므로 자기 자신을 그대로 return 함
+        if parentCLID == -1 :
             parentRadius = cl.Radius[0]
             spherePos = cl.Vertex[0]
             radius = cl.Radius[0]
         else :
-            parentCL = self.InputSkeleton.get_centerline(parentCLID)
+            parentCL = skeleton.get_centerline(parentCLID)
             parentRadius = parentCL.Radius[-1]
             spherePos = parentCL.Vertex[-1]
             radius = parentCL.Radius[-1]
@@ -735,7 +843,7 @@ class CTreeVesselRemodeling :
         outSideInx = CTreeVesselRemodeling.find_outside_inx(spherePos, radius, cl)
         if outSideInx == -1 :
             return cl.Radius.copy()
-        
+
         refinedRadius = None
         if cl.is_leaf() == True :
             refinedRadius = self.__refine_leaf_radius(cl.Radius, outSideInx)
@@ -746,8 +854,8 @@ class CTreeVesselRemodeling :
     def __connection_cost(self, parentCLID : int, childCLID : int, angleWeight : float = 1.0, radiusWeight : float = 0.2) -> float :
         '''
         angleWeight : 두 곡선의 angle diff의 weight를 지정
-        childRadius : 두 곡선의 radius diff의 weight를 지정  
-                      이 때, child radius는 곡선의 중간 지점의 radius를 취한다. 
+        childRadius : 두 곡선의 radius diff의 weight를 지정
+                      이 때, child radius는 곡선의 중간 지점의 radius를 취한다.
         '''
         parentCL = self.InputSkeleton.get_centerline(parentCLID)
         childCL = self.InputSkeleton.get_centerline(childCLID)
@@ -764,7 +872,7 @@ class CTreeVesselRemodeling :
             childVertex = childCL.Vertex
             childRadius = childCL.Radius
 
-        # 1. 각도의 차이 
+        # 1. 각도의 차이
         tp = CTreeVesselRemodeling.parent_tangent(parentVertex)
         tc = CTreeVesselRemodeling.child_tangent(childVertex)
         tpLen = max(np.linalg.norm(tp), 0.0001)
@@ -796,19 +904,19 @@ class CTreeVesselRemodeling :
 
             clID = -1
             for inx in range(0, len(listChildCLID)) :
-                childCLID = listChildCLID[inx] 
+                childCLID = listChildCLID[inx]
                 if inx == bestInx :
                     node.add_conn_clid(childCLID)
                     clID = childCLID
                 else :
                     node.add_child_clid(childCLID)
-        
+
         iCnt = node.child_node_count()
         for inx in range(0, iCnt) :
             childNode = node.child_node(inx)
             self.__recur_make_anchor(childNode)
-        
-    
+
+
     @property
     def InputSkeleton(self) -> algSkeletonGraph.CSkeleton :
         return self.m_inputSkeleton

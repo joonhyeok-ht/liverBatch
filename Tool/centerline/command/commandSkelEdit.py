@@ -51,7 +51,6 @@ class CCommandSkelEdit(commandInterface.CCommand) :
         total_distance = cumulative_distance[-1]
         num_samples = int(total_distance / desired_distance)
         uniform_distances = np.linspace(0, total_distance, num_samples)
-    
         # 리샘플링된 점 계산
         resampled_points = np.zeros((num_samples, 3))
         for i in range(3):
@@ -792,14 +791,16 @@ class CCommandReAttach(CCommandSkelEdit) :
             minInx = 0
             maxInx = self.m_piviotVertexID
             refinedDirection = "left"
+            refinedVertex = np.concatenate((newBranchCl.get_vertex(self.NewBranchVertexID), cl.get_vertex(self.m_piviotVertexID)), axis=0)
+            refinedRadius = np.array([newBranchCl.get_radius(self.NewBranchVertexID), cl.get_radius(self.m_piviotVertexID)])
+        
         else:
             minInx = self.m_piviotVertexID
             maxInx = cl.Vertex.shape[0]-1
             refinedDirection = "right"
-        
-        refinedVertex = np.concatenate((newBranchCl.get_vertex(self.NewBranchVertexID), cl.get_vertex(self.m_piviotVertexID)), axis=0)
-        refinedRadius = np.array([newBranchCl.get_radius(self.NewBranchVertexID), cl.get_radius(self.m_piviotVertexID)])
-        
+            refinedVertex = np.concatenate((cl.get_vertex(self.m_piviotVertexID), newBranchCl.get_vertex(self.NewBranchVertexID)), axis=0)
+            refinedRadius = np.array([cl.get_radius(self.m_piviotVertexID), newBranchCl.get_radius(self.NewBranchVertexID)])
+            
         refinedRadius = CCommandSkelEdit.resample_radius(refinedVertex, refinedRadius)
         refinedVertex = CCommandSkelEdit.resample_points(refinedVertex)
         
@@ -1329,7 +1330,7 @@ class CCommandAutoRemoveCL(CCommandSkelEdit) :
                 
 
     def process_undo(self, state):
-            super().process_undo()
+            super().process_undo(state)
             
             clinfoInx = self.m_clinfoInx
 
@@ -1421,12 +1422,18 @@ class CCommandMergeCL(CCommandSkelEdit) :
         # input your code
         self.m_inputBrID = -1
         self.m_gaussianSmoothing = True
+        self.m_undoSkeleton = None
+        self.m_clinfoInx = -1
+        
     def clear(self) :
         # input your code
         self.m_inputBrID = -1
         super().clear()
+        self.m_undoSkeleton = None
+        self.m_clinfoInx = -1
     def process(self) :
         super().process()
+        self.m_undoSkeleton = copy.deepcopy(self.InputSkeleton)
         # input your code
         if self.InputBrID == -1 :
             print("not setting src br id")
@@ -1503,6 +1510,33 @@ class CCommandMergeCL(CCommandSkelEdit) :
             return cl2, cl1
         else :
             return cl1, cl2
+        
+    def process_undo(self, state):
+        clinfoInx = self.m_clinfoInx
+
+        if state in [0, 1, 2]:
+            self.m_mediator.unref_key_type_groupID(data.CData.s_skelTypeCenterline, clinfoInx)
+            if state == 1:
+                self.m_mediator.unref_key_type_groupID(data.CData.s_skelTypeBranch, clinfoInx)
+            elif state == 2:
+                self.m_mediator.unref_key_type_groupID(data.CData.s_skelTypeEndPoint, clinfoInx)
+        else:
+            self.m_mediator.unref_key_type_groupID(data.CData.s_skelTypeVertex, clinfoInx)
+        self.InputData.remove_all_key_by_type_groupID(data.CData.s_skelTypeCenterline, clinfoInx)
+        self.InputData.remove_all_key_by_type_groupID(data.CData.s_skelTypeBranch, clinfoInx)
+        self.InputData.remove_all_key_by_type_groupID(data.CData.s_skelTypeEndPoint, clinfoInx)
+        self.InputData.remove_all_key_by_type_groupID(data.CData.s_skelTypeVertex, clinfoInx)
+        self.InputData.m_listSkelInfo[clinfoInx].Skeleton = self.m_undoSkeleton
+        self.m_mediator.add_skeleton_obj(clinfoInx)
+        
+        if state in [0, 1, 2]:
+            self.m_mediator.ref_key_type_groupID(data.CData.s_skelTypeCenterline, clinfoInx)
+            if state == 1:
+                self.m_mediator.ref_key_type_groupID(data.CData.s_skelTypeBranch, clinfoInx)
+            elif state == 2:
+                self.m_mediator.ref_key_type_groupID(data.CData.s_skelTypeEndPoint, clinfoInx)
+        else:
+            self.m_mediator.ref_key_type_groupID(data.CData.s_skelTypeVertex, clinfoInx)
 
     @property
     def InputBrID(self) -> int :
@@ -1571,11 +1605,16 @@ class CCommandUpdateCL(CCommandSkelEdit) :
             else:
                 endInx = self.m_inputEndInx
         clVertex = cl.Vertex.copy()
-        clVertex[startInx : endInx] = reverseVertex[ : ].copy()
         clRadius = cl.Radius.copy()
-        clRadius[startInx : endInx] = reverseRadius[ : ].copy()
+        if not np.isnan(reverseVertex[ : ]).any():
+            clVertex[startInx : endInx] = reverseVertex[ : ].copy()
+            clRadius[startInx : endInx] = reverseRadius[ : ].copy()
         # refinedVertex = CCommandSkelEdit.gaussian_smoothing(clVertex, sigma=5)
         # refinedVertex = CCommandSkelEdit.resample_points(refinedVertex)
+        # if np.isnan(reverseVertex[ : ]).any():
+        #     print(f"cl{cl.Vertex.copy()}", file=sys.__stdout__, flush=True)
+        #     print(f"clVertex{clVertex}", file=sys.__stdout__, flush=True)
+        #     print(f"reverseVertex{reverseVertex}", file=sys.__stdout__, flush=True)
         refinedVertex = CCommandSkelEdit.resample_points(clVertex)
         refinedRadius = CCommandSkelEdit.resample_radius(clVertex, clRadius)
 
@@ -1588,7 +1627,7 @@ class CCommandUpdateCL(CCommandSkelEdit) :
         else:
             self._refresh_changed_cl_data_by_vertex(cl.ID)
     def process_undo(self, state):
-        super().process_undo()
+        super().process_undo(state)
         # input your code
         cl = self.InputSkeleton.get_centerline(self.InputCLID)
         cl.Vertex = self.m_undoCLVertex.copy()
@@ -1669,7 +1708,7 @@ class CCommandUpdateBr(CCommandSkelEdit) :
         br.BranchPoint = self.InputPos.copy()
         self._refresh_changed_br_data(br.ID)
     def process_undo(self, state):
-        super().process_undo()
+        super().process_undo(state)
         br = self.InputSkeleton.get_branch(self.InputBrID)
         br.BranchPoint = self.m_undoPos.copy()
         self._refresh_changed_br_data(br.ID)

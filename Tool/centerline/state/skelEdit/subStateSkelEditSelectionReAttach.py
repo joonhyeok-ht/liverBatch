@@ -253,8 +253,6 @@ class CSelectionReAttachStateNonSelectionTarget(CSelectionVertexState) :
             self.m_mediator.set_state(0)
             return
         
-        print(f"selKey {selKey}", file=sys.__stdout__, flush=True)
-
         dataInst = self.m_mediator._get_data()
         cmdContainer = commandInterface.CCommandContainer(self.m_mediator.App)
         cmdContainer.InputData = dataInst

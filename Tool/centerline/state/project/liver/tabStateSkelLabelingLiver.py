@@ -470,9 +470,12 @@ class CTabStateSkelLabelingLiver(tabState.CTabState) :
         #clInfo = dataInst.OptionInfo.get_centerlineinfo(dataInst.CLInfoIndex)
         
         for clinfoIndex in dataInst.m_clinfoIndexList:
-            clInfo = dataInst.OptionInfo.get_centerlineinfo(clinfoIndex)
-            blenderName = clInfo.get_input_blender_name() # "Artery", "Bronchus", "Vein"
-            outputFileName = clInfo.OutputName
+            skelInfo = dataInst.get_skelinfo(clinfoIndex)
+            blenderName = skelInfo.BlenderName # "Artery", "Bronchus", "Vein"
+            outputFileName = skelInfo.JsonName
+            # clInfo = dataInst.OptionInfo.get_centerlineinfo(clinfoIndex)
+            # blenderName = clInfo.get_input_blender_name() # "Artery", "Bronchus", "Vein"
+            # outputFileName = clInfo.OutputName
             outputFullPath = os.path.join(clOutPath, f"Centerline_{outputFileName}.json")
 
             vessel_key = data.CData.make_key(dataInst.s_vesselType, clinfoIndex, 0) # CLInfoIndex는 tabStatePatientLung에서 셋팅됨       
@@ -481,7 +484,7 @@ class CTabStateSkelLabelingLiver(tabState.CTabState) :
             skeleton = dataInst.get_skeleton(clinfoIndex)
             # if polydata != None and skeleton != None :
             if skeleton != None :
-                editInst = commandExtractingCLLink.CCommandExtractingCLLink(blenderName, skeleton, clInPath, dataInst.DataInfo.PatientID)
+                editInst = commandExtractingCLLink.CCommandExtractingCLLink(blenderName, skeleton, clInPath, dataInst.PatientID)
                 if editInst.init(outputFullPath, commandExtractingCLLink.CCommandExtractingCLLink.MODE_VESSEL) :
                     self._generate_progress_window(editInst)
                     # editInst.process()

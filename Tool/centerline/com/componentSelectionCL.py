@@ -37,6 +37,7 @@ import VtkObj.vtkObjText as vtkObjText
 import data as data
 import operation as operation
 import component as component
+from collections import deque
 # import territory as territory
 
 
@@ -804,6 +805,291 @@ class CComDragSelCLTP(CComDrag) :
     @InputOPDragSelCL.setter
     def InputOPDragSelCL(self, opCL : operation.COperationDragSelectionCL) :
         self.m_comDragFindCL.InputOPDragSelCL = opCL
+
+class CComDragSkelCL(CComDrag) :
+    def __init__(self, mediator) :
+        '''
+        desc 
+            find dragged centerline 
+        '''
+        super().__init__(mediator)
+        # input your code
+        self.m_inputSkeleton = None
+        self.m_inputSkelGroupID = -1
+        self.m_opDragToggleCL = operation.COperationDragSelectionCLToggle(self.App)
+        self.m_rt = None
+        self.m_actorRt = self._create_rt_actor()
+    def clear(self) :
+        # input your code
+        self.m_inputSkeleton = None
+        self.m_inputSkelGroupID = -1
+        self.m_opDragToggleCL = None
+        super().clear()
+
+    def ready(self) -> bool :
+        if self.InputSkeleton is None :
+            return False 
+        if self.InputSkelGroupID == -1 :
+            return False
+        if self.m_opDragToggleCL is None : 
+            return False
+        return True
+    def process_init(self) :
+        if self.ready() == False :
+            return False
+        
+        super().process_init()
+        # input your code
+        self.m_opDragToggleCL.Skeleton = self.InputSkeleton
+    def process_end(self) :
+        if self.ready() == False :
+            return False
+        
+        self.m_opDragToggleCL.process_reset()
+        # input your code
+        super().process_end()
+        
+    def click(self, clickX : int, clickY : int, listExceptKeyType=None) -> bool :
+        if self.ready() == False :
+            return False
+        
+        super().click(clickX, clickY, listExceptKeyType)
+        self.m_opDragToggleCL.process_reset()
+        renderer = self._get_renderer()
+        renderer.AddActor2D(self.m_actorRt)
+        self._update_rt_actor()
+
+        self.m_bDrag = True
+        return True
+    def click_with_shift(self, clickX : int, clickY : int, listExceptKeyType=None) -> bool :
+        if self.ready() == False :
+            return False
+        
+        super().click_with_shift(clickX, clickY, listExceptKeyType)
+        renderer = self._get_renderer()
+        renderer.AddActor2D(self.m_actorRt)
+        self._update_rt_actor()
+
+        self.m_bDrag = True
+        return True
+    def release(self, clickX : int, clickY : int) :
+        if self.ready() == False :
+            return False
+        if self.Drag == False :
+            return False
+
+        renderer = self._get_renderer()
+        renderer.RemoveActor2D(self.m_actorRt)
+
+        listCLID = self._find_selection_clid()
+        listKey = []
+        if listCLID is not None :
+            for clID in listCLID :
+                pickingKey = data.CData.make_key(data.CData.s_skelTypeCenterline, self.InputSkelGroupID, clID)
+                listKey.append(pickingKey)
+            self.m_opDragToggleCL.add_toggle_selection_keys(listKey)
+            self.m_opDragToggleCL.process()
+        self.m_bDrag = False
+        return True
+    def move(self, clickX : int, clickY : int, listExceptKeyType=None) :
+        if self.ready() == False :
+            return
+        if self.Drag == False :
+            return False
+        
+        super().move(clickX, clickY, listExceptKeyType)
+        self._update_rt_actor()
+        return True
+
+    def get_selection_clid(self) -> list :
+        return self.m_opDragToggleCL.get_all_selection_cl()
+    def get_selection_cl(self) -> list :
+        retListCLID = self.get_selection_clid()
+        skeleton = self.InputSkeleton
+        return [skeleton.get_centerline(clid) for clid in retListCLID]
+    
+    def set_toggle_selection_clid(self, listCLID : list) :
+        listKey = []
+        for clid in listCLID :
+            key = data.CData.make_key(data.CData.s_skelTypeCenterline, self.InputSkelGroupID, clid)
+            listKey.append(key)
+
+        self.m_opDragToggleCL.process_reset()
+        if len(listKey) > 0 :
+            childMode = self.m_opDragToggleCL.ChildSelectionMode
+            self.m_opDragToggleCL.ChildSelectionMode = False
+            self.m_opDragToggleCL.add_toggle_selection_keys(listKey)
+            self.m_opDragToggleCL.process()
+            self.m_opDragToggleCL.ChildSelectionMode = childMode
+    def _select_minor_vessel(self, skeleton, maxDepth, segmentSet = []):
+        startDepth = 0
+        listcl = []
+        visited = set()
+        listcl.append(skeleton.RootCenterline.ID)
+        visited.add(skeleton.RootCenterline.ID)
+        queue = deque([(skeleton.RootCenterline.ID, startDepth)])
+    
+
+        iCLCnt = skeleton.get_centerline_count()
+        radiusList = []
+        for inx in range(0, iCLCnt) :
+            cl = skeleton.get_centerline(inx)
+            radiusList.append(np.mean(cl.Radius))
+            
+        q1 = np.percentile(radiusList, 25)
+        q2 = np.percentile(radiusList, 50)  # median
+        q3 = np.percentile(radiusList, 75)
+    
+        while queue:
+            id, d = queue.popleft()
+            # if d >= maxDepth:
+            #     continue
+            
+            cl = skeleton.get_centerline(id)
+            parentCLID, listChildCLID = skeleton.get_conn_centerline_id(id)
+
+            for CID in listChildCLID:
+                if CID in visited:
+                    continue
+                
+                childCL = skeleton.get_centerline(CID)
+                childMeanR = np.mean(childCL.Radius)
+                if d+1 > maxDepth and childMeanR < q2:
+                    continue
+                visited.add(CID)
+                listcl.append(CID)
+                queue.append((CID, d+1))
+        
+        
+        # if len(segmentSet) ==  0:
+        #     while queue:
+        #         id, d = queue.popleft()
+        #         # if d >= maxDepth:
+        #         #     continue
+                
+        #         cl = skeleton.get_centerline(id)
+        #         parentCLID, listChildCLID = skeleton.get_conn_centerline_id(id)
+
+        #         for CID in listChildCLID:
+        #             if CID in visited:
+        #                 continue
+                    
+        #             childCL = skeleton.get_centerline(CID)
+        #             childMeanR = np.mean(childCL.Radius)
+        #             if d+1 > maxDepth and childMeanR < q2:
+        #                 continue
+        #             visited.add(CID)
+        #             listcl.append(CID)
+        #             queue.append((CID, d+1))
+        # else:
+        #     while queue:
+        #         id, d = queue.popleft()
+        #         # if d >= maxDepth:
+        #         #     continue
+        #         cl = skeleton.get_centerline(id)
+        #         parentCLID, listChildCLID = skeleton.get_conn_centerline_id(id)
+
+        #         for CID in listChildCLID:
+        #             if CID in visited:
+        #                 continue
+                    
+        #             childCL = skeleton.get_centerline(CID)
+        #             childMeanR = np.mean(childCL.Radius)
+        #             if d+1 > maxDepth and childMeanR < q2:
+        #                 continue
+                    
+        #             if childCL.Name in segmentSet and cl.Name in segmentSet:
+        #                 visited.add(CID)
+        #                 listcl.append(CID)
+        #                 queue.append((CID, d+1))
+        #             else:
+        #                 visited.add(CID)
+        #                 listcl.append(CID)
+        #                 queue.append((CID, d))
+        listKey = []
+        for clID in listcl:
+            pickingKey = data.CData.make_key(data.CData.s_skelTypeCenterline, self.InputSkelGroupID, clID)
+            listKey.append(pickingKey)
+        self.m_opDragToggleCL.process_reset()
+        self.m_opDragToggleCL.add_toggle_selection_keys(listKey)
+        self.m_opDragToggleCL.process()
+
+    # protected
+    def _find_selection_clid(self) -> list :
+        '''
+        ret : [clID0, clID1, .. ]
+        '''
+        xmin, xmax = sorted([self.m_startX, self.m_endX])
+        ymin, ymax = sorted([self.m_startY, self.m_endY])
+
+        npPt = self.App.project_points_to_display(self.InputSkeleton.m_listKDTreeAnchor)
+        inside = ((npPt[:,0] >= xmin) & (npPt[:,0] <= xmax) & (npPt[:,1] >= ymin) & (npPt[:,1] <= ymax))
+        selectedIndex = np.where(inside)[0]
+
+        listID = set()
+        for inx in selectedIndex :
+            listID.add(self.InputSkeleton.m_listKDTreeAnchorID[inx])
+        
+        listID = list(listID)
+        if len(listID) == 0 :
+            return None
+        return listID
+    def _create_rt_actor(self) :
+        self.m_rt = vtk.vtkPoints()
+        self.m_rt.SetNumberOfPoints(4)
+        for i in range(4):
+            self.m_rt.SetPoint(i, 0, 0, 0)
+
+        rect_poly = vtk.vtkPolyData()
+        rect_poly.SetPoints(self.m_rt)
+
+        rect_cells = vtk.vtkCellArray()
+        rect_cells.InsertNextCell(5)
+        for i in [0, 1, 2, 3, 0]:
+            rect_cells.InsertCellPoint(i)
+        rect_poly.SetLines(rect_cells)
+
+        mapper = vtk.vtkPolyDataMapper2D()
+        mapper.SetInputData(rect_poly)
+
+        actor = vtk.vtkActor2D()
+        actor.SetMapper(mapper)
+        actor.GetProperty().SetColor(0.3, 1.0, 0.3)
+        actor.GetProperty().SetLineWidth(2.0)
+        return actor
+    def _update_rt_actor(self) :
+        x0 = self.m_startX
+        y0 = self.m_startY
+        x1 = self.m_endX
+        y1 = self.m_endY
+        self.m_rt.SetPoint(0, x0, y0, 0)
+        self.m_rt.SetPoint(1, x1, y0, 0)
+        self.m_rt.SetPoint(2, x1, y1, 0)
+        self.m_rt.SetPoint(3, x0, y1, 0)
+        self.m_rt.Modified()
+    
+
+    @property
+    def InputSkeleton(self) -> algSkeletonGraph.CSkeleton :
+        return self.m_inputSkeleton
+    @InputSkeleton.setter
+    def InputSkeleton(self, skeleton : algSkeletonGraph.CSkeleton) :
+        self.m_inputSkeleton = skeleton
+    @property
+    def InputSkelGroupID(self) -> int :
+        return self.m_inputSkelGroupID
+    @InputSkelGroupID.setter
+    def InputSkelGroupID(self, inputSkelGroupID : int) -> int :
+        self.m_inputSkelGroupID = inputSkelGroupID
+
+    @property
+    def ChildSelectionMode(self) -> bool :
+        return self.m_opDragToggleCL.ChildSelectionMode
+    @ChildSelectionMode.setter
+    def ChildSelectionMode(self, mode : bool) :
+        self.m_opDragToggleCL.ChildSelectionMode = mode
+    
+
 
 if __name__ == '__main__' :
     pass

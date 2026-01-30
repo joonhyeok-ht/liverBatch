@@ -109,7 +109,6 @@ class CSubStateRemodelingExtractionEnCL(subStateRemodeling.CSubStateRemodeling) 
         listExceptKeyType = [
             data.CData.s_skelTypeCenterline,
             data.CData.s_vesselType,
-            subStateRemodeling.CSubStateRemodeling.s_subSkelType,
             subStateRemodeling.CSubStateRemodeling.s_subRemodelingKey,
             CSubStateRemodelingExtractionEnCL.s_guideCellType,
         ]
@@ -149,7 +148,7 @@ class CSubStateRemodelingExtractionEnCL(subStateRemodeling.CSubStateRemodeling) 
             pass
     
 
-    def changed_cutting_mesh(self) :
+    def changed_cutting_mesh(self, prevNode : remodelingNode.CRemodelingNode, nowNode : remodelingNode.CRemodelingNode) :
         if self.m_stateSelCell == 0 :
             return 
         

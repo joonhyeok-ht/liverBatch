@@ -48,21 +48,13 @@ class CRemodelingNode :
     def __init__(self) :
         self.m_name = ""
         self.m_key = ""
-        self.m_skelKey = ""
-        self.m_skelEnKey = ""
-        self.m_skeleton = None
+        self.m_skelGroupID = -1
         self.m_skeletonEn = None
-        self.m_rootEntity = None
     def clear(self) :
         self.m_name = ""
         self.m_key = ""
-        self.m_skelKey = ""
-        self.m_skelEnKey = ""
-        self.m_skeleton = None
+        self.m_skelGroupID = -1
         self.m_skeletonEn = None
-        if self.m_rootEntity is not None :
-            self.m_rootEntity.clear()
-        self.m_rootEntity = None
     
 
     @property
@@ -78,36 +70,56 @@ class CRemodelingNode :
     def Key(self, key : str) :
         self.m_key = key
     @property
-    def SkelKey(self) -> str :
-        return self.m_skelKey
-    @SkelKey.setter
-    def SkelKey(self, skelKey : str) :
-        self.m_skelKey = skelKey
-    @property
-    def SkelEnKey(self) -> str :
-        return self.m_skelEnKey
-    @SkelEnKey.setter
-    def SkelEnKey(self, skelEnKey : str) :
-        self.m_skelEnKey = skelEnKey
-    @property
-    def Skeleton(self) -> algSkeletonGraph.CSkeleton :
-        return self.m_skeleton
-    @Skeleton.setter
-    def Skeleton(self, skeleton : algSkeletonGraph.CSkeleton) :
-        self.m_skeleton = skeleton
+    def SkelGroupID(self) -> int :
+        return self.m_skelGroupID
+    @SkelGroupID.setter
+    def SkelGroupID(self, skelGroupID : int) :
+        self.m_skelGroupID = skelGroupID
     @property
     def SkeletonEn(self) -> algSkeletonGraph.CSkeleton :
         return self.m_skeletonEn
     @SkeletonEn.setter
     def SkeletonEn(self, skeleton : algSkeletonGraph.CSkeleton) :
         self.m_skeletonEn = skeleton
-    @property
-    def RootEntity(self) -> tabState.CRenderEntity :
-        return self.m_rootEntity
-    @RootEntity.setter
-    def RootEntity(self, rootEntity : tabState.CRenderEntity) :
-        self.m_rootEntity = rootEntity
+
+
+
+class CSkelNode :
+    def __init__(self) :
+        self.m_remodelingNode = None
+        self.m_name = ""
+        self.m_listCLID = []
+    def clear(self) :
+        self.m_remodelingNode = None
+        self.m_name = ""
+        self.m_listCLID.clear()
+
+
+    def clear_clid(self) :
+        self.m_listCLID.clear()
+    def add_clid(self, clid : int) :
+        self.m_listCLID.append(clid)
+    def add_clid_list(self, listCLID : list) :
+        self.m_listCLID += listCLID
+    def get_clid_count(self) -> int :
+        return len(self.m_listCLID)
+    def get_clid(self, inx : int) -> int :
+        return self.m_listCLID[inx]
+
     
+    @property
+    def RemodelingNode(self) -> CRemodelingNode :
+        return self.m_remodelingNode
+    @RemodelingNode.setter
+    def RemodelingNode(self, remodelingNode : CRemodelingNode) :
+        self.m_remodelingNode = remodelingNode
+    @property
+    def Name(self) -> str :
+        return self.m_name
+    @Name.setter
+    def Name(self, name : str) :
+        self.m_name = name
+
 
 
 if __name__ == '__main__' :

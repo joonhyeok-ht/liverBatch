@@ -428,6 +428,55 @@ class COperationDragSelectionCL(COperationSelection) :
         self.m_bChildSelectionMode = childSelectionMode
 
 
+class COperationDragSelectionCLToggle(COperationDragSelectionCL) :
+    def __init__(self, mediator) :
+        super().__init__(mediator)
+        self.m_listUnSelectionKey = []
+    def clear(self) :
+        self.m_listUnSelectionKey.clear()
+        super().clear()
+
+
+    def process(self) :
+        if len(self.m_listUnSelectionKey) > 0 :
+            self._color_setting(self.m_listUnSelectionKey, data.CData.s_rootCLColor, data.CData.s_clColor)
+            self.m_listUnSelectionKey.clear()
+        self._color_setting(self.m_listSelectionKey, data.CData.s_selectionCLColor, data.CData.s_selectionCLColor)
+    def process_reset(self) :
+        if len(self.m_listUnSelectionKey) > 0 :
+            self._color_setting(self.m_listUnSelectionKey, data.CData.s_rootCLColor, data.CData.s_clColor)
+            self.m_listUnSelectionKey.clear()
+        self._color_setting(self.m_listSelectionKey, data.CData.s_rootCLColor, data.CData.s_clColor)
+        self.m_listSelectionKey.clear()
+
+    def add_toggle_selection_keys(self, listSelectionKey : list) :
+        if len(listSelectionKey) == 0 :
+            return
+        
+        listTmpSelectionKey = []
+        listRet = [key for key in listSelectionKey]
+        if self.ChildSelectionMode == True :
+            for key in listSelectionKey :
+                listChild = self._get_child_key(key)
+                if listChild is not None :
+                    listRet += listChild
+        
+        setSelected = set(self.m_listSelectionKey)
+
+        for key in listRet :
+            if key in setSelected :
+                self.m_listUnSelectionKey.append(key)
+            else :
+                listTmpSelectionKey.append(key)
+        
+        # m_listSelectionKey에서 unSelectionKey 제거 
+        if self.m_listUnSelectionKey :
+            setUnselect = set(self.m_listUnSelectionKey)
+            self.m_listSelectionKey = [key for key in self.m_listSelectionKey if key not in setUnselect]
+        # m_listSelectionKey에 selectionKey 추가 
+        if len(listTmpSelectionKey) > 0 :
+            self.m_listSelectionKey += listTmpSelectionKey
+        
 if __name__ == '__main__' :
     pass
 

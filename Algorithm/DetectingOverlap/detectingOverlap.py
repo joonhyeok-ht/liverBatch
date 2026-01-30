@@ -75,6 +75,8 @@ class CDetectingOverlap() :
             return
         targetPolyData = self._load_stl(fullPath)
 
+        maxTriCnt = 20000
+        
         for inx, srcPolyData in enumerate(listPolyData) :
             overlapedPosition = set()
             booleanOp = vtk.vtkBooleanOperationPolyDataFilter()
@@ -91,9 +93,12 @@ class CDetectingOverlap() :
 
             listTmp = self._get_connectivity_poly_data(booleanOp.GetOutput())
             for polyData in listTmp :
-                if polydata_min_distance(src, polyData) > 1:
+                if polyData.GetNumberOfPolys() > maxTriCnt:
                     continue
-                if polydata_min_distance(tgt, polyData) > 1:
+                
+                if polydata_min_distance(srcPolyData, polyData) > 0.5:
+                    continue
+                if polydata_min_distance(targetPolyData, polyData) > 0.5:
                     continue
                 
                 sphere, center, radius = self._get_sphere_poly_data(polyData)

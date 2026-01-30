@@ -231,7 +231,11 @@ class CBlenderScriptLiver :
 
             self.m_listStlName.append(stlNameExceptExt)
             
-            # kidney,stomach 공통
+            if stlNameExceptExt in bpy.data.objects:
+                obj = bpy.data.objects[stlNameExceptExt]
+                bpy.data.objects.remove(obj, do_unlink=True)
+                print(f"[REMOVE] existing object: {stlNameExceptExt}")
+            
             if (4,1,0) < bpy.app.version : 
                 bpy.ops.wm.stl_import(filepath=f"{stlFullPath}")
             else :
@@ -635,7 +639,7 @@ class CBlenderScriptStomachBasic(CBlenderScriptLiver) :
             obj.data.name = renamed  #rename mesh data
             obj.name = renamed  #rename obj
             print(f"renamed {objname} -> {renamed}")
-            
+
 class CBlenderScriptStomachExport() :
     def __init__(self, patientID : str, inBlendPath : str, exportPath : str ) :
         self.m_patientID = patientID
@@ -730,8 +734,8 @@ class CBlenderScriptLiverOpen(CBlenderScriptLiver) :
         self.m_openPath = ""
     def process(self) -> bool :
         
-        if super().process() == False :
-            return False
+        # if super().process() == False :
+        #     return False
         if os.path.exists(self.m_openPath) == False:
             print(f"ERROR : openPath Not Exist. ")
             return False
@@ -744,7 +748,74 @@ class CBlenderScriptLiverOpen(CBlenderScriptLiver) :
     @OpenPath.setter
     def OpenPath(self, path) :
         self.m_openPath = path
+
+class CBlenderScriptLiverImportSaveForRemodeling(CBlenderScriptLiver) :
     
+    def __init__(self, patientID : str, optionPath : str, stlPath : str, outputPath = "", meshcleanPath = "") :
+        super().__init__(patientID, optionPath, stlPath, outputPath)    
+        self.m_meshcleanPath = meshcleanPath
+    def process(self) -> bool :
+        # if super().process() == False :
+        #     return False
+        if self.m_optionInfo.process(self.m_optionFullPath) == False :
+            return False   
+        self._delete_all_object()
+        self._delete_etc_objects()
+
+        self._get_meshclean_stl(self.m_meshcleanPath)
+        
+        if self._import_stl(self.m_stlPath) == False :
+            print("failed import stl")
+            return False
+        
+        # DataRootPath의 해당 저장 폴더에 최종 파일 저장하기.
+        valid_decim_dict = self._get_valid_object_dict(self.m_optionInfo.Decimation) 
+        valid_decimRatio_dict = self._get_valid_object_dict(self.m_optionInfo.DecimationByRatio) 
+        self._decimation(valid_decim_dict, False)
+        self._decimation(valid_decimRatio_dict, True)
+
+        valid_clean_list = self._get_valid_object_list(self.m_optionInfo.CleanUp)
+        self._init_cleanup(valid_clean_list)
+        self._cleanup()
+        self.triangulate_all_objects_no_ops()
+        
+        all_objects = self._get_all_object_list()
+        self._shade_auto_smooth(all_objects, angle=180) 
+        #CBlenderScriptCutVesselAutoMarkSharp.mark_sharp_custom(all_objects)        
+        patientBlenderName = f"{self.m_patientID}.blend"
+        self._save_blender_with_patientID(outputPath, patientBlenderName) 
+        # self._save_blender_with_bak(self.m_auto02Path, self.m_patientID)
+        # bpy.ops.wm.quit_blender()
+
+        # delete export stl path
+        # if os.path.exists(self.m_stlPath) :
+        #     shutil.rmtree(self.m_stlPath)
+        #     print(f"delete {self.m_stlPath} folder")
+        return True
+    
+    
+    def _get_meshclean_stl(self, SRC_BLEND):
+        bpy.ops.wm.open_mainfile(filepath=SRC_BLEND)
+
+        if bpy.context.object is not None and bpy.context.object.mode != 'OBJECT':
+            bpy.ops.object.mode_set(mode='OBJECT')
+
+        bpy.ops.object.select_all(action='DESELECT')
+
+        for obj in bpy.data.objects:
+            if "zz" in obj.name:
+                obj.select_set(True)
+            elif "TP" in obj.name and not str(obj.name).split("_")[2].isdigit():
+                obj.select_set(True)
+            else:
+                obj.select_set(False)
+                    
+        bpy.ops.object.delete()
+        
+    def _get_all_object_list(self) -> list :
+        mesh_objects = [obj.name for obj in bpy.data.objects if obj.type == 'MESH']
+        return mesh_objects
+        
     
 class CBlenderScriptStomachMeshClean(CBlenderScriptLiver) :
     def __init__(self, patientID : str, optionPath : str, stlPath : str, outputPath = "", overlapPath = "") :
@@ -919,6 +990,13 @@ if __name__=='__main__' :
                 outputPath = find_param(scriptArgs, "--out_path")
                 overlapPath = find_param(scriptArgs, "--overlap_path")
                 inst = CBlenderScriptStomachMeshClean(patientID, optionPath, stlPath, outputPath)
+                inst.process() 
+            elif funcMode == "RemodelingImportSave" :
+                optionPath = find_param(scriptArgs, "--option_path")
+                stlPath = find_param(scriptArgs, "--stl_path")
+                outputPath = find_param(scriptArgs, "--out_path")
+                meshCleanPath = find_param(scriptArgs, "--meshclean_path")
+                inst = CBlenderScriptLiverImportSaveForRemodeling(patientID, optionPath, stlPath, outputPath, meshCleanPath)
                 inst.process() 
             elif funcMode == "OpenBlend" :
                 openPath = find_param(scriptArgs, "--open_path")

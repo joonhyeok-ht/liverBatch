@@ -105,7 +105,7 @@ class CVTKObjGuideCL(vtkObjInterface.CVTKObjInterface) :
         curveLen = npRet[-1]
         distFromEnd = curveLen - npRet
         maxDistFromEnd = distFromEnd.max()
-        weights = 1.0 - (distFromEnd / maxDistFromEnd)
+        weights = 1.0 - (distFromEnd / maxDistFromEnd + 1e-10)
 
         movingVec = newEndPoint - self.m_vertex[-1].reshape(-1, 3)
         for i in range(len(self.m_vertex)):

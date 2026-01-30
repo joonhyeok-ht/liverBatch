@@ -703,7 +703,65 @@ class CSkeleton :
             if treeNodeParent is not None :
                 listTreeNode.append(treeNodeParent)
         return False
-    
+    def find_root_cl(self, listCLID : list) -> list :
+        '''
+        desc
+            - 입력 받은 clID들의 가장 최상위 root centerline을 반환
+            - clID들이 연결이 서로 연결이 안될 가능성도 있기에, 그 경우 최상위 root centerline은 여러개가 된다. 
+        '''
+        if len(self.m_listTree) == 0 :
+            return None
+        
+        retList = []
+
+        for clID in listCLID :
+            cl = self.get_centerline(clID)
+            flag = False
+            for ancestorCLID in listCLID :
+                if clID == ancestorCLID :
+                    continue
+                if self.is_ancestor(ancestorCLID, clID) == True :
+                    flag = True
+            if flag == False :
+                retList.append(cl)
+
+        if len(retList) == 0 :
+            return None
+        return retList
+    def check_root_reverse(self) -> bool :
+        '''
+        desc 
+            - root와 연결된 branch를 통해 root의 order를 재조정 한다.
+        '''
+        if len(self.m_listTree) == 0 :
+            return False
+        
+        rootCL = self.RootCenterline
+        if rootCL is None :
+            return False 
+        
+        rootTreeID = rootCL.TreeID
+        rootTreeNode = self.m_listTree[rootTreeID]
+        childCnt = rootTreeNode.get_child_count()
+        # childCnt 2개 이상이라면 root는 중간에 껴있는 형태임 
+        if childCnt > 1 :
+            return False
+        # childCnt가 0개라면 root만 존재하는 경우이므로 계속 진행한다. 
+        if childCnt == 0 :
+            return True
+        
+        childTreeNode = rootTreeNode.get_child(0)
+        branch = childTreeNode.Node
+        branchPoint = branch.BranchPoint
+
+        npTmp = rootCL.Vertex[0].reshape(-1, 3)
+        npTmp = np.concatenate((npTmp, rootCL.Vertex[-1].reshape(-1, 3)), axis=0)
+        dist = np.linalg.norm(npTmp - branchPoint, axis=1)
+        closestIndex = np.argmin(dist)
+        if closestIndex == 0 :
+            rootCL.reverse()
+        
+        return True
 
     # kd-tree member
     def init_kd_anchor(self) -> bool :

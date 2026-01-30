@@ -638,6 +638,9 @@ QPushButton {
             color = data.CData.s_clColor
             if cl == skeleton.RootCenterline :
                 color = data.CData.s_rootCLColor
+            else :
+                if cl.Name != '' :
+                    color = self.get_cl_color(cl.Name)
             
             clObj.KeyType = data.CData.s_skelTypeCenterline
             key = data.CData.make_key(clObj.KeyType, groupID, cl.ID)
@@ -684,6 +687,27 @@ QPushButton {
             vertexObj.Visibility = True
             dataInst.add_vtk_obj(vertexObj)
             
+    def add_skeleton_cl_obj(self, skeleton : algSkeletonGraph.CSkeleton, groupID : int) :
+        dataInst = self.m_data
+        self.remove_skeleton_cl_obj(groupID)
+
+        clCnt = skeleton.get_centerline_count()
+        for clInx in range(0, clCnt) :
+            cl = skeleton.get_centerline(clInx)
+            clObj = vtkObjCL.CVTKObjCL(cl, data.CData.s_clSize)
+
+            color = data.CData.s_clColor
+            if cl == skeleton.RootCenterline :
+                color = data.CData.s_rootCLColor
+            
+            clObj.KeyType = data.CData.s_skelTypeCenterline
+            key = data.CData.make_key(clObj.KeyType, groupID, cl.ID)
+            clObj.Key = key
+            clObj.Color = color
+            clObj.Opacity = 1.0
+            clObj.Visibility = True
+            dataInst.add_vtk_obj(clObj)
+            
     def remove_skeleton_obj(self, groupID : int) :
         self.remove_key_type_groupID(data.CData.s_skelTypeCenterline, groupID)
         self.remove_key_type_groupID(data.CData.s_skelTypeBranch, groupID)
@@ -716,6 +740,8 @@ QPushButton {
         dataInst.add_vtk_obj(vesselObj)
     def remove_vessel_obj(self, groupID : int) :
         self.remove_key_type_groupID(data.CData.s_vesselType, groupID)
+    def remove_skeleton_cl_obj(self, groupID : int) :
+        self.remove_key_type_groupID(data.CData.s_skelTypeCenterline, groupID)
     def add_organ_obj(self) :
         dataInst = self.m_data
         terriInPath = dataInst.get_terri_in_path()
@@ -1236,8 +1262,8 @@ QPushButton {
             tabName = ele["TabName"]
             inst = ele["TabInst"](self)
             self.m_listTabState.append(inst)
-            self.m_mainTab.addTab(inst.Tab, tabName)
         
+            self.m_mainTab.addTab(inst.Tab, tabName)
         iCnt = self.get_tab_state_count()
         for inx in range(0, iCnt) :
             self.get_tab_state(inx).changed_project_type()

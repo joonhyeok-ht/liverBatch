@@ -38,9 +38,9 @@ import operation as operation
 import skelEdit.subStateSkelEdit as subStateSkelEdit
 import skelEdit.subStateSkelEditSelectionCL as subStateSkelEditSelectionCL
 import skelEdit.subStateSkelEditSelectionBr as subStateSkelEditSelectionBr
-import skelEdit.subStateSkelEditSelectionEP as subStateSkelEditSelectionEP
+#import skelEdit.subStateSkelEditSelectionEP as subStateSkelEditSelectionEP
 import skelEdit.subStateSkelEditSelectionVertex as subStateSkelEditSelectionVertex
-import skelEdit.subStateSkelEditSelectionConnect as subStateSkelEditSelectionConnect
+#import skelEdit.subStateSkelEditSelectionConnect as subStateSkelEditSelectionConnect
 import skelEdit.subStateSkelEditSelectionReAttach as subStateSkelEditSelectionReAttach
 
 
@@ -67,9 +67,9 @@ class CTabStateSkelEditLiver(tabState.CTabState) :
 
         self.m_listSubState.append(subStateSkelEditSelectionCL.CSubStateSkelEditSelectionCL(self))
         self.m_listSubState.append(subStateSkelEditSelectionBr.CSubStateSkelEditSelectionBr(self))
-        self.m_listSubState.append(subStateSkelEditSelectionEP.CSubStateSkelEditSelectionEP(self))
+        #self.m_listSubState.append(subStateSkelEditSelectionEP.CSubStateSkelEditSelectionEP(self))
         self.m_listSubState.append(subStateSkelEditSelectionVertex.CSubStateSkelEditSelectionVertex(self))
-        self.m_listSubState.append(subStateSkelEditSelectionConnect.CSubStateSkelEditSelectionConnect(self))
+        #self.m_listSubState.append(subStateSkelEditSelectionConnect.CSubStateSkelEditSelectionConnect(self))
         self.m_listSubState.append(subStateSkelEditSelectionReAttach.CSubStateSkelEditSelectionReAttach(self))
 
         self.m_bReady = True
@@ -155,7 +155,6 @@ class CTabStateSkelEditLiver(tabState.CTabState) :
         title = "Centerline"
         tab = QWidget()
         subTabLayout = QVBoxLayout(tab)
-
         layout, retList = self.m_mediator.create_layout_label_radio("SelectionMode", ["Single", "Descendant"])
         self.m_rbSingle = retList[0]
         self.m_rbDescendant = retList[1]
@@ -177,21 +176,26 @@ class CTabStateSkelEditLiver(tabState.CTabState) :
         self.m_sliderBranchRange.valueChanged.connect(self._on_slider_changed_value_branch)
         subTabLayout.addLayout(layout)
 
-        subTabLayout.addStretch()
-        tabUI.addTab(tab, title)
-
-
-        title = "EndPoint"
-        tab = QWidget()
-        subTabLayout = QVBoxLayout(tab)
-
-        layout, self.m_sliderEpRange, self.m_editEpRange = self.m_mediator.create_layout_label_slider_editbox("EndPoint Range", CTabStateSkelEditLiver.s_minRange, CTabStateSkelEditLiver.s_maxRange, 1, True)
-        self.m_sliderEpRange.setValue(2)
-        self.m_sliderEpRange.valueChanged.connect(self._on_slider_changed_value_ep)
+        layout, retList = self.m_mediator.create_layout_btn_array(["Merge"])
+        self.m_btnMerge = retList[0]
+        self.m_btnMerge.clicked.connect(self._on_btn_merge_centerline)
         subTabLayout.addLayout(layout)
 
         subTabLayout.addStretch()
         tabUI.addTab(tab, title)
+
+
+        # title = "EndPoint"
+        # tab = QWidget()
+        # subTabLayout = QVBoxLayout(tab)
+
+        # layout, self.m_sliderEpRange, self.m_editEpRange = self.m_mediator.create_layout_label_slider_editbox("EndPoint Range", CTabStateSkelEditLiver.s_minRange, CTabStateSkelEditLiver.s_maxRange, 1, True)
+        # self.m_sliderEpRange.setValue(2)
+        # self.m_sliderEpRange.valueChanged.connect(self._on_slider_changed_value_ep)
+        # subTabLayout.addLayout(layout)
+
+        # subTabLayout.addStretch()
+        # tabUI.addTab(tab, title)
 
         title = "Vertex"
         tab = QWidget()
@@ -205,12 +209,12 @@ class CTabStateSkelEditLiver(tabState.CTabState) :
         subTabLayout.addStretch()
         tabUI.addTab(tab, title)
 
-        title = "Connect"
-        tab = QWidget()
-        subTabLayout = QVBoxLayout(tab)
+        # title = "Connect"
+        # tab = QWidget()
+        # subTabLayout = QVBoxLayout(tab)
 
-        subTabLayout.addStretch()
-        tabUI.addTab(tab, title)
+        # subTabLayout.addStretch()
+        # tabUI.addTab(tab, title)
         
         title = "ReAttach"
         tab = QWidget()
@@ -325,6 +329,9 @@ class CTabStateSkelEditLiver(tabState.CTabState) :
     def _on_rb_descendant(self) :
         if self.m_bReady == False :
             return
+        
+    def _on_btn_merge_centerline(self):
+        self._get_substate(self.m_state)._merge_centerline()
         
     def _on_btn_change_root_point_start(self) :
         dataInst = self.get_data()

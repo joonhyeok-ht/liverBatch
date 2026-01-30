@@ -53,7 +53,7 @@ class CCommand :
         # self.m_patientBlenderFullPath = os.path.join(self.InputData.DataInfo.PatientPath, blenderName)
 
 
-    def process_undo(self) :
+    def process_undo(self, state=0) :
         pass
 
     

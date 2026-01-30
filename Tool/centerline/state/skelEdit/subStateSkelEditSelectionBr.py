@@ -269,6 +269,37 @@ class CSubStateSkelEditSelectionBr(subStateSkelEdit.CSubStateSkelEdit) :
             obj.Range = self.m_range
         
         self.App.update_viewer()
+        
+    def _merge_centerline(self):
+        dataInst = self._get_data()
+        if self.m_selBrKey == "" :
+            return
+        clinfoInx = data.CData.get_groupID_from_key(self.m_selBrKey)
+        skeleton = dataInst.get_skeleton(clinfoInx)
+        
+        selectedBrID = data.CData.get_id_from_key(self.m_selBrKey)
+        br = skeleton.get_branch(selectedBrID)
+        
+        cmdContainer = commandInterface.CCommandContainer(self.App)
+        cmdContainer.InputData = dataInst
+        
+        cmd = commandSkelEdit.CCommandMergeCL(self.App)
+        cmd.InputData = dataInst
+        cmd.InputSkeleton = skeleton
+        cmd.InputBrID = br.ID
+        cmd.m_clinfoInx = clinfoInx
+        cmdContainer.add_cmd(cmd)
+        cmdContainer.process()
+        self.App.add_cmd(cmdContainer)
+
+        opSelectionBr = self._get_operator_selection_br()
+        opSelectionCL = self._get_operator_selection_cl()
+        opSelectionBr.process_reset()
+        opSelectionCL.process_reset()
+        self._remove_guide_key()
+        self.m_selBrKey = ""
+        
+        self.App.update_viewer()
 
     def get_clinfo_indices(self) -> int :
         return self._get_clinfo_indices()

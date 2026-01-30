@@ -51,20 +51,14 @@ import remodeling.subStateRemodelingCutting as subStateRemodelingCutting
 import remodeling.subStateRemodelingExtractionEnCL as subStateRemodelingExtractionEnCL
 import remodeling.subStateRemodelingRemodeling as subStateRemodelingRemodeling
 
+from collections import deque
 
-class RemodelingKeyFilter(QObject) :
-    def __init__(self, callback) :
-        super().__init__()
-        self.callback = callback
-    def eventFilter(self, obj, event) :
-        if event.type() == QEvent.KeyPress and event.key() in (Qt.Key_Delete, Qt.Key_Backspace) :
-            self.callback()
-            return True
-        return super().eventFilter(obj, event)
-
+fileAbsPath = os.path.abspath(os.path.dirname(__file__))
+parentDirPath = os.path.dirname(os.path.abspath(os.path.dirname(__file__)))
 
 class CTabStateVesselRemodeling(tabState.CTabState) :
     s_dbgType = "dbgType"
+    s_skelGroupID = 1000
 
     @staticmethod
     def get_meshlib(vtkMeshInst : vtk.vtkPolyData) :
@@ -267,7 +261,6 @@ class CTabStateVesselRemodeling(tabState.CTabState) :
         self.m_mainNode = remodelingNode.CRemodelingNode()
         self.m_mainNode.Name = f"{skelinfo.BlenderName}_Main"
         self.m_mainNode.Key = cuttedMeshKey
-        self.m_mainNode.Skeleton = skeleton
         self.m_listRemodelingNode.append(self.m_mainNode)
         self.setui_lv_cuttednode_add_node(self.m_mainNode)
 
@@ -298,8 +291,6 @@ class CTabStateVesselRemodeling(tabState.CTabState) :
         # self._get_substate(self.m_state).process_init()
 
         self.m_mediator.remove_key_type(subStateRemodeling.CSubStateRemodeling.s_cuttingMeshType)
-        self.m_mediator.remove_key_type(subStateRemodeling.CSubStateRemodeling.s_subSkelType)
-        self.clear_render_entity()
         self.m_cuttedMeshID = 0
         self.m_nodeNameID = 0
         self.m_mainNode = None
@@ -310,9 +301,10 @@ class CTabStateVesselRemodeling(tabState.CTabState) :
 
         self.setui_lv_cuttednode_remove_all()
         for node in self.m_listRemodelingNode :
+            if node.SkelGroupID >= 0 :
+                self.m_mediator.remove_key_type_groupID(data.CData.s_skelTypeCenterline, node.SkelGroupID)
             node.clear()
         self.m_listRemodelingNode.clear()
-
 
     def init_ui(self) :
         tabLayout = QVBoxLayout()
@@ -343,7 +335,7 @@ class CTabStateVesselRemodeling(tabState.CTabState) :
         tabLayout.addWidget(label)
 
         self.m_lvCuttedNode = QListWidget()
-        self.m_lvCuttedNode.itemClicked.connect(self._on_lb_clicked_node)
+        self.m_lvCuttedNode.currentItemChanged.connect(self._on_lb_clicked_node)
         self.m_lvCuttedNode.setContextMenuPolicy(Qt.CustomContextMenu)
         tabLayout.addWidget(self.m_lvCuttedNode)
 
@@ -419,6 +411,15 @@ class CTabStateVesselRemodeling(tabState.CTabState) :
         tab = QWidget()
         subTabLayout = QVBoxLayout(tab)
 
+        layout, retList = self.m_mediator.create_layout_label_radio("SelectionMode", ["Single", "Descendant"])
+        self.m_rbSingle = retList[0]
+        self.m_rbDescendant = retList[1]
+        self.m_rbSingle.toggled.connect(self._on_rb_single)
+        self.m_rbDescendant.toggled.connect(self._on_rb_descendant)
+        self.m_rbSingle.setChecked(True)
+        subTabLayout.addLayout(layout)
+
+
         nodeLayout = QHBoxLayout()
         leftLayout = QVBoxLayout()
         rightLayout = QVBoxLayout()
@@ -427,13 +428,10 @@ class CTabStateVesselRemodeling(tabState.CTabState) :
         nodeLayout.addLayout(leftLayout)
         nodeLayout.addLayout(rightLayout)
 
-
-        label = QLabel("Anchor-Node ")
+        label = QLabel("Anchor")
         label.setStyleSheet("QLabel { margin-top: 1px; margin-bottom: 1px; }")
         label.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
-        self.m_editAnchor = QLineEdit()
-        self.m_editAnchor.setText("")
-        self.m_editAnchor.setReadOnly(True)
+        self.m_lvAnchor = QListWidget()
 
         labelFloat = QLabel("Radius-Margin ")
         labelFloat.setStyleSheet("QLabel { margin-top: 1px; margin-bottom: 1px; }")
@@ -444,20 +442,48 @@ class CTabStateVesselRemodeling(tabState.CTabState) :
         self.m_spinStrength.setDecimals(1)
         self.m_spinStrength.setValue(0.0)
 
+        layout, retList = self.m_mediator.create_layout_checkbox_array(["Fill Missing Vessels"])
+        self.m_checkMissingVessel = retList[0]
+
         leftLayout.addWidget(label)
-        leftLayout.addWidget(self.m_editAnchor)
+        leftLayout.addWidget(self.m_lvAnchor)
         leftLayout.addWidget(labelFloat)
         leftLayout.addWidget(self.m_spinStrength)
-        leftLayout.addStretch() 
+        leftLayout.addLayout(layout)
+        leftLayout.addStretch()
+        
+        labelDepth = QLabel("Max Depth")
+        labelDepth.setStyleSheet("QLabel { margin-top: 1px; margin-bottom: 1px; }")
+        labelDepth.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
+        self.m_minorVelsselMaxDepth = QSpinBox()
+        self.m_minorVelsselMaxDepth.setRange(0, 99)
+        self.m_minorVelsselMaxDepth.setSingleStep(1)
+        self.m_minorVelsselMaxDepth.setValue(4)
+        
+        rightLayout.addWidget(labelDepth)
+        rightLayout.addWidget(self.m_minorVelsselMaxDepth)
+        
+        btn = QPushButton("Select Minor")
+        btn.setStyleSheet(self.get_btn_stylesheet())
+        btn.clicked.connect(self._on_btn_minor_selection)
+        rightLayout.addWidget(btn) 
 
-        label = QLabel("Sub-Node ")
+        btn = QPushButton("Attach Centerline")
+        btn.setStyleSheet(self.get_btn_stylesheet())
+        btn.clicked.connect(self._on_btn_attach_centerline)
+        rightLayout.addWidget(btn) 
+
+        btn = QPushButton("Refresh Centerline")
+        btn.setStyleSheet(self.get_btn_stylesheet())
+        btn.clicked.connect(self._on_btn_refresh_centerline)
+        rightLayout.addWidget(btn) 
+
+        label = QLabel("Skel-Node List ")
         label.setStyleSheet("QLabel { margin-top: 1px; margin-bottom: 1px; }")
         label.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
         self.m_lvSubNode = QListWidget()
-        remodelingKeyFilter = RemodelingKeyFilter(self._on_lb_clicked_subnode_delete)
-        self.m_lvSubNode.installEventFilter(remodelingKeyFilter)
-        rightLayout.addWidget(label)
-        rightLayout.addWidget(self.m_lvSubNode)
+        rightLayout.addWidget(label) 
+        rightLayout.addWidget(self.m_lvSubNode) 
         rightLayout.addStretch() 
 
         btn = QPushButton("Remodeling")
@@ -468,6 +494,11 @@ class CTabStateVesselRemodeling(tabState.CTabState) :
         btn = QPushButton("Save")
         btn.setStyleSheet(self.get_btn_stylesheet())
         btn.clicked.connect(self._on_btn_remodeling_save)
+        subTabLayout.addWidget(btn)
+        
+        btn = QPushButton("Blender Save")
+        btn.setStyleSheet(self.get_btn_stylesheet())
+        btn.clicked.connect(self._on_btn_blender_save)
         subTabLayout.addWidget(btn)
 
 
@@ -504,26 +535,34 @@ class CTabStateVesselRemodeling(tabState.CTabState) :
         obj = dataInst.find_obj_by_key(cuttedMeshKey)
         return obj.PolyData
     def select_index_cuttedmesh(self, selectionInx : int) :
-        self.m_mediator.unref_key_type(subStateRemodeling.CSubStateRemodeling.s_cuttingMeshType)
-        self.m_mediator.unref_key_type(subStateRemodeling.CSubStateRemodeling.s_subSkelType)
-        self.clear_render_entity()
+        prevNode = self.getui_lv_cuttednode_selected_node()
+        if selectionInx >= 0 :
+            nowNode = self.m_listRemodelingNode[selectionInx]
+        else :
+            nowNode= None
 
-        node = self.m_listRemodelingNode[selectionInx]
-        self.m_mediator.ref_key(node.Key)
-        if node.SkelKey != "" :
-            self.m_mediator.ref_key(node.SkelKey)
-        if node.SkelEnKey != "" :
-            self.m_mediator.ref_key(node.SkelEnKey)
-        if node.RootEntity is not None :
-            self.add_render_entity(node.RootEntity)
-
-        self._get_substate(self.m_state).changed_cutting_mesh()
+        self.swap_selected_cutting_node(prevNode, nowNode)
         self.setui_lv_cuttednode_selection_inx(selectionInx)
+        self._get_substate(self.m_state).changed_cutting_mesh(prevNode, nowNode)
     def refresh_remodeling_node_list(self, listRemodelingNode : list) :
-        self.m_mediator.unref_key_type(subStateRemodeling.CSubStateRemodeling.s_cuttingMeshType)
-        self.m_mediator.unref_key_type(subStateRemodeling.CSubStateRemodeling.s_subSkelType)
+        selectedNode = self.getui_lv_cuttednode_selected_node()
+        if selectedNode is not None :
+            self.swap_selected_cutting_node(selectedNode, None)
+
         self.m_listRemodelingNode = listRemodelingNode
         self.setui_lv_cuttednode_add_listnode(self.m_listRemodelingNode)
+    def swap_selected_cutting_node(self, prevNode : remodelingNode.CRemodelingNode, nowNode : remodelingNode.CRemodelingNode) :
+        if prevNode is not None :
+            self.m_mediator.unref_key_type(subStateRemodeling.CSubStateRemodeling.s_cuttingMeshType)
+            if prevNode.SkelGroupID >= 0 :
+                self.m_mediator.unref_key_type_groupID(data.CData.s_skelTypeCenterline, prevNode.SkelGroupID)
+        
+        if nowNode is None :
+            return
+        
+        self.m_mediator.ref_key(nowNode.Key)
+        if nowNode.SkelGroupID >= 0 :
+            self.m_mediator.ref_key_type_groupID(data.CData.s_skelTypeCenterline, nowNode.SkelGroupID)
     def undo(self) :
         if len(self.m_listCmd) == 0 :
             return
@@ -562,14 +601,9 @@ class CTabStateVesselRemodeling(tabState.CTabState) :
         
         node = self.getui_lv_cuttednode_selected_node()
         if node.SkeletonEn is not None :
-            self.m_mediator.remove_key(node.SkelKey)
-            self.m_mediator.remove_key(node.SkelEnKey)
-            self.clear_render_entity()
-            node.SkelKey = ""
-            node.SkelEnKey = ""
-            node.Skeleton = None
+            self.m_mediator.remove_skeleton_cl_obj(node.SkelGroupID)
+            node.SkelGroupID = -1
             node.SkeletonEn = None
-            node.RootEntity = None
 
         vtpName = node.Name
         clOutputFullPath = os.path.join(clOutPath, f"{vtpName}.json")
@@ -641,69 +675,12 @@ class CTabStateVesselRemodeling(tabState.CTabState) :
         # max radius refinement 수행 
         self.__refine_max_radius(skeleton)
 
-        skelID = dataInst.get_id_from_key(node.Key)
-        groupID = 1
-        skelKey = data.CData.make_key(subStateRemodeling.CSubStateRemodeling.s_subSkelType, groupID, skelID)
-        skelPolyData = algVTK.CVTK.create_poly_data_spheres(skeleton.KDTreeAnchorVertex, data.CData.s_clSize)
-        skelObj = vtkObjInterface.CVTKObjInterface()
-        skelObj.KeyType = subStateRemodeling.CSubStateRemodeling.s_subSkelType
-        skelObj.Key = skelKey
-        skelObj.Color = algLinearMath.CScoMath.to_vec3([0.0, 1.0, 0.0])
-        skelObj.Opacity = 0.3
-        skelObj.PolyData = skelPolyData
-        dataInst.add_vtk_obj(skelObj)
-
-        rootCL = skeleton.RootCenterline
-        rootMesh = algVTK.CVTK.create_poly_data_spheres(rootCL.Vertex, 0.6)
-        rootEntity = tabState.CRenderEntity()
-        rootEntity.PolyData = rootMesh
-        rootEntity.Color = algLinearMath.CScoMath.to_vec3([1.0, 0.0, 0.0])
-        node.RootEntity = rootEntity
-        self.add_render_entity(rootEntity)
-
-        node.SkelEnKey = skelKey
         node.SkeletonEn = skeleton
-        self.m_mediator.ref_key(skelKey)
-
-        if node.Skeleton is not None :
-            if os.path.exists(vtpFullPath) :
-                os.remove(vtpFullPath)
-            if os.path.exists(clOutputFullPath) :
-                os.remove(clOutputFullPath)
-            QMessageBox.information(self.m_mediator, "Alarm", "completed extraction centerline")
-            return
-        
-        print("-- normal skeleton extraction --")
-        cmd = commandExtractionCL.CCommandExtractionCL(self.m_mediator)
-        cmd.InputData = dataInst
-        cmd.InputIndex = dataInst.CLInfoIndex
-        cmd.InputVTPName = vtpName
-        cmd.InputCellID = startCellID
-        cmd.InputEn = 0
-        cmd.CaptureMode = False
-        cmd.process()
-
-        skeleton = algSkeletonGraph.CSkeleton()
-        skeleton.load(clOutputFullPath)
-        CTabStateVesselRemodeling.refresh_radius(vesselObj.PolyData, skeleton)
-        rootCL = skeleton.RootCenterline
-        rootCL.reverse_by_nn_vertex(startVertex)
-
         skelID = dataInst.get_id_from_key(node.Key)
-        groupID = 0
-        skelKey = data.CData.make_key(subStateRemodeling.CSubStateRemodeling.s_subSkelType, groupID, skelID)
-        skelPolyData = algVTK.CVTK.create_poly_data_spheres(skeleton.KDTreeAnchorVertex, data.CData.s_clSize)
-        skelObj = vtkObjInterface.CVTKObjInterface()
-        skelObj.KeyType = subStateRemodeling.CSubStateRemodeling.s_subSkelType
-        skelObj.Key = skelKey
-        skelObj.Color = algLinearMath.CScoMath.to_vec3([1.0, 0.0, 1.0])
-        skelObj.Opacity = 1.0
-        skelObj.PolyData = skelPolyData
-        dataInst.add_vtk_obj(skelObj)
-        self.m_mediator.ref_key(skelKey)
-
-        node.SkelKey = skelKey
-        node.Skeleton = skeleton
+        groupID = CTabStateVesselRemodeling.s_skelGroupID + skelID
+        node.SkelGroupID = groupID
+        self.m_mediator.add_skeleton_cl_obj(node.SkeletonEn, node.SkelGroupID)
+        self.m_mediator.ref_key_type_groupID(data.CData.s_skelTypeCenterline, node.SkelGroupID)
 
         if os.path.exists(vtpFullPath) :
             os.remove(vtpFullPath)
@@ -715,46 +692,82 @@ class CTabStateVesselRemodeling(tabState.CTabState) :
         if selectedNode is None :
             QMessageBox.information(self.m_mediator, "Alarm", "Please Select a Node in CuttedList")
             return
-        self.setui_edit_anchor_name(selectedNode.Name)
-    def command_attach_sub(self) :
-        selectedNode = self.getui_lv_cuttednode_selected_node()
-        if selectedNode is None :
-            QMessageBox.information(self.m_mediator, "Alarm", "Please Select a Node in CuttedList")
+        findInx = self.getui_lv_anchor_find_index_by_node(selectedNode)
+        if findInx >= 0 :
+            QMessageBox.information(self.m_mediator, "Alarm", "Already Anchor Node")
             return
-        anchorName = self.getui_edit_anchor_name()
-        if anchorName == selectedNode.Name :
-            QMessageBox.information(self.m_mediator, "Alarm", "The anchor node cannot be added as a sub-node")
-            return
-        self.setui_lv_subnode_add_node(selectedNode)
+        self.setui_lv_anchor_add(selectedNode)
     def command_remodeling(self) :
-        listNode = []
         retListMergedMesh = []
         dataInst = self.get_data()
 
-        anchorNodeName = self.getui_edit_anchor_name()
-        anchorNode = self.getui_lv_cuttednode_find_node_by_name(anchorNodeName)
-        if anchorNode is None :
-            QMessageBox.information(self.m_mediator, "Alarm", "Please Select AnchorNode")
-            return
-
-        listNode.append(anchorNode)
-        listTmp = self.getui_lv_subnode_all_node()
-        for node in listTmp :
-            listNode.append(node)
-
-        self.clear_render_entity()
-        
-        for node in listNode :
-            mergedMesh = None
-            if node.SkeletonEn is not None :
-                mergedMesh = self._command_remodeling_node(node)
-            else :
-                key = node.Key
-                obj = dataInst.find_obj_by_key(key)
-                mergedMesh = obj.PolyData
+        # anchor remodeling
+        listNode = self.getui_lv_anchor_all()
+        for anchorNode in listNode :
+            key = anchorNode.Key
+            obj = dataInst.find_obj_by_key(key)
+            mergedMesh = obj.PolyData
             retListMergedMesh.append(mergedMesh)
         
-        # retMesh union
+        # skel-node remodeling
+        resampledVertex = None
+        resampledRadius = None
+        listNode = self.getui_lv_subnode_all_node()
+        for skelNode in listNode :
+            remodelingNodeInst = skelNode.RemodelingNode
+            listCLID = skelNode.m_listCLID.copy()
+            mainSkeleton = remodelingNodeInst.SkeletonEn
+            subToMainClID = dict()
+            if mainSkeleton is None :
+                continue
+
+            rootCL = mainSkeleton.find_root_cl(listCLID)[0]
+            rootID = rootCL.ID
+            subToMainClID[0] = rootID
+            listCLID.remove(rootID)
+
+            subSkeleton = algSkeletonGraph.CSkeleton()
+            clTmp = algSkeletonGraph.CSkeletonCenterline(0)
+            clTmp.Vertex = rootCL.Vertex.copy()
+            clTmp.Radius = rootCL.Radius.copy()
+            subSkeleton.m_listCenterline.append(clTmp)
+            for inx, clID in enumerate(listCLID) :
+                if clID == mainSkeleton.m_rootCenterline.ID:
+                    continue
+                cl = mainSkeleton.get_centerline(clID)
+                subToMainClID[inx + 1] = cl.ID
+                clTmp = algSkeletonGraph.CSkeletonCenterline(inx + 1)
+                clTmp.Vertex = cl.Vertex.copy()
+                clTmp.Radius = cl.Radius.copy()
+                subSkeleton.m_listCenterline.append(clTmp)
+            subSkeleton.rebuild_centerline_related_data()
+            subSkeleton.build_tree(0)
+            bCheck = subSkeleton.check_root_reverse()
+            if bCheck == False :
+                print("Invalid root-child connection")
+                continue
+
+            tmpRemodelingNode = remodelingNode.CRemodelingNode()
+            tmpRemodelingNode.m_skeletonEn = subSkeleton
+
+            cmd = commandRemodeling.CCommandRemodelingTreeVessel()
+            cmd.InputNode = tmpRemodelingNode
+            cmd.InputRadiusMargin = self.getui_spin_radius_margin()
+            if self.getui_cb_missing_vessel() == False:
+                cmd.m_mainSkeleton = mainSkeleton
+                cmd.subToMainClID = subToMainClID
+            cmd.process()
+            mergedMesh = cmd.OutputRemodelingMesh
+            retListMergedMesh.append(mergedMesh)
+
+            if resampledVertex is None :
+                resampledVertex = cmd.TreeVesselRemodeling.m_listResampleVertex
+                resampledRadius = cmd.TreeVesselRemodeling.m_listResampleRadius
+            else :
+                resampledVertex = np.concatenate((resampledVertex, cmd.TreeVesselRemodeling.m_listResampleVertex), axis=0)
+                resampledRadius = np.concatenate((resampledRadius, cmd.TreeVesselRemodeling.m_listResampleRadius), axis=0)
+                
+        # merged mesh union 
         mergedMesh = None 
         for remodelingMesh in retListMergedMesh :
             if remodelingMesh is None :
@@ -777,6 +790,13 @@ class CTabStateVesselRemodeling(tabState.CTabState) :
             QMessageBox.information(self.m_mediator, "Alarm", "failed Remodeling anchorNode")
             return
         
+        if self.getui_cb_missing_vessel() == True and resampledVertex is not None :
+            self.m_resampledVertex = resampledVertex
+            self.m_resampledRadius = resampledRadius
+            self.m_kdTree = KDTree(resampledVertex)
+            skeleton = dataInst.get_skeleton(self.get_clinfo_index())
+            mergedMesh = self._command_remodeling_undetected_vessel(mergedMesh, skeleton)
+        
         # clean merged mesh
         mergedMesh = algVTK.CVTK.laplacian_smoothing(mergedMesh, 5, 0.2)
         mergedMesh = algVTK.CVTK.laplacian_smoothing(mergedMesh, 5, 0.1)
@@ -796,7 +816,8 @@ class CTabStateVesselRemodeling(tabState.CTabState) :
             mergedMesh = CTabStateVesselRemodeling.get_vtkmesh(meshlib)
 
         cmd = commandRemodeling.CCommandRemodelingAdd(self)
-        cmd.InputAnchorNode = anchorNode
+        # cmd.InputAnchorNode = anchorNode
+        cmd.InputAnchorNode = self.m_mainNode
         cmd.InputRemodelingMesh = mergedMesh
         bRet = cmd.process()
         if bRet == True :
@@ -822,6 +843,40 @@ class CTabStateVesselRemodeling(tabState.CTabState) :
         algVTK.CVTK.save_poly_data_stl(saveFullPath, polydata)
 
         QMessageBox.information(self.m_mediator, "Alarm", f"completed saving {os.path.basename(saveFullPath)}")
+    def command_blender_save(self, outputFolder) :
+        dataInst = self.get_data()
+        stlOutPath = dataInst.get_terri_out_path()
+        currPatientID = dataInst.PatientID
+        
+        #optionFullPath = ""
+        
+        optionFullPath = os.path.join(os.path.dirname(os.path.dirname(self.m_mediator.FilePath)), "option.json")
+        
+        meshcleanPath = os.path.join(
+            dataInst.OptionInfo.DataRootPath, currPatientID, "02_SAVE", "02_BLENDER_SAVE",  "Auto03_MeshClean", f"{currPatientID}.blend"
+        )
+        cmd = f"{dataInst.OptionInfo.BlenderExe} -b --python {os.path.join(parentDirPath, 'liver', 'blenderScriptLiver.py')} -- \
+        --func_mode RemodelingImportSave \
+        --patient_id {currPatientID} \
+        --option_path {optionFullPath} \
+        --stl_path {stlOutPath} \
+        --out_path {outputFolder} \
+        --meshclean_path {meshcleanPath}"
+        
+        os.system(cmd)
+        # self.m_mediator.show_dialog(f"Save Blender Done")
+        # cmd = f'{dataInst.OptionInfo.BlenderExe} "{cleanupBlenderPath}"'
+        # os.system(cmd)
+        
+        
+        
+        openPath = os.path.join(
+            outputFolder, f"{currPatientID}.blend"
+        )
+        
+        cmd = f"{dataInst.OptionInfo.BlenderExe} --python {os.path.join(parentDirPath, 'liver', 'blenderScriptLiver.py')} -- --patient_id {currPatientID} --stl_path '' --option_path {optionFullPath} --open_path {openPath} --out_path {outputFolder} --func_mode OpenBlend"
+        os.system(cmd)
+        
     def command_add_skelinfo(self) :
         selectedNode = self.getui_lv_cuttednode_selected_node()
         if selectedNode is None :
@@ -879,7 +934,6 @@ class CTabStateVesselRemodeling(tabState.CTabState) :
         QMessageBox.information(self.m_mediator, "Alarm", "Succeed Registrating centerline")
         
 
-
     def clicked_mouse_rb(self, clickX, clickY) :
         dataInst = self.get_data()
         if dataInst.Ready == False :
@@ -925,41 +979,93 @@ class CTabStateVesselRemodeling(tabState.CTabState) :
         else :
             self.m_mediator.ref_key_type_groupID(data.CData.s_skelTypeCenterline, clinfoInx)
         self.m_mediator.update_viewer()
-    def _command_remodeling_node(self, node : remodelingNode.CRemodelingNode) -> vtk.vtkPolyData :
-        if node.SkeletonEn is None :
-            print(f"failed remodeling {node.Name}")
-            return None
-        
-        cmd = commandRemodeling.CCommandRemodelingTreeVessel()
-        cmd.InputNode = node
-        cmd.InputRadiusMargin = self.getui_spin_radius_margin()
-        cmd.process()
-        mergedMesh = cmd.OutputRemodelingMesh
 
-        if mergedMesh is None :
-            print(f"failed remodeling {node.Name}")
-            return None
+    def _select_minor_vessel(self, skeleton, maxDepth, segmentSet = []):
+        startDepth = 0
+        listcl = []
+        visited = set()
+        listcl.append(skeleton.RootCenterline.ID)
+        visited.add(skeleton.RootCenterline.ID)
+        queue = deque([(skeleton.RootCenterline.ID, startDepth)])
+    
+
+        iCLCnt = skeleton.get_centerline_count()
+        radiusList = []
+        for inx in range(0, iCLCnt) :
+            cl = skeleton.get_centerline(inx)
+            radiusList.append(np.mean(cl.Radius))
+            
+        q2 = np.percentile(radiusList, 50)  # median
         
-        skeleton = node.Skeleton
-        if skeleton is None :
-            return mergedMesh
+        if len(segmentSet) ==  0:
+            while queue:
+                id, d = queue.popleft()
+                # if d >= maxDepth:
+                #     continue
+                
+                cl = skeleton.get_centerline(id)
+                parentCLID, listChildCLID = skeleton.get_conn_centerline_id(id)
+
+                for CID in listChildCLID:
+                    if CID in visited:
+                        continue
+                    
+                    childCL = skeleton.get_centerline(CID)
+                    childMeanR = np.mean(childCL.Radius)
+                    if d+1 > maxDepth and childMeanR < q2:
+                        continue
+                    visited.add(CID)
+                    listcl.append(CID)
+                    queue.append((CID, d+1))
+        else:
+            while queue:
+                id, d = queue.popleft()
+                # if d >= maxDepth:
+                #     continue
+                cl = skeleton.get_centerline(id)
+                parentCLID, listChildCLID = skeleton.get_conn_centerline_id(id)
+
+                for CID in listChildCLID:
+                    if CID in visited:
+                        continue
+                    
+                    childCL = skeleton.get_centerline(CID)
+                    childMeanR = np.mean(childCL.Radius)
+                    if d+1 > maxDepth and childMeanR < q2:
+                        continue
+                    
+                    if childCL.Name in segmentSet and cl.Name in segmentSet and cl.Name == childCL.Name:
+                        visited.add(CID)
+                        listcl.append(CID)
+                        queue.append((CID, d+1))
+                    else:
+                        visited.add(CID)
+                        listcl.append(CID)
+                        queue.append((CID, d))
+                
+        return set(listcl)
+
         
-        cmd.TreeVesselRemodeling.build_kd_tree()
-        return self._command_remodeling_undetected_vessel(mergedMesh, cmd.TreeVesselRemodeling, skeleton)
     def _command_remodeling_undetected_vessel(
         self, 
-        mergedMesh : vtk.vtkPolyData, 
-        cmd : remodelingVessel.CTreeVesselRemodeling,
-        skeleton : algSkeletonGraph.CSkeleton
+        mergedMesh : vtk.vtkPolyData, skeleton : algSkeletonGraph.CSkeleton
         ) -> vtk.vtkPolyData :
         if mergedMesh is None :
             return None
         
+        # portalSegmentSet = set()
+        # for i in range(1, 9):
+        #     portalSegmentSet.add(str("S" + str(i)))
+            
+        # minorClSet = self._select_minor_vessel(skeleton, 3, portalSegmentSet)
+        
+        # 모든 cl 대상으로 포함 여부 판단 
         retFlag = CTabStateVesselRemodeling.check_in_polydata(mergedMesh, skeleton.KDTreeAnchorVertex)
         iCnt = skeleton.get_centerline_count()
-        retListCL = []
+        retListFlag = []
         for inx in range(0, iCnt) :
             cl = skeleton.get_centerline(inx)
+
 
             # 누락 혈관 catch 
             # 이 부분에서 loop를 해결하기 위한 고도화 알고리즘이 추가 되어야 함 
@@ -968,13 +1074,31 @@ class CTabStateVesselRemodeling(tabState.CTabState) :
             falseCnt = len(indices) - trueCnt
 
             if falseCnt > trueCnt :
-                retListCL.append(cl)
+                retListFlag.append(False)
+            else :
+                retListFlag.append(True)
         
+        # leaf -> root 경로를 따라 retListFlag가 False인 것만 cl 등록
+        retUndetectdCLID = []
+        iCnt = skeleton.get_leaf_centerline_count()
+        for inx in range(0, iCnt) :
+            leafCL = skeleton.get_leaf_centerline(inx)
+            listPathCL = skeleton.find_ancestor_centerline_by_centerline_id(leafCL.ID)
+
+            for pathCL in listPathCL :
+                pathCLID = pathCL.ID
+ 
+                if retListFlag[pathCLID] == False :
+                    retUndetectdCLID.append(pathCLID)
+                else :
+                    break
+
         # 누락 혈관이 없음 
-        if len(retListCL) == 0 :
+        if len(retUndetectdCLID) == 0 :
             return mergedMesh
-        
-        retListRoot = self.__find_root_cl(skeleton, retListCL)
+        retUndetectdCLID = list(set(retUndetectdCLID))
+
+        retListRoot = skeleton.find_root_cl(retUndetectdCLID)
         if retListRoot is None :
             return mergedMesh
 
@@ -984,8 +1108,13 @@ class CTabStateVesselRemodeling(tabState.CTabState) :
             if listGroupCL is None :
                 continue
 
+            # for cl in listGroupCL:
+            #     if cl.ID not in minorClSet:
+            #         listGroupCL.remove(cl)
+
             subSkeleton = algSkeletonGraph.CSkeleton()
             for inx, cl in enumerate(listGroupCL) :
+
                 clTmp = algSkeletonGraph.CSkeletonCenterline(inx)
                 clTmp.Vertex = cl.Vertex.copy()
                 clTmp.Radius = cl.Radius.copy()
@@ -993,10 +1122,11 @@ class CTabStateVesselRemodeling(tabState.CTabState) :
             subSkeleton.rebuild_centerline_related_data()
             subSkeleton.build_tree(0)
 
-            self.__attach_skeleton_bridge_point(cmd, subSkeleton)
+            self.__attach_skeleton_bridge_point(subSkeleton)
 
             remodeling = remodelingVessel.CTreeVesselRemodeling()
             remodeling.InputSkeleton = subSkeleton
+            #remodeling.m_mainSkeleton = subSkeleton
             remodeling.InputRadiusMargin = self.getui_spin_radius_margin()
             remodeling.process()
 
@@ -1059,6 +1189,43 @@ class CTabStateVesselRemodeling(tabState.CTabState) :
             if node.Name == nodeName :
                 return i
         return -1
+    def getui_lv_anchor_selected_node(self) -> remodelingNode.CRemodelingNode :
+        selectedItems = self.m_lvAnchor.selectedItems()
+        if not selectedItems :
+            return None
+        
+        item = selectedItems[0]
+        text = item.text()
+        node = item.data(Qt.UserRole) 
+        return node
+    def getui_lv_anchor_selected_index(self) -> int :
+        selectedItems = self.m_lvAnchor.selectedItems()
+        if not selectedItems :
+            return -1
+        
+        item = selectedItems[0]
+        index = self.m_lvAnchor.row(item)
+        return index
+    def getui_lv_anchor_find_index_by_node(self, targetNode : remodelingNode.CRemodelingNode) -> int :
+        count = self.m_lvAnchor.count()
+        for i in reversed(range(count)) :
+            item = self.m_lvAnchor.item(i)
+            node = item.data(Qt.UserRole)
+            if node == targetNode :
+                return i
+        return -1
+    def getui_lv_anchor_all(self) -> list : 
+        self.m_lvAnchor.blockSignals(True)
+        retList = []
+
+        count = self.m_lvAnchor.count()
+        for i in reversed(range(count)) :
+            item = self.m_lvAnchor.item(i)
+            node = item.data(Qt.UserRole)
+            retList.append(node)
+    
+        self.m_lvAnchor.blockSignals(False)
+        return retList
 
     def getui_cb_visiblemesh_checked(self) -> bool :
         return self.m_cbVisibleMesh.isChecked()
@@ -1081,21 +1248,27 @@ class CTabStateVesselRemodeling(tabState.CTabState) :
         return self.m_spinDilationPass.value()
     def getui_spin_radius_margin(self) -> float :
         return self.m_spinStrength.value()
-    def getui_edit_anchor_name(self) -> str :
-        return self.m_editAnchor.text()
-    def getui_lv_subnode_all_node(self) -> list :
+    def getui_lv_subnode_all_node(self) -> list : 
         self.m_lvSubNode.blockSignals(True)
         retList = []
 
         count = self.m_lvSubNode.count()
-        for i in reversed(range(count)):
+        for i in reversed(range(count)) :
             item = self.m_lvSubNode.item(i)
             node = item.data(Qt.UserRole)
             retList.append(node)
     
         self.m_lvSubNode.blockSignals(False)
         return retList
-    def getui_lv_subnode_selected_node(self) -> remodelingNode.CRemodelingNode :
+    def getui_lv_subnode_find_index(self, targetNode : remodelingNode.CSkelNode) -> int :
+        count = self.m_lvCuttedNode.count()
+        for i in reversed(range(count)) :
+            item = self.m_lvCuttedNode.item(i)
+            node = item.data(Qt.UserRole)
+            if node == targetNode :
+                return i
+        return -1
+    def getui_lv_subnode_selected_node(self) -> remodelingNode.CSkelNode :
         selectedItems = self.m_lvSubNode.selectedItems()
         if not selectedItems :
             return None
@@ -1104,6 +1277,20 @@ class CTabStateVesselRemodeling(tabState.CTabState) :
         text = item.text()
         node = item.data(Qt.UserRole) 
         return node
+    def getui_lv_subnode_selected_index(self) -> int :
+        selectedItems = self.m_lvSubNode.selectedItems()
+        if not selectedItems :
+            return -1
+        
+        item = selectedItems[0]
+        index = self.m_lvSubNode.row(item)
+        return index
+    def getui_rb_selection_single(self) -> bool :
+        return self.m_rbSingle.isChecked()
+    def getui_rb_selection_descendant(self) -> bool :
+        return self.m_rbDescendant.isChecked()
+    def getui_cb_missing_vessel(self) -> bool :
+        return self.m_checkMissingVessel.isChecked()
 
     def setui_lv_cuttednode_add_node(self, node : remodelingNode.CRemodelingNode) :
         self.m_lvCuttedNode.blockSignals(True)
@@ -1147,10 +1334,18 @@ class CTabStateVesselRemodeling(tabState.CTabState) :
         '''
         inx : 음수일 경우 selection을 해제 시킨다. 
         '''
+        self.m_lvCuttedNode.blockSignals(True)
+
         self.m_lvCuttedNode.clearSelection()
         count = self.m_lvCuttedNode.count()
         if 0 <= inx < count :
             self.m_lvCuttedNode.setCurrentRow(inx)
+
+        self.m_lvCuttedNode.blockSignals(False)
+    def setui_lv_cuttednode_clear_selection(self) :
+        self.m_lvCuttedNode.blockSignals(True)
+        self.m_lvCuttedNode.setCurrentItem(None)
+        self.m_lvCuttedNode.blockSignals(False)
     def setui_lv_cuttednode_update_node_name(self, targetNode : remodelingNode.CRemodelingNode) :
         for i in range(self.m_lvCuttedNode.count()):
             item = self.m_lvCuttedNode.item(i)
@@ -1158,15 +1353,56 @@ class CTabStateVesselRemodeling(tabState.CTabState) :
             if storedNode is targetNode :
                 item.setText(targetNode.Name)
                 break
+    def setui_lv_anchor_add(self, node : remodelingNode.CRemodelingNode) :
+        self.m_lvAnchor.blockSignals(True)
+
+        name = node.Name
+        item = QListWidgetItem(f"{name}")
+        item.setData(Qt.UserRole, node)
+        self.m_lvAnchor.addItem(item)
+
+        self.m_lvAnchor.blockSignals(False)
+    def setui_lv_anchor_remove(self, targetNode : remodelingNode.CRemodelingNode) :
+        self.m_lvAnchor.blockSignals(True)
+
+        self.m_lvAnchor.setCurrentItem(None)
+        self.m_lvAnchor.clearSelection()
+
+        count = self.m_lvAnchor.count()
+        for i in reversed(range(count)):
+            item = self.m_lvAnchor.item(i)
+            node = item.data(Qt.UserRole)
+            if node == targetNode :
+                self.m_lvAnchor.takeItem(i)
+                del item
+                break
+        
+        self.m_lvAnchor.blockSignals(False)
+    def setui_lv_anchor_remove_all(self) :
+        self.m_lvAnchor.clear()
+    def setui_lv_anchor_selection_inx(self, inx : int) :
+        '''
+        inx : 음수일 경우 selection을 해제 시킨다. 
+        '''
+        self.m_lvAnchor.blockSignals(True)
+
+        self.m_lvAnchor.clearSelection()
+        count = self.m_lvAnchor.count()
+        if 0 <= inx < count :
+            self.m_lvAnchor.setCurrentRow(inx)
+
+        self.m_lvAnchor.blockSignals(False)
+    def setui_lv_anchor_clear_selection(self) :
+        self.m_lvAnchor.blockSignals(True)
+        self.m_lvAnchor.setCurrentItem(None)
+        self.m_lvAnchor.blockSignals(False)
     def setui_cellID(self, cellID : int) :
         self.m_editBoxCellID.setText(str(cellID))
     def setui_check_sel_cell(self, bCheck : bool) -> bool :
         self.m_checkSelectionStartCell.blockSignals(True)
         self.m_checkSelectionStartCell.setChecked(bCheck)
         self.m_checkSelectionStartCell.blockSignals(False)
-    def setui_edit_anchor_name(self, anchorName : str) :
-        self.m_editAnchor.setText(anchorName)
-    def setui_lv_subnode_add_node(self, node : remodelingNode.CRemodelingNode) :
+    def setui_lv_subnode_add_node(self, node : remodelingNode.CSkelNode) :
         self.m_lvSubNode.blockSignals(True)
 
         name = node.Name
@@ -1175,7 +1411,7 @@ class CTabStateVesselRemodeling(tabState.CTabState) :
         self.m_lvSubNode.addItem(item)
 
         self.m_lvSubNode.blockSignals(False)
-    def setui_lv_subnode_remove_node(self, targetNode : remodelingNode.CRemodelingNode) :
+    def setui_lv_subnode_remove_node(self, targetNode : remodelingNode.CSkelNode) :
         self.m_lvSubNode.blockSignals(True)
 
         self.m_lvSubNode.setCurrentItem(None)
@@ -1193,6 +1429,25 @@ class CTabStateVesselRemodeling(tabState.CTabState) :
         self.m_lvSubNode.blockSignals(False)
     def setui_lv_subnode_remove_all(self) :
         self.m_lvSubNode.clear()
+    def setui_lv_subnode_clear_selection(self) :
+        self.m_lvSubNode.blockSignals(True)
+        # self.m_lvSubNode.clearSelection()
+        self.m_lvSubNode.setCurrentItem(None)
+        self.m_lvSubNode.blockSignals(False)
+    def setui_lv_subnode_selection_inx(self, inx : int) :
+        '''
+        inx : 음수일 경우 selection을 해제 시킨다. 
+        '''
+        self.m_lvSubNode.blockSignals(True)
+
+        self.m_lvSubNode.clearSelection()
+        count = self.m_lvSubNode.count()
+        if 0 <= inx < count :
+            self.m_lvSubNode.setCurrentRow(inx)
+
+        self.m_lvSubNode.blockSignals(False)
+    def setui_cb_missing_vessel(self, bFlag : bool) :
+        self.m_checkMissingVessel.setChecked(bFlag)
 
     
     # event
@@ -1220,35 +1475,21 @@ class CTabStateVesselRemodeling(tabState.CTabState) :
         else :
             bCheck = False
         self._refresh_visible_vessel_cl()
-    def _on_lb_clicked_node(self, item) :
-        node = item.data(Qt.UserRole)
-        if node is None :
-            print("not found node")
-            return
-        
-        self.m_mediator.unref_key_type(subStateRemodeling.CSubStateRemodeling.s_cuttingMeshType)
-        self.m_mediator.unref_key_type(subStateRemodeling.CSubStateRemodeling.s_subSkelType)
-        self.clear_render_entity()
-        self.m_mediator.ref_key(node.Key)
-        if node.SkelKey != "" :
-            self.m_mediator.ref_key(node.SkelKey)
-        if node.SkelEnKey != "" :
-            self.m_mediator.ref_key(node.SkelEnKey)
-        if node.RootEntity is not None :
-            self.add_render_entity(node.RootEntity)
-        self._get_substate(self.m_state).changed_cutting_mesh()
+    def _on_lb_clicked_node(self, item, prevItem) :
+        prevNode = None
+        nowNode = None
+
+        prevNode = self.getui_lv_anchor_selected_node()
+        self.setui_lv_anchor_clear_selection()
+        if prevNode is None :
+            if prevItem is not None :
+                prevNode = prevItem.data(Qt.UserRole)
+        if item is not None :
+            nowNode = item.data(Qt.UserRole)
+
+        self.swap_selected_cutting_node(prevNode, nowNode)
+        self._get_substate(self.m_state).changed_cutting_mesh(prevNode, nowNode)
         self.m_mediator.update_viewer()
-    def _on_lb_clicked_subnode_node(self, item) :
-        node = item.data(Qt.UserRole)
-        if node is None :
-            print("not found node")
-            return
-    def _on_lb_clicked_subnode_delete(self) :
-        selectedNode = self.getui_lv_subnode_selected_node()
-        if selectedNode is None :
-            return 
-        
-        self.setui_lv_subnode_remove_node(selectedNode)
     def _on_tab_changed(self, index) :
         print(f"Tab changed: index={index}")
         if self.m_state >= 0 :
@@ -1256,6 +1497,7 @@ class CTabStateVesselRemodeling(tabState.CTabState) :
         self.m_state = index
         if self.m_state >= 0 :
             self._get_substate(self.m_state).process_init()
+        self.m_mediator.update_viewer()
     def _on_return_pressed_label_name(self) :
         labelName = self.m_editLabelName.text()
         self.m_editLabelName.setText("")
@@ -1302,6 +1544,27 @@ class CTabStateVesselRemodeling(tabState.CTabState) :
         
         self.command_extraction_cl()
         self.m_mediator.update_viewer()
+    def _on_btn_minor_selection(self) :
+        dataInst = self.get_data()
+        if dataInst.Ready == False :
+            return
+        
+        self._get_substate(self.m_state).btn_select_minor(self.m_minorVelsselMaxDepth.value())
+        self.m_mediator.update_viewer()
+    def _on_btn_attach_centerline(self) :
+        dataInst = self.get_data()
+        if dataInst.Ready == False :
+            return
+        
+        self._get_substate(self.m_state).btn_attach_centerline()
+        self.m_mediator.update_viewer()
+    def _on_btn_refresh_centerline(self) :
+        dataInst = self.get_data()
+        if dataInst.Ready == False :
+            return
+        
+        self._get_substate(self.m_state).btn_refresh_centerline()
+        self.m_mediator.update_viewer()
     def _on_btn_remodeling(self) :
         dataInst = self.get_data()
         if dataInst.Ready == False :
@@ -1313,8 +1576,25 @@ class CTabStateVesselRemodeling(tabState.CTabState) :
         dataInst = self.get_data()
         if dataInst.Ready == False :
             return
-        
         self.command_remodeling_save()
+    def _on_btn_blender_save(self):
+        dataInst = self.get_data()
+        if dataInst.Ready == False :
+            return
+        outputPath = QFileDialog.getExistingDirectory(self.get_main_widget(), "Selection Output Path")
+        if outputPath == "" :
+            return
+        
+        self.command_blender_save(outputPath)
+        QMessageBox.information(self.m_mediator, "Alarm", "complete to save blender")
+    def _on_rb_single(self) :
+        dataInst = self.get_data()
+        if dataInst.Ready == False :
+            return
+    def _on_rb_descendant(self) :
+        dataInst = self.get_data()
+        if dataInst.Ready == False :
+            return
 
     
     # private
@@ -1373,11 +1653,21 @@ class CTabStateVesselRemodeling(tabState.CTabState) :
         if len(retList) == 0 :
             return None
         return retList
-    def __attach_skeleton_bridge_point(self, cmd : remodelingVessel.CTreeVesselRemodeling, srcSkeleton : algSkeletonGraph.CSkeleton) :
+    def __get_nearest_pos_radius(self, vertex : np.ndarray) -> tuple :
+        '''
+        ret : (nearestPos, radius)
+            None -> not found nearest point info
+        '''
+        if self.m_kdTree is None :
+            return None
+        _, npNNIndex = self.m_kdTree.query(vertex.reshape(-1, 3), k=1)
+        nearestInx = npNNIndex[0]
+        return (self.m_resampledVertex[nearestInx].reshape(-1, 3), self.m_resampledRadius[nearestInx])
+    def __attach_skeleton_bridge_point(self, srcSkeleton : algSkeletonGraph.CSkeleton) :
         srcRootCL = srcSkeleton.RootCenterline
         startVertex = srcRootCL.get_vertex(0)
 
-        ret = cmd.get_nearest_pos_radius(startVertex)
+        ret = self.__get_nearest_pos_radius(startVertex)
         if ret is None :
             print("failed attach vessel")
             return

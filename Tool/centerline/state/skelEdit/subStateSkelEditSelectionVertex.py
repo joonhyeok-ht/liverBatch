@@ -319,6 +319,7 @@ class CSubStateSkelEditSelectionVertex(subStateSkelEdit.CSubStateSkelEdit) :
 
             self.m_guideVertexKey = ""
             self.m_guideRangeKey = ""
+        self.m_listGuideNearVertexKey.clear()
     def _create_guide_key(self, guideColor : np.ndarray) :
         dataInst = self._get_data()
 

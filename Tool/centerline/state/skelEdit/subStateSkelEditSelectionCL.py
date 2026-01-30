@@ -142,6 +142,36 @@ class CSubStateSkelEditSelectionCL(subStateSkelEdit.CSubStateSkelEdit) :
             return
         self.m_comDragSelCL.move(clickX, clickY, listExceptKeyType)
         self.App.update_viewer()
+
+        ################/////////////////
+
+        # if len(retListBrID) == 0 :
+        #     print("skel edit : error")
+        #     return
+        
+        # retListBrID = list(set(retListBrID))
+        # retListBr = []
+        # for brID in retListBrID :
+        #     br = self.InputSkeleton.get_branch(brID)
+        #     retListBr.append(br)
+        
+        # for br in retListBr :
+        #     if br.get_conn_count() == 1 :
+        #         cmd = CCommandRemoveBr(self.m_mediator)
+        #         cmd.InputData = self.InputData
+        #         cmd.InputSkeleton = self.InputSkeleton
+        #         cmd.InputBrID = br.ID
+        #         cmd.process()
+        #         self.m_listCmd.append(cmd)
+        #     elif br.get_conn_count() == 2 :
+        #         cmd = CCommandMergeCL(self.m_mediator)
+        #         cmd.InputData = self.InputData
+        #         cmd.InputSkeleton = self.InputSkeleton
+        #         cmd.InputBrID = br.ID
+        #         cmd.process()
+        #         self.m_listCmd.append(cmd)
+
+        
     def key_press(self, keyCode : str) :
         if keyCode == "Delete" :
             self._remove_cl()

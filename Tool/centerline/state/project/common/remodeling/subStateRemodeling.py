@@ -40,19 +40,14 @@ import data as data
 
 import operation as operation
 
+import remodelingNode as remodelingNode
+
 
 class CSubStateRemodeling() :
     s_cuttingMeshType = "cuttedMesh"
     '''
     - groupID : 0 고정
     - ID : 0 ~ 무한대 (cuttedMeshID)
-    '''
-    s_subSkelType = "subSkel"
-    '''
-    - groupID : 
-        0 - normal
-        1 - enhanced 
-    - ID : cuttedMeshID
     '''
     s_subRemodelingKey = "subRemodeling"
     '''
@@ -91,9 +86,15 @@ class CSubStateRemodeling() :
     def key_press_with_ctrl(self, keyCode : str) :
         pass
 
-    def changed_cutting_mesh(self) :
+    def changed_cutting_mesh(self, prevNode : remodelingNode.CRemodelingNode, nowNode : remodelingNode.CRemodelingNode) :
         pass
     def checked_sel_cell(self, bChecked : bool) :
+        pass
+    def btn_attach_centerline(self) :
+        pass
+    def btn_refresh_centerline(self) :
+        pass
+    def btn_select_minor(self):
         pass
 
 
