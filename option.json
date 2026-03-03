@@ -4,8 +4,8 @@
         "DESC": "Solution Common Pipeline"
     },
   
-	"DataRootPath" : "C:\\Users\\hutom\\Desktop\\jh_test\\data\\liver\\eval_regisration\\LIVER0060\\dataRoot_liver_0105_125928",
-   "CL"  : "C:/Users/hutom/anaconda3/envs/centerline/python.exe processCL.py",
+	"DataRootPath" : "C:\\Users\\hutom\\Desktop\\jh_test\\data\\liver\\LIVER0060\\dataRoot_liver_0223_102822",
+   "CL"  : "../srcCL/processCL.bat",
 
     "RegistrationInfo" : [
         {"Target" : "MPV_PP", "Src" : "MPV_AP", "RigidAABB" : 0},
@@ -14,7 +14,8 @@
     ],
 
     "ResamplingToPhase" : [
-	    ["inMaskName", "outMaskName", "PP"]
+	    ["Artery", "Artery_re", "PP"],
+        ["Vein", "Vein_re", "PP"]
     ],
     "ResamplingToMinSpacing" : [
 	    ["Portal", "Portal_min"],
@@ -49,13 +50,13 @@
 		    "List" : [
 			    ["MPV_PP", "", "PP", -1],
                 ["MPV_AP", "", "AP", -1],
-                ["MPV_HVP", "", "HVP", -1],
+                ["MPV_HVP", "", "HVP", -1],                
                 ["MPV_AP_st", "MPV_AP", "AP", 30000],
                 ["Artery_st", "Artery", "AP", 20000],
                 ["MPV_PP_st", "MPV_PP", "PP", 10000],
                 ["Portal_st", "Portal", "PP", 60000],
                 ["MPV_HVP_st", "MPV_HVP", "HVP", 10000],
-                ["Vein_st", "Vein", "HVP", -1]
+                ["Vein_st", "Vein", "HVP", 60000]
 		    ]
 	    }
     ],

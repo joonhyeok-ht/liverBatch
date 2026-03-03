@@ -103,6 +103,7 @@ class CSubStateSkelEditSelectionCL(subStateSkelEdit.CSubStateSkelEdit) :
             self.m_opDragSelectionCL.process_reset()
             self.m_opDragSelectionCL.add_selection_keys([key])
             self.m_opDragSelectionCL.process()
+            
         
         self.App.update_viewer()
         
@@ -111,6 +112,7 @@ class CSubStateSkelEditSelectionCL(subStateSkelEdit.CSubStateSkelEdit) :
             return
         
         clinfoInx = self.m_opDragSelectionCL.get_selection_groupID()
+
         if clinfoInx is None:
             return
         else:

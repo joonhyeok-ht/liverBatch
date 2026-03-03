@@ -177,10 +177,10 @@ class CTabStateSkelLabelingLiver(tabState.CTabState) :
         btn.clicked.connect(self._on_btn_return_pressed_clname)
         tabLayout.addWidget(btn)
         
-        btn = QPushButton("Rename Main/Extra")
-        btn.setStyleSheet(self.get_btn_stylesheet())
-        btn.clicked.connect(self._on_btn_separate_main_extra)
-        tabLayout.addWidget(btn)
+        # btn = QPushButton("Rename Main/Extra")
+        # btn.setStyleSheet(self.get_btn_stylesheet())
+        # btn.clicked.connect(self._on_btn_separate_main_extra)
+        # tabLayout.addWidget(btn)
 
         btn = QPushButton("Save Separation")
         btn.setStyleSheet(self.get_btn_stylesheet())

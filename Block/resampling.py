@@ -80,21 +80,21 @@ class CResamplingToPhase(multiProcessTask.CMultiProcessTaskProgress) :
         iCnt = self.InputOptionInfo.get_resampling_phase_count()
         for inx in range(0, iCnt) :
             inMaskName, outMaskName, targetPhase = self.InputOptionInfo.get_resampling_phase(inx)
-            srcPhase = self.InputOptionInfo.find_phase_of_mask(inMaskName)
+            srcPhase = self.InputOptionInfo.find_phase_of_mask(inMaskName + "_st")
 
             inMaskFullPath = os.path.join(self.InputMaskPath, f"{inMaskName}.nii.gz")
             outMaskFullPath = os.path.join(self.OutputMaskPath, f"{outMaskName}.nii.gz")
 
             if os.path.exists(inMaskFullPath) == False :
-                #print(f"skip resampling : {inMaskName}")
+                print(f"skip resampling : {inMaskName} os.path.exists(inMaskFullPath) == False", file=sys.__stdout__, flush=True)
                 continue
             targetPhaseInfo = self.InputPhase.find_phaseinfo(targetPhase)
             if targetPhaseInfo is None or targetPhaseInfo.is_valid() == False :
-                #print(f"skip resampling : {inMaskName}")
+                print(f"skip resampling : {inMaskName} targetPhaseInfo is None", file=sys.__stdout__, flush=True)
                 continue
             srcPhaseInfo = self.InputPhase.find_phaseinfo(srcPhase)
             if srcPhaseInfo is None or srcPhaseInfo.is_valid() == False :
-                #print(f"skip resampling : {inMaskName}")
+                print(f"skip resampling : {inMaskName} srcPhaseInfo is None", file=sys.__stdout__, flush=True)
                 continue
 
             listParam.append((inMaskFullPath, outMaskFullPath, srcPhaseInfo, targetPhaseInfo))

@@ -458,7 +458,7 @@ class CTabStateVesselRemodeling(tabState.CTabState) :
         self.m_minorVelsselMaxDepth = QSpinBox()
         self.m_minorVelsselMaxDepth.setRange(0, 99)
         self.m_minorVelsselMaxDepth.setSingleStep(1)
-        self.m_minorVelsselMaxDepth.setValue(4)
+        self.m_minorVelsselMaxDepth.setValue(1)
         
         rightLayout.addWidget(labelDepth)
         rightLayout.addWidget(self.m_minorVelsselMaxDepth)
@@ -467,7 +467,12 @@ class CTabStateVesselRemodeling(tabState.CTabState) :
         btn.setStyleSheet(self.get_btn_stylesheet())
         btn.clicked.connect(self._on_btn_minor_selection)
         rightLayout.addWidget(btn) 
-
+        
+        btn = QPushButton("Check mScore")
+        btn.setStyleSheet(self.get_btn_stylesheet())
+        btn.clicked.connect(self._on_btn_check_minor_score)
+        rightLayout.addWidget(btn) 
+        
         btn = QPushButton("Attach Centerline")
         btn.setStyleSheet(self.get_btn_stylesheet())
         btn.clicked.connect(self._on_btn_attach_centerline)
@@ -1550,6 +1555,13 @@ class CTabStateVesselRemodeling(tabState.CTabState) :
             return
         
         self._get_substate(self.m_state).btn_select_minor(self.m_minorVelsselMaxDepth.value())
+        self.m_mediator.update_viewer()
+    def _on_btn_check_minor_score(self):
+        dataInst = self.get_data()
+        if dataInst.Ready == False :
+            return
+        
+        self._get_substate(self.m_state).btn_minor_score()
         self.m_mediator.update_viewer()
     def _on_btn_attach_centerline(self) :
         dataInst = self.get_data()

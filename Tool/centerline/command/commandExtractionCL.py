@@ -93,15 +93,15 @@ class CCommandExtractionCL(commandInterface.CCommand) :
         if platform.system() != "Windows" : # Darwin or Linux
             result = subprocess.run([shPath, "--file", file, "--index", str(index), "--vtp", vtpName, "--cellID", str(cellID), "--en", str(en)], capture_output=self.CaptureMode, text=self.CaptureMode)
         else : #Windows
-            cmd = []
-            arg1 = self.OptionInfo.CL.split(" ")
-            arg2 = ["--file", file, "--index", str(index), "--vtp", vtpName, "--cellID", str(cellID), "--en", str(en)]    
-            for arg in arg1 :
-                cmd.append(arg)
-            for arg in arg2 :
-                cmd.append(arg)            
+            bat = os.path.abspath(os.path.join(optionPath, self.OptionInfo.CL))
+            cmd = ["cmd", "/c", bat,
+                "--file", file,
+                "--index", str(index),
+                "--vtp", vtpName,
+                "--cellID", str(cellID),
+                "--en", str(en)]           
             print(f"(WIndows) cmd : {cmd}")
-            result = subprocess.run(cmd, capture_output=True, text=True)
+            result = subprocess.run(cmd, capture_output=True, text=True, encoding="cp949", errors="replace")
         if self.CaptureMode == True :
             print(result.stdout)
             print(result.stderr)

@@ -176,6 +176,11 @@ class CSubStateRemodelingRemodeling(subStateRemodeling.CSubStateRemodeling) :
         else:
             self.m_comDrag._select_minor_vessel(skeletonEn, depth, [])
             
+    def btn_minor_score(self):
+        cuttedNode = self.m_mediator.getui_lv_cuttednode_selected_node()
+        skeletonEn = cuttedNode.SkeletonEn
+        self.m_comDrag._check_minor_score(skeletonEn)
+            
     def copy_skeleton_cl_label(self, skeletonEn, skeleton):
         
         clNearestCount = {i:[] for i in range(skeletonEn.get_centerline_count())}

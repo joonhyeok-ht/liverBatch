@@ -38,6 +38,12 @@ import data as data
 import operation as operation
 import component as component
 from collections import deque
+from collections import defaultdict
+
+from typing import Dict, List, Optional, Set, Tuple
+import matplotlib.pyplot as plt
+
+from itertools import combinations
 # import territory as territory
 
 
@@ -921,93 +927,814 @@ class CComDragSkelCL(CComDrag) :
             self.m_opDragToggleCL.add_toggle_selection_keys(listKey)
             self.m_opDragToggleCL.process()
             self.m_opDragToggleCL.ChildSelectionMode = childMode
-    def _select_minor_vessel(self, skeleton, maxDepth, segmentSet = []):
-        startDepth = 0
-        listcl = []
-        visited = set()
-        listcl.append(skeleton.RootCenterline.ID)
-        visited.add(skeleton.RootCenterline.ID)
-        queue = deque([(skeleton.RootCenterline.ID, startDepth)])
-    
-
-        iCLCnt = skeleton.get_centerline_count()
-        radiusList = []
-        for inx in range(0, iCLCnt) :
-            cl = skeleton.get_centerline(inx)
-            radiusList.append(np.mean(cl.Radius))
             
-        q1 = np.percentile(radiusList, 25)
-        q2 = np.percentile(radiusList, 50)  # median
-        q3 = np.percentile(radiusList, 75)
+
+    def _centerline_contrib(self, cl, alpha: float, beta:float = 1.5) -> float:
+        """
+        굵고 긴 cl
+        edge의 local contribution = radius^alpha * length
+        - radius/length가 0 또는 음수면 0으로 처리
+        """
+        q1 = np.percentile(cl.Radius, 25)
+        q2 = np.percentile(cl.Radius, 50)
+        q3 = np.percentile(cl.Radius, 75)
+        
+        r = np.mean([q1, q2, q3])
+        l = len(cl.Radius)
+        if r <= 0.0 or l <= 0.0:
+            return 0.0
+        return (r ** alpha) * (l ** beta)
+
+    def reconstruct_path_edges(self, skeleton, leaf_edge_id: int, ) -> List[int]:
+        """
+        leaf_edge_id에서 parent를 따라 root_edge_id까지 올라가며 경로 edge id 리스트 반환 (root 포함).
+        root에 도달 못하면 빈 리스트.
+        """
+        path = []
+        cur = leaf_edge_id
+        visited = set()
+        
+        rootCLID = skeleton.RootCenterline.ID
+        
+        while cur is not None:
+            if cur in visited:
+                # cycle 방지 (트리여야 하지만 안전장치)
+                return []
+            visited.add(cur)
+            path.append(cur)
+            if cur == rootCLID:
+                break
+            
+            if skeleton.get_conn_centerline_id(cur) == None:
+                return None
+            else:
+                parentCLID, listChildCLID = skeleton.get_conn_centerline_id(cur)
+            cur = parentCLID
+
+        if not path or path[-1] != rootCLID:
+            return []
+        return list(reversed(path))
     
-        while queue:
-            id, d = queue.popleft()
-            # if d >= maxDepth:
-            #     continue
+    def _overlap_ratio(self, path: List[int], union_set: Set[int]) -> float:
+        """
+        overlap_ratio = |path ∩ union| / |path|
+        """
+        if not path:
+            return 1.0
+        inter = sum(1 for x in path if x in union_set)
+        return inter / float(len(path))
+
+    def save_histogram_png(
+        self,
+        ids: List[int],
+        pathScore: Dict[int, float],
+        out_png_path: str,
+        bins: int = 30,
+        title: str = "Histogram",
+        xlabel: str = "Value",
+        ylabel: str = "Frequency"
+    ):
+        teampArray = []
+        for id in ids:
+            score = pathScore.get(id, -1)
+            
+            if score > 0:
+                teampArray.append(score)
+        
+        plt.figure(figsize=(8, 6))
+        plt.hist(teampArray, bins=bins)
+        plt.title(title)
+        plt.xlabel(xlabel)
+        plt.ylabel(ylabel)
+        plt.tight_layout()
+
+        plt.savefig(out_png_path, dpi=300)
+        plt.close()
+
+        print(f"Saved histogram to {out_png_path}")
+        
+
+    def save_histogram_split_score_png(
+        self,
+        comb,
+        split_score,
+        out_png_path: str,
+        bins: int = 30,
+        title: str = "Histogram",
+        xlabel: str = "Value",
+        ylabel: str = "Frequency"
+    ):
+
+        teampArray = []
+        for c in comb:
+            score = split_score.get(c, -1)
+            
+            if score > 0:
+                teampArray.append(score)
+
+        
+        plt.figure(figsize=(8, 6))
+        plt.hist(teampArray, bins=bins)
+        plt.title(title)
+        plt.xlabel(xlabel)
+        plt.ylabel(ylabel)
+        plt.tight_layout()
+
+        plt.savefig(out_png_path, dpi=300)
+        plt.close()
+
+        print(f"Saved histogram to {out_png_path}")
+        
+        
+        
+        
+    def angle_between_vectors_rad(self, v1, v2):
+        v1 = np.asarray(v1, dtype=float)
+        v2 = np.asarray(v2, dtype=float)
+
+        # 길이 0 벡터 방지
+        n1 = np.linalg.norm(v1)
+        n2 = np.linalg.norm(v2)
+        if n1 == 0 or n2 == 0:
+            raise ValueError("Zero-length vector is not allowed")
+
+        cos_theta = np.dot(v1, v2) / (n1 * n2)
+        cos_theta = np.clip(cos_theta, -1.0, 1.0)  # 수치 안정성
+
+        theta_rad = np.arccos(cos_theta)
+        return theta_rad
+
+    def angle_between_lines_rad(self, p1, p2, p3, p4):
+        """
+        line1: p1 -> p2
+        line2: p3 -> p4
+        return: angle in radians
+        """
+        v1 = p2 - p1
+        v2 = p4 - p3
+
+        return self.angle_between_vectors_rad(v1, v2)
+    
+    def calculate_angle_radian(self, cl1, cl2):
+        angle = self.angle_between_lines_rad(
+            cl1.Vertex[0], cl1.Vertex[1],
+            cl2.Vertex[0], cl2.Vertex[1]
+        )
+        
+        return angle
+    
+    def calculate_angle_radian_parent_child(self, parentCl, childCl):
+        if np.linalg.norm(parentCl.Vertex[-2]-childCl.Vertex[1]) < 0.3:
+            return 1.0
+        
+        if parentCl.Vertex.shape[0]>4 and childCl.Vertex.shape[0]>4:
+            angle = self.angle_between_lines_rad(
+                parentCl.Vertex[-5], parentCl.Vertex[-3],
+                childCl.Vertex[2], childCl.Vertex[4]
+            )
+        elif parentCl.Vertex.shape[0]>4:
+            angle = self.angle_between_lines_rad(
+                parentCl.Vertex[-5], parentCl.Vertex[-3],
+                childCl.Vertex[0], childCl.Vertex[1]
+            )
+        elif childCl.Vertex.shape[0]>4:
+            angle = self.angle_between_lines_rad(
+                parentCl.Vertex[-2], parentCl.Vertex[-1],
+                childCl.Vertex[2], childCl.Vertex[4]
+            )  
+        else:
+            angle = self.angle_between_lines_rad(
+                parentCl.Vertex[-2], parentCl.Vertex[-1],
+                childCl.Vertex[0], childCl.Vertex[-1]
+            )
+        return angle
+        
+        # if childCl.Vertex.shape[0] > 2:
+        #     angle1 = self.angle_between_lines_rad(
+        #         parentCl.Vertex[-2], parentCl.Vertex[-1],
+        #         childCl.Vertex[0], childCl.Vertex[1]
+        #     )
+        #     angle2 = self.angle_between_lines_rad(
+        #         parentCl.Vertex[-2], parentCl.Vertex[-1],
+        #         childCl.Vertex[1], childCl.Vertex[2]
+        #     )        
+        #     return (angle1+angle2)/2
+        # else:
+        #     angle = self.angle_between_lines_rad(
+        #         parentCl.Vertex[-2], parentCl.Vertex[-1],
+        #         childCl.Vertex[0], childCl.Vertex[1]
+        #     )
+        #     return angle
+    
+        
+        
+        # pPivotIdx = parentCl.Vertex.shape[0]//2
+        # cPivotIdx = childCl.Vertex.shape[0]//2
+        
+        # # pPivotIdx = (parentCl.Vertex.shape[0]//3)*2
+        # # cPivotIdx = childCl.Vertex.shape[0]//3
+        
+        # if childCl.Vertex.shape[0] > 5 and parentCl.Vertex.shape[0] > 5:
+        #     angle = self.angle_between_lines_rad(
+        #         parentCl.Vertex[pPivotIdx-1], parentCl.Vertex[pPivotIdx+1],
+        #         childCl.Vertex[cPivotIdx-1], childCl.Vertex[cPivotIdx+1]
+        #     )
+        #     return angle
+        # elif childCl.Vertex.shape[0] > 5:
+        #     angle = self.angle_between_lines_rad(
+        #         parentCl.Vertex[0], parentCl.Vertex[-1],
+        #         childCl.Vertex[cPivotIdx-1], childCl.Vertex[cPivotIdx+1]
+        #     )
+        #     return angle
+        # elif parentCl.Vertex.shape[0] > 5:
+        #     angle = self.angle_between_lines_rad(
+        #         parentCl.Vertex[pPivotIdx-1], parentCl.Vertex[pPivotIdx+1],
+        #         childCl.Vertex[0], childCl.Vertex[-1]
+        #     )
+        #     return angle
+        # else:
+        #     angle = self.angle_between_lines_rad(
+        #         parentCl.Vertex[0], parentCl.Vertex[-1],
+        #         childCl.Vertex[0], childCl.Vertex[-1]
+        #     )
+        #     return angle
+            
+    def pick_best_candidate_per_hist_bin(
+        self,
+        candidate_ids: List[int],
+        pathScore: Dict[int, float],
+        bins: int = 30,
+    ) -> Tuple[List[int], np.ndarray, np.ndarray]:
+        """
+        candidate_ids(leaf id들)에 대한 score를 histogram bin으로 나누고,
+        각 bin에서 score가 가장 큰 candidate 1개만 선택.
+
+        Returns:
+            picked_ids: bin마다 1개씩 뽑힌 candidate ids
+            scores: candidate_ids와 동일 순서의 score 배열
+            bin_edges: histogram bin edges
+        """
+        if not candidate_ids:
+            return [], np.array([]), np.array([])
+
+        # 1) id -> score 배열로 변환
+        scores = np.array([pathScore.get(cid, -np.inf) for cid in candidate_ids], dtype=float)
+
+        # 유효하지 않은 score 제거
+        valid_mask = np.isfinite(scores)
+        candidate_ids_valid = [cid for cid, ok in zip(candidate_ids, valid_mask) if ok]
+        scores_valid = scores[valid_mask]
+
+        if len(candidate_ids_valid) == 0:
+            return [], np.array([]), np.array([])
+
+        # 2) histogram bin 계산 (plt.hist와 동일한 bin_edges를 만들기 위해 numpy 사용)
+        # bins가 int이면 자동 범위(min~max)
+        counts, bin_edges = np.histogram(scores_valid, bins=bins)
+
+        # 3) 각 score가 속한 bin index 구하기
+        # digitize는 1..len(bin_edges)-1 범위를 반환
+        # right=False => [edge[i-1], edge[i])에 들어가면 i
+        bin_idx = np.digitize(scores_valid, bin_edges, right=False) - 1  # 0..bins
+        # 최댓값이 마지막 edge에 걸리면 bins가 나올 수 있어 보정
+        bin_idx = np.clip(bin_idx, 0, bins - 1)
+
+        # 4) bin별 최고 score candidate 선택
+        best_id_per_bin: Dict[int, int] = {}
+        best_score_per_bin: Dict[int, float] = {}
+
+        for cid, sc, b in zip(candidate_ids_valid, scores_valid, bin_idx):
+            prev = best_score_per_bin.get(b, -np.inf)
+            if sc > prev:
+                best_score_per_bin[b] = sc
+                best_id_per_bin[b] = cid
+
+        # 5) 결과를 bin 순서대로 정렬해서 반환 (보기 좋게)
+        picked_bins_sorted = sorted(best_id_per_bin.keys())
+        picked_ids = [best_id_per_bin[b] for b in picked_bins_sorted]
+
+        return picked_ids#, scores_valid, bin_edges
+    
+    def pick_best_comb_bifurcate_score(
+        self,
+        segBifurCombSet: dict,          # {segName: set[frozenset({id1,id2})], ...}
+        clCombSplitScore: dict,         # {frozenset({id1,id2}): score, ...}
+        include_ties: bool = False,     # True면 k번째 점수와 같은 점수는 모두 포함
+    ):
+        """
+        각 segment별로 splitScore가 가장 높은 comb 상위 topk개를 반환.
+
+        return:
+            { segName: set([frozenset({id1,id2}), ...]), ... }
+        """
+        out = {}
+
+        for seg, comb_set in segBifurCombSet.items():
+            scored = []
+            for comb in comb_set:
+                s = clCombSplitScore.get(comb, None)
+                if s is None or not np.isfinite(s):
+                    continue
+                scored.append((float(s), comb))
+
+            if not scored:
+                out[seg] = set()
+                continue
+
+            # score 내림차순 정렬
+            scored.sort(key=lambda x: x[0], reverse=True)
+            topk = max(3, len(scored)//4)
+
+            if topk <= 0:
+                out[seg] = set()
+                continue
+
+            if len(scored) <= topk:
+                out[seg] = {comb for _, comb in scored}
+                continue
+
+            if include_ties:
+                kth_score = scored[topk - 1][0]
+                out[seg] = {comb for s, comb in scored if s >= kth_score}
+            else:
+                out[seg] = {comb for _, comb in scored[:topk]}
+
+        return out
+    def get_representative_radius(self, cl):
+        if len(cl.Radius) < 7:
+            representativeR = np.mean([np.percentile(cl.Radius, 40),
+                                  np.percentile(cl.Radius, 50)])
+        else:
+            representativeR = np.mean([cl.Radius[3], cl.Radius[4]])
+        
+        return representativeR
+    
+            
+    def build_backbone_by_segment_best_path(
+        self,
+        skeleton,
+        segments,
+        alpha: float = 2.0,
+        topNPerSegment: int = 1,
+        overlap_skip_ratio: float = 0.85,
+    ):
+        # ---------------------------
+        # 2.1) 유효성 체크
+        # ---------------------------
+        if skeleton == None:
+            return
+
+        # ---------------------------
+        # 2.2) root에서 내려가며 prefix_score 계산 (DP)
+        # prefix_score[e] = root->e 경로의 Σ(rad^α * len)
+        # parent[e]를 이용해 path 복원 가능
+        # ---------------------------
+        pathScore: Dict[int, float] = {}
+        
+        # 루트의 기여도도 포함할지 여부: 보통 포함하는 게 자연스러움.
+        # (root edge 자체를 제외하고 싶으면 root_contrib=0으로 바꾸면 됨)
+        
+        rootClId = skeleton.RootCenterline.ID
+        rootCl = skeleton.RootCenterline
+        pathScore[rootClId] = self._centerline_contrib(rootCl, alpha)
+
+
+        stack = [rootClId]
+        while stack:
+            id = stack.pop()
             
             cl = skeleton.get_centerline(id)
             parentCLID, listChildCLID = skeleton.get_conn_centerline_id(id)
+            
+            base = pathScore[id]
+            for CID in listChildCLID:
+                childCL = skeleton.get_centerline(CID)
+                # if not self.check_valid_angle(cl, childCL):
+                #     continue
+                
+                pathScore[CID] = base + self._centerline_contrib(childCL, alpha)
+                stack.append(CID)
+                
+        ### ---################# 마지막 작업 구간 0206 ##############################
+        # BFS 알고리즘을 통해 몇개의 subsegment로 나눌지 결정
+        # main 에서 처음 만나는 segment 개수만큼은 적어도 나와야 함
+        # 나눈뒤 둘다 굵고 각도가 크면 split 해야할 가능성 높음
+        ### ---
+        
+        queue = deque([rootClId])
+        visiteQueue = set()
+        visiteQueue.add(rootClId)
+        segSplitNum =  defaultdict(int)
+        segMustInClID =  defaultdict(set)
+        
+        segBifurcateCombSet = defaultdict(set)
+        clCombBifurcateScore = defaultdict(float)
+        while queue:
+            id = queue.popleft()
+            cl = skeleton.get_centerline(id)
+            parentCLID, listChildCLID = skeleton.get_conn_centerline_id(id)
+            
+            for CID in listChildCLID:
+                if CID in visiteQueue:
+                    continue
+                visiteQueue.add(CID)
+                queue.append(CID)
+                
+                childCL = skeleton.get_centerline(CID)
+                if cl.Name not in segments and childCL.Name in segments:
+                    segSplitNum[childCL.Name] += 1
+                    segMustInClID[childCL.Name].add(childCL.ID)
+                    
+                    
+                    
+#########################################################
+                    # bifurcate score 계산
+                    # 
+##################
 
+            for clID_1, clID_2 in combinations(listChildCLID, 2):
+                
+                if cl.Name not in segments and childCL.Name in segments:
+                    continue
+                    
+                cl1 = skeleton.get_centerline(clID_1)
+                cl2 = skeleton.get_centerline(clID_2)
+                    
+                if clID_1 == clID_2:
+                    continue
+                elif cl1.Name in segments and cl1.Name == cl2.Name:
+                    r1 = np.percentile(cl1.Radius, 50)
+                    r2 = np.percentile(cl2.Radius, 50)
+                    
+                    radian = self.calculate_angle_radian(cl1, cl2)
+                    
+                    bifurcateScore = (r1**2) * (r2**2) * radian
+                    segBifurcateCombSet[cl1.Name].add(frozenset([clID_1, clID_2]))
+                    clCombBifurcateScore[frozenset([clID_1, clID_2])] = bifurcateScore
+                    
+                            
+                    
+                    
+        print("!!!!!!!!!!!!!!!!!!!!here", file = sys.__stdout__, flush=True)
+        print(segSplitNum, file = sys.__stdout__, flush=True)
+        print(segMustInClID, file = sys.__stdout__, flush=True)
+        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!", file = sys.__stdout__, flush=True)
+                
+        # ---------------------------
+        # 2.3) segment별 leaf 후보 수집
+        # ---------------------------
+        leafCLs = skeleton.m_listLeafCenterline
+        numOfSegment = len(segments)
+        segToLeavesID: Dict[str, List[int]] = {s: [] for s in segments}
+
+        for lCL in leafCLs:
+            if lCL is None:
+                continue
+            if lCL.Name in segments and lCL.ID in pathScore:
+                segToLeavesID[lCL.Name].append(lCL.ID)
+                
+                
+        segPickedCombSet = self.pick_best_comb_bifurcate_score(segBifurcateCombSet, clCombBifurcateScore)
+            
+        # ---------------------------
+        # 2.4) segment별로 score 높은 leaf 경로 선택
+        # - topNPerSegment=1 이면 그냥 argmax
+        # - N>1이면 score 내림차순 후보에서 overlap 큰 건 skip
+        # ---------------------------
+        backBone: Set[int] = set()
+        chosenLeafs: Dict[int, List[int]] = {s: [] for s in segments}
+        
+        for seg in segments:
+            if seg in segPickedCombSet.keys():
+                for a, b in segPickedCombSet[seg]:
+                    #backBone.update([a, b])
+                    segMustInClID[seg].update([a, b])
+        
+            
+            candidates = segToLeavesID.get(seg, [])
+            
+            self.save_histogram_split_score_png(segBifurcateCombSet[seg], clCombBifurcateScore ,"C:/Users/hutom/Desktop/jh_test/data/test/" + f"{seg}.png")
+            #self.save_histogram_png(candidates, pathScore, "C:/Users/hutom/Desktop/jh_test/data/test/" + f"{seg}.png")
+            
+            if not candidates:
+                continue
+            
+            sortedCandidates = sorted(candidates, key= lambda lID: pathScore.get(lID, -1e10), reverse=True)
+            
+        
+            while segMustInClID[seg]:
+                found = False
+                for lID in list(sortedCandidates): 
+                    #print(lID, file=sys.__stdout__, flush=True)
+                    if lID not in pathScore.keys():
+                        continue
+
+                    path = self.reconstruct_path_edges(skeleton, lID)
+                    if path == None:
+                        continue
+
+                    for clID in list(segMustInClID[seg]):
+                        if clID in backBone:
+                            continue
+                        
+                        if clID in path:
+                            backBone.update(path)
+                            chosenLeafs[seg] = [lID]
+                            segMustInClID[seg].discard(clID)
+                            sortedCandidates.remove(lID) 
+
+                            found = True
+                            break 
+                    if found:
+                        break  
+                if not found:
+                    break
+
+
+        return backBone, chosenLeafs
+    
+    def build_backbone_by_angle_based_depth(
+        self,
+        skeleton,
+        segments,
+        inputDepth: int = 0
+    ):
+        AngleRadianThreshold = 0.6 # 28도
+        RadiusRatioThreshold = 0.25
+        RelativaRadiusRatioThreshold = 0.2
+        
+        if skeleton == None:
+            return
+        
+        rootClId = skeleton.RootCenterline.ID
+        rootCl = skeleton.RootCenterline
+        
+        startDepth = 0
+        queue = deque([(rootClId, startDepth)])
+        visited = set()
+        visited.add(rootClId)
+        segSplitNum =  defaultdict(int)
+        
+        depthToClID = defaultdict(set)
+
+        while queue:
+            id, depth = queue.popleft()
+            cl = skeleton.get_centerline(id)
+            parentCLID, listChildCLID = skeleton.get_conn_centerline_id(id)
+            parentR = self.get_representative_radius(cl)
+    
+            depthToClID[depth].add(id)
+            
+            relativeAngleRadius = {}
             for CID in listChildCLID:
                 if CID in visited:
                     continue
+                visited.add(CID)
+                childCL = skeleton.get_centerline(CID)
+                childR = self.get_representative_radius(childCL)
+
+                if cl.Name in segments and childCL.Name in segments and childCL.Name == cl.Name:
+                    # 분지지점에서 centerline이 작게 생기는 경우는 이전 
+                    if childCL.Vertex.shape[0] < 5 and (1-childR/parentR) < RadiusRatioThreshold and not childCL.is_leaf():
+                        queue.append((CID, depth))
+                        continue
+                    
+                    # 이전 대비 상대 angle, 상대 radius
+                    relativeAngleRadius[CID] = ((1-childR/parentR), self.calculate_angle_radian_parent_child(cl, childCL))
+                    # if self.calculate_angle_radian_parent_child(cl, childCL) > 0.6:
+                    #     queue.append((CID, depth+1))
+                    # else:
+                                
+                    #     if (1-childR/parentR) < RadiusRatioThreshold:
+                    #         queue.append((CID, depth))
+                    #     else:
+                    #         queue.append((CID, depth+1))
+                else:
+                    queue.append((CID, depth))
+
+            # # radius 조건 우선
+            # sortedCID = sorted(list(relativeAngleRadius.keys()), key=lambda x : (relativeAngleRadius[x][0], relativeAngleRadius[x][1]))
+            # if len(relativeAngleRadius.keys()) >1:
+            #     if abs(relativeAngleRadius[sortedCID[0]][0]-relativeAngleRadius[sortedCID[1]][0]) < RelativaRadiusRatioThreshold:
+            #         queue.append((sortedCID[0], depth+1))
+            #         for i in range(1, len(sortedCID)):
+            #             queue.append((sortedCID[i], depth+1))
+            #     else:
+            #         if relativeAngleRadius[sortedCID[0]][0] < RadiusRatioThreshold:
+            #             queue.append((sortedCID[0], depth))
+            #         elif relativeAngleRadius[sortedCID[0]][1] < AngleRadianThreshold:
+            #             queue.append((sortedCID[0], depth))
+            #         else:
+            #             queue.append((sortedCID[0], depth+1))
+                    
+            #         for i in range(1, len(sortedCID)):
+            #             queue.append((sortedCID[i], depth+1))
+                        
+                        
+            # angle 조건 우선
+            sortedAngleCID = sorted(list(relativeAngleRadius.keys()), key=lambda x : relativeAngleRadius[x][1])
+            sortedRadiusCID = sorted(list(relativeAngleRadius.keys()), key=lambda x : relativeAngleRadius[x][0])
+            
+            if len(relativeAngleRadius.keys()) >1:
+                #if abs(relativeAngleRadius[sortedCID[0]][0]-relativeAngleRadius[sortedCID[1]][0]) < RelativaRadiusRatioThreshold:
+                if relativeAngleRadius[sortedAngleCID[0]][1] < AngleRadianThreshold:
+                    if abs(relativeAngleRadius[sortedAngleCID[0]][0]-relativeAngleRadius[sortedAngleCID[1]][0]) < RelativaRadiusRatioThreshold:
+                        queue.append((sortedAngleCID[0], depth))
+                        for i in range(1, len(sortedAngleCID)):
+                            queue.append((sortedAngleCID[i], depth+1))
+                    else:
+                        queue.append((sortedRadiusCID[0], depth))
+                        for i in range(1, len(sortedRadiusCID)):
+                            queue.append((sortedRadiusCID[i], depth+1))
+                        
+                else:
+                    if abs(relativeAngleRadius[sortedRadiusCID[0]][0]-relativeAngleRadius[sortedRadiusCID[1]][0]) < RelativaRadiusRatioThreshold:
+                        for i in range(len(sortedAngleCID)):
+                            queue.append((sortedAngleCID[i], depth+1))
+                    else:
+                        queue.append((sortedRadiusCID[0], depth))
+                        for i in range(1, len(sortedRadiusCID)):
+                            queue.append((sortedRadiusCID[i], depth+1))
+            else:
+                for CID in relativeAngleRadius.keys():
+                    # if relativeAngleRadius[CID][0] < RadiusRatioThreshold:
+                    #     queue.append((CID, depth))
+                    if relativeAngleRadius[CID][1] < AngleRadianThreshold:
+                        queue.append((CID, depth))
+                    else:
+                        queue.append((CID, depth+1))
+        
+        outputClID = set()
+        
+        for d in range(inputDepth+1):
+            outputClID.update(depthToClID[d])
+        
+        return outputClID
+        
+    def _check_minor_score(self, skeleton):
+        RadiusRatioThreshold = 0.25
+        #     score = score + self._centerline_contrib(cl, 2.0)
+        
+        
+        
+        if len(self.m_opDragToggleCL.m_listSelectionKey) != 1:
+            return 0
+        
+        for clKey in self.m_opDragToggleCL.m_listSelectionKey:
+            id = data.CData.get_id_from_key(clKey)
+            cl = skeleton.get_centerline(id)
+            
+            cl = skeleton.get_centerline(id)
+            parentCLID, listChildCLID = skeleton.get_conn_centerline_id(id)
+            parentR = np.mean([np.percentile(cl.Radius, 40),
+                                np.percentile(cl.Radius, 50)])
+            
+            parentR2 = self.get_representative_radius(cl)
+            
+            relativeAngleRadius = {}
+            relativeAngleRadius2 = {}
+            for CID in listChildCLID:
+                    
                 
                 childCL = skeleton.get_centerline(CID)
-                childMeanR = np.mean(childCL.Radius)
-                if d+1 > maxDepth and childMeanR < q2:
-                    continue
-                visited.add(CID)
-                listcl.append(CID)
-                queue.append((CID, d+1))
-        
-        
-        # if len(segmentSet) ==  0:
-        #     while queue:
-        #         id, d = queue.popleft()
-        #         # if d >= maxDepth:
-        #         #     continue
+                childR = np.mean([np.percentile(childCL.Radius, 40),
+                                  np.percentile(childCL.Radius, 50)])
                 
-        #         cl = skeleton.get_centerline(id)
-        #         parentCLID, listChildCLID = skeleton.get_conn_centerline_id(id)
-
-        #         for CID in listChildCLID:
-        #             if CID in visited:
-        #                 continue
+                childR2 = self.get_representative_radius(childCL)
+                    # 이전 대비 상대 angle, 상대 radius
+                relativeAngleRadius[CID] = ((1-childR/parentR), self.calculate_angle_radian_parent_child(cl, childCL))
+                relativeAngleRadius2[CID] = ((1-childR2/parentR2), self.calculate_angle_radian_parent_child(cl, childCL))
+                
+                # print(f"CID : {childCL.Vertex.shape[0]}")
+                
+                # if childCL.Vertex.shape[0] < 5 and (1-childR2/parentR2) < RadiusRatioThreshold:
                     
-        #             childCL = skeleton.get_centerline(CID)
-        #             childMeanR = np.mean(childCL.Radius)
-        #             if d+1 > maxDepth and childMeanR < q2:
-        #                 continue
-        #             visited.add(CID)
-        #             listcl.append(CID)
-        #             queue.append((CID, d+1))
-        # else:
-        #     while queue:
-        #         id, d = queue.popleft()
-        #         # if d >= maxDepth:
-        #         #     continue
-        #         cl = skeleton.get_centerline(id)
-        #         parentCLID, listChildCLID = skeleton.get_conn_centerline_id(id)
-
-        #         for CID in listChildCLID:
-        #             if CID in visited:
-        #                 continue
+                #     print(f"!!!!!!!!{CID}", file=sys.__stdout__, flush=True)
+                #     if not childCL.is_leaf():
+                #         print(f"!!!!!222222222222222222222!!!{CID}", file=sys.__stdout__, flush=True)
+                        
+                # if childCL.Vertex.shape[0] < 5 and (1-childR2/parentR2) < RadiusRatioThreshold and not childCL.is_leaf():
+                #     print(f"!!!!!33333333333333333333333333333333333!!!{CID}", file=sys.__stdout__, flush=True)
+#            print(relativeAngleRadius, file=sys.__stdout__, flush=True)
+            print(relativeAngleRadius2, file=sys.__stdout__, flush=True)
+            
+            
+        #     parentCLID, listChildCLID = skeleton.get_conn_centerline_id(id)
+            
+        #     score = 0
+            
+        #     for clID_1 in listChildCLID:
+                
+        #         for clID_2 in listChildCLID:
                     
-        #             childCL = skeleton.get_centerline(CID)
-        #             childMeanR = np.mean(childCL.Radius)
-        #             if d+1 > maxDepth and childMeanR < q2:
+        #             if clID_1 == clID_2:
         #                 continue
-                    
-        #             if childCL.Name in segmentSet and cl.Name in segmentSet:
-        #                 visited.add(CID)
-        #                 listcl.append(CID)
-        #                 queue.append((CID, d+1))
         #             else:
-        #                 visited.add(CID)
-        #                 listcl.append(CID)
-        #                 queue.append((CID, d))
+        #                 cl1 = skeleton.get_centerline(clID_1)
+        #                 cl2 = skeleton.get_centerline(clID_2)
+        #                 score = max(score, self.calculate_angle_radian(cl1, cl2))
+                    
+        # return score
+            
+            
+    def _select_minor_vessel(self, skeleton, maxDepth, segmentSet = []):
+
+        if len(segmentSet) ==  0:
+            startDepth = 0
+            listcl = []
+            visited = set()
+            listcl.append(skeleton.RootCenterline.ID)
+            visited.add(skeleton.RootCenterline.ID)
+            queue = deque([(skeleton.RootCenterline.ID, startDepth)])
+        
+
+            iCLCnt = skeleton.get_centerline_count()
+            radiusList = []
+            for inx in range(0, iCLCnt) :
+                cl = skeleton.get_centerline(inx)
+                radiusList.append(np.mean(cl.Radius))
+                
+            q2 = np.percentile(radiusList, 50)  # median
+            
+            while queue:
+                id, d = queue.popleft()
+                # if d >= maxDepth:
+                #     continue
+                
+                cl = skeleton.get_centerline(id)
+                parentCLID, listChildCLID = skeleton.get_conn_centerline_id(id)
+
+                for CID in listChildCLID:
+                    if CID in visited:
+                        continue
+                    
+                    childCL = skeleton.get_centerline(CID)
+                    childMeanR = np.mean(childCL.Radius)
+                    if d+1 > maxDepth and childMeanR < q2:
+                        continue
+                    visited.add(CID)
+                    listcl.append(CID)
+                    queue.append((CID, d+1))
+        else:
+            #listClID, _ = self.build_backbone_by_segment_best_path(skeleton, segmentSet)
+            listClID = self.build_backbone_by_angle_based_depth(skeleton, segmentSet, maxDepth)
+            
+            # segmentRadiusThreshold = defaultdict(float)
+            # listcl = set()
+            # listcl.add(skeleton.RootCenterline.ID)
+            # visited = set()
+            # visited.add(skeleton.RootCenterline.ID)
+            # segmentCandidateRadius = defaultdict(list) 
+            
+            # for _ in range(maxDepth+1):
+            #     queue = deque([])
+            #     visited = set([cl for cl in listcl])
+
+            #     for v in visited:
+            #         queue.append(v)
+                
+            #     for segName in segmentCandidateRadius.keys():
+            #         segmentCandidateRadius[segName].sort()
+            #         while segmentCandidateRadius[segName] and segmentCandidateRadius[segName][-1] >= segmentRadiusThreshold[segName]:
+            #             segmentCandidateRadius[segName].pop()
+                    
+            #         if segmentCandidateRadius[segName]:
+            #             if len(segmentCandidateRadius[segName])>2:
+            #                 thresholdR1 = segmentCandidateRadius[segName].pop()
+            #                 thresholdR2 = segmentCandidateRadius[segName].pop()
+            #                 segmentRadiusThreshold[segName] = min((thresholdR1+thresholdR2)/2, segmentRadiusThreshold[segName]*0.9)
+            #             else:
+            #                 segmentRadiusThreshold[segName] = min(segmentCandidateRadius[segName].pop(), segmentRadiusThreshold[segName]*0.9)
+            
+            #     while queue:
+            #         id = queue.popleft()
+            #         cl = skeleton.get_centerline(id)
+
+            #         parentCLID, listChildCLID = skeleton.get_conn_centerline_id(id)
+                    
+            #         if cl.Name in segmentSet and _ == 0:
+            #             throsholdR = np.percentile(cl.Radius, 20)*0.75
+            #             if segmentRadiusThreshold[cl.Name] < throsholdR:
+            #                 segmentRadiusThreshold[cl.Name] = throsholdR
+            #                 listcl.add(id)
+
+            #         for CID in listChildCLID:
+            #             if CID in visited:
+            #                 continue
+            #             visited.add(CID)
+                        
+            #             childCL = skeleton.get_centerline(CID)
+            #             childQ3R = np.percentile(childCL.Radius, 70)
+                        
+            #             if childQ3R < segmentRadiusThreshold[childCL.Name]:
+            #                 segmentCandidateRadius[childCL.Name].append(np.percentile(childCL.Radius, 20)*0.75)
+            #                 continue
+            #             else:
+            #                 queue.append(CID)
+            #                 listcl.add(CID)
+                            
         listKey = []
-        for clID in listcl:
+        for clID in listClID:
             pickingKey = data.CData.make_key(data.CData.s_skelTypeCenterline, self.InputSkelGroupID, clID)
             listKey.append(pickingKey)
         self.m_opDragToggleCL.process_reset()

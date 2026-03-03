@@ -96,7 +96,8 @@ class CSubStateRemodeling() :
         pass
     def btn_select_minor(self):
         pass
-
+    def btn_minor_score(self):
+        pass
 
     # protected
     def _get_data(self) -> data.CData :

@@ -1314,17 +1314,26 @@ QPushButton {
     def uiviewer_on_key_press_with_ctrl(self, keyCode) :
         self.get_tab_state(self.m_tabIndex).key_press_with_ctrl(keyCode)
 
-
-if __name__ == '__main__' :
+def run():
     multiprocessing.freeze_support()
 
     app = QApplication(sys.argv)
     app.setStyle("Fusion")
+    verstr = "v0.0.0"
+    try:
+        with open('Version.dat', 'r', encoding='utf-8') as ver_file:
+            verstr = ver_file.readline()
+        print(f"Version : {verstr}")
+    except FileNotFoundError:
+        print("Version File Not Exists.")
 
     guiWindow = CTestApp(1920, 1080)
+    guiWindow.setWindowTitle(f"stomach Service Batch {verstr}")
     guiWindow.show()
     sys.exit(app.exec())
 
+if __name__ == '__main__' :
+    run()
 
 # print ("ok ..")
 
