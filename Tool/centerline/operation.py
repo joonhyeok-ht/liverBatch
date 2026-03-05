@@ -407,7 +407,18 @@ class COperationDragSelectionCL(COperationSelection) :
             if id == skeleton.RootCenterline.ID :
                 color = rootColor
             else :
-                color = _color
+                # color = _color
+                # sally
+                cl = skeleton.get_centerline(id)
+                ##_color != self.m_mediator.m_
+                if not np.array_equal(_color, dataInst.SelectionCLColor) :
+                    if cl.Name != '':
+                        color = self.m_mediator.get_cl_color(cl.Name)
+                    else :
+                        color = _color  
+                else :
+                    color = _color
+                
 
             clObj = dataInst.find_obj_by_key(selectionKey)
             if clObj is not None :

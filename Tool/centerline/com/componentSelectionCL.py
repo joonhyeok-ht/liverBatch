@@ -1549,8 +1549,13 @@ class CComDragSkelCL(CComDrag) :
                         
                 else:
                     if abs(relativeAngleRadius[sortedRadiusCID[0]][0]-relativeAngleRadius[sortedRadiusCID[1]][0]) < RelativaRadiusRatioThreshold:
-                        for i in range(len(sortedAngleCID)):
-                            queue.append((sortedAngleCID[i], depth+1))
+                        if relativeAngleRadius[sortedRadiusCID[0]][0] < RelativaRadiusRatioThreshold:
+                            queue.append((sortedRadiusCID[0], depth))
+                            for i in range(1, len(sortedRadiusCID)):
+                                queue.append((sortedRadiusCID[i], depth+1))
+                        else:
+                            for i in range(len(sortedAngleCID)):
+                                queue.append((sortedAngleCID[i], depth+1))
                     else:
                         queue.append((sortedRadiusCID[0], depth))
                         for i in range(1, len(sortedRadiusCID)):

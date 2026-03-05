@@ -540,11 +540,23 @@ class CCommandRemoveCL(CCommandSkelEdit) :
         dstKey = data.CData.make_key(data.CData.s_skelTypeCenterline, groupID, dstID)
         srcObj = dataInst.find_obj_by_key(srcKey)
         dstObj = dataInst.find_obj_by_key(dstKey)
+        
+        srcVertexKey = data.CData.make_key(data.CData.s_skelTypeVertex, groupID, srcID)
+        dstVertexKey = data.CData.make_key(data.CData.s_skelTypeVertex, groupID, dstID)
+        srcVertexObj = dataInst.find_obj_by_key(srcVertexKey)
+        dstVertexObj = dataInst.find_obj_by_key(dstVertexKey)
 
         if srcObj is None : 
             print("refresh error : not found srcObj")
             return
         if dstObj is None :
+            print("refresh error : not found dstObj")
+            return
+        
+        if srcVertexObj is None : 
+            print("refresh error : not found srcObj")
+            return
+        if dstVertexObj is None :
             print("refresh error : not found dstObj")
             return
         
@@ -568,6 +580,14 @@ class CCommandRemoveCL(CCommandSkelEdit) :
         newDstKey = data.CData.make_key(data.CData.s_skelTypeCenterline, groupID, dstObj.CL.ID)
         dstObj.Key = newDstKey
         dataInst.add_vtk_obj(dstObj)
+        
+        newSrcVertexKey = data.CData.make_key(data.CData.s_skelTypeVertex, groupID, srcObj.CL.ID)
+        srcVertexObj.Key = newSrcVertexKey
+        dataInst.add_vtk_obj(srcVertexObj)
+
+        newDstVertexKey = data.CData.make_key(data.CData.s_skelTypeVertex, groupID, dstObj.CL.ID)
+        dstVertexObj.Key = newDstVertexKey
+        dataInst.add_vtk_obj(dstVertexObj)
 
         if bSrcReg == True :
             self.m_mediator.ref_key(newSrcKey)
@@ -608,8 +628,11 @@ class CCommandRemoveCL(CCommandSkelEdit) :
         groupID = dataInst.CLInfoIndex
         clKey = data.CData.make_key(data.CData.s_skelTypeCenterline, groupID, clID)
         epKey = data.CData.make_key(data.CData.s_skelTypeEndPoint, groupID, clID)
+        vertexKey = data.CData.make_key(data.CData.s_skelTypeVertex, groupID, clID)
         self.m_mediator.remove_key(clKey)
         self.m_mediator.remove_key(epKey)
+        self.m_mediator.remove_key(vertexKey)
+
 
     
     @property

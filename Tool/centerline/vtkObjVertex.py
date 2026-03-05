@@ -88,7 +88,6 @@ class CVTKObjVertex(vtkObjInterface.CVTKObjInterface) :
         glyphMapper.SetColorModeToDirectScalars() 
 
         self.m_polyData   = poly
-        self.m_glyph      = glyphMapper
         self.m_mapper     = glyphMapper
         
         self.m_actor.SetMapper(self.m_mapper)

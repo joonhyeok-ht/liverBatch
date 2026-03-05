@@ -255,23 +255,7 @@ class CSubStateSkelEditSelectionCL(subStateSkelEdit.CSubStateSkelEdit) :
         self._setui_rootid(rootID)
         self._setui_cl_count(clCount)
         self._setui_br_count(brCount)
-        
-        self.App.remove_key_type_groupID(data.CData.s_skelTypeVertex, clinfoInx)
-        clcnt = skeleton.get_centerline_count()
-        for clInx in range(0, clcnt):
-            skeletonCL = skeleton.get_centerline(clInx)
-            
-            vertexObj = vtkObjVertex.CVTKObjVertex(skeletonCL, dataInst.s_vertexSize, dataInst.s_vertexColor.flatten())
-            if vertexObj.Ready == False :
-                continue
-            
-            vertexObj.KeyType = data.CData.s_skelTypeVertex
-            vertexObj.Key = data.CData.make_key(vertexObj.KeyType, clinfoInx, skeletonCL.ID)
-            #vertexObj.Color = dataInst.VertexColor
-            vertexObj.Opacity = 1.0
-            vertexObj.Visibility = True
-            dataInst.add_vtk_obj(vertexObj)
-        
+
         self.m_opDragSelectionCL.process_reset()
         self.App.update_viewer()
 
