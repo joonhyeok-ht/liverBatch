@@ -28,6 +28,7 @@ import Block.resampling as resamplingB
 import Block.reconstruction as reconstruction
 import Block.meshHealing as meshHealing
 import Block.meshBoolean as meshBoolean
+import Block.meshDecimation as meshDecimation
 import command.commandRecon as commandRecon
 import glob
 
@@ -52,6 +53,9 @@ class CSubReconLiver(commandRecon.CCommandRecon) :
         self.m_total_patient_cnt = 0
         self.m_progress_val = 0
         self.m_inputSliceID = 0
+        self.m_folderInfo = None
+        self.m_maskCpyPath = ""
+        self.m_resultPath = ""
         self.m_organList = ["Gallbladder", "Pancreas", "Spleen", "Stomach", "Liver"]
         
         try:
@@ -76,12 +80,8 @@ class CSubReconLiver(commandRecon.CCommandRecon) :
     #     self.m_optionInfo = optionInfo #optionInfo.COptionInfoSingle(self.m_optionPath)
     #     return True    
     
-    def process(self) :
-        if self.m_optionInfo.Ready == False :
-            print("not found option.json")
-            return
-        
-        dataRootPath = self.m_optionInfo.DataRootPath
+    def process(self) :      
+        dataRootPath = self.m_folderInfo.DataRootPath
 
         listPatientID = os.listdir(dataRootPath)
 
@@ -118,57 +118,27 @@ class CSubReconLiver(commandRecon.CCommandRecon) :
 
     # private
     def __pipeline(self, patientID : str) :
-        #print(f"Reconstruction Start! ")
-        apPath = self.APPath
-        ppPath = self.PPPath
-        hvpPath = self.HVPPath
-        mrPath = self.MRPath
+        if self.m_maskCpyPath == "":
+            maskCpyPath = os.path.join(self.m_intermediateDataPath, "MaskCpy")
+            self._copy_mask(maskCpyPath)
+        else:
+            maskCpyPath = self.m_maskCpyPath
+        if self.m_resultPath == "":
+            resultPath = os.path.join(self.m_intermediateDataPath, "Result")
+        else:
+            resultPath = self.m_resultPath
         
-        outputPatientFullPath = os.path.join(self.m_intermediateDataPath, patientID)
-        if os.path.exists(outputPatientFullPath):
-            shutil.rmtree(outputPatientFullPath)
-        outputResultFullPath = os.path.join(outputPatientFullPath, "Result")
-        maskCpyPath = os.path.join(self.m_intermediateDataPath, patientID, "MaskCpy")
-        outputMaskPath = os.path.join(self.m_intermediateDataPath, patientID, "Mask")
-        
-        # if os.path.exists(maskCpyPath) :
-        #     shutil.rmtree(maskCpyPath)
-        # if os.path.exists(outputMaskPath) :
-        #     shutil.rmtree(outputMaskPath)
-        
-        copy_tree(apPath, maskCpyPath)
-        copy_tree(ppPath, maskCpyPath)
-        copy_tree(hvpPath, maskCpyPath)
-        copy_tree(mrPath, maskCpyPath)
-        copy_tree(maskCpyPath, outputMaskPath)
-        #self.CopiedMaskPath = maskCpyPath
-
-
-        # 기존 blender 파일이 있을 경우 로딩만 수행 
-        if os.path.exists(self.PatientBlenderFullPath) == True :
-            commandRecon.CCommandReconInterface.blender_process_load(self.OptionInfo.BlenderExe, self.PatientBlenderFullPath)
-            return
-
-        # originMaskPath = self.MaskPath
-        # if os.path.exists(originMaskPath) == False :
-        #     print(f"colon recon : not found mask path - {originMaskPath}")
-        #     return
-
-        # copiedMaskPath = self.CopiedMaskPath
-        # if os.path.exists(copiedMaskPath) == False :
-        #     os.makedirs(copiedMaskPath, exist_ok=True)
-        #     # nii.gz 파일 복사
-        #     for file in glob.glob(os.path.join(originMaskPath, "*.nii.gz")):
-        #         shutil.copy(file, copiedMaskPath)
+        self.InputMaskPath = maskCpyPath
         
         phase = None
-        phaseInfoFullPath = os.path.join(outputPatientFullPath, "phaseInfo.json")
+        phaseInfoFullPath = os.path.join(self.m_intermediateDataPath, "phaseInfo.json")
+        
         if os.path.exists(phaseInfoFullPath) == True :
             fileLoadPhaseInfoBlock = niftiContainer.CFileLoadPhaseInfo()
             fileLoadPhaseInfoBlock.InputPath = self.InputData.OutputPatientPath
             fileLoadPhaseInfoBlock.InputFileName = commandRecon.CCommandReconInterface.s_phaseInfoFileName
             phase = fileLoadPhaseInfoBlock.process()
-            if not self.update_progress_value(17):
+            if not self.update_progress_value(17, "Resampling..."):
                 return False
 
         else :
@@ -192,10 +162,6 @@ class CSubReconLiver(commandRecon.CCommandRecon) :
             registrationBlock.process()
             
             self.ProgressValue += int(14 / self.TotalPatientCnt)
-            #self.progress_callback(self.ProgressValue)
-            
-            # if not self.update_progress_value(14):
-            #     return False
             
             self._update_phase_offset(self.InputData.OptionInfo, registrationBlock, originOffsetBlock, phase)
             fileSavePhaseInfoBlock = niftiContainer.CFileSavePhaseInfo()
@@ -219,8 +185,6 @@ class CSubReconLiver(commandRecon.CCommandRecon) :
         
         resamplingToPhaseBlock.process()
         self.ProgressValue += int(2 / self.TotalPatientCnt)
-        # if not self.update_progress_value(2):
-        #     return False
 
         resamplingToMinSpacingBlock = resamplingB.CResamplingToMinSpacing()
         resamplingToMinSpacingBlock.InputMaskPath = maskCpyPath # self.CopiedMaskPath
@@ -234,8 +198,6 @@ class CSubReconLiver(commandRecon.CCommandRecon) :
         
         resamplingToMinSpacingBlock.process()
         self.ProgressValue += int(4 / self.TotalPatientCnt)
-        # if not self.update_progress_value(2):
-        #     return False
 
         removeStrictureBlock = removeStricture.CRemoveStricture()
         removeStrictureBlock.InputOptionInfo = self.OptionInfo
@@ -249,14 +211,11 @@ class CSubReconLiver(commandRecon.CCommandRecon) :
         removeStrictureBlock.process()
         self.ProgressValue += int(26 / self.TotalPatientCnt)
         
-        # if not self.update_progress_value(26):
-        #     return False
-
         reconstructionBlock = reconstruction.CReconstruction()
         reconstructionBlock.InputOptionInfo = self.InputData.OptionInfo
         reconstructionBlock.InputMaskPath = maskCpyPath # self.CopiedMaskPath
         reconstructionBlock.InputPhase = phase
-        reconstructionBlock.OutputPath = self.ResultPath
+        reconstructionBlock.OutputPath = resultPath
         reconstructionBlock.progress_callback = lambda p, s="": self.progress_callback(
             self.ProgressValue + int((45 / self.TotalPatientCnt) * (p / 100.0)),
             s
@@ -264,20 +223,21 @@ class CSubReconLiver(commandRecon.CCommandRecon) :
         reconstructionBlock.is_interrupted = self.is_interrupted
         reconstructionBlock.process()
         self.ProgressValue += int(45 / self.TotalPatientCnt)
-        # if not self.update_progress_value(45):
-        #     return False
-
         meshHealingBlock = meshHealing.CMeshHealing()
-        meshHealingBlock.InputPath = self.ResultPath
+        meshHealingBlock.InputPath = resultPath
         meshHealingBlock.InputOptionInfo = self.InputData.OptionInfo
         meshHealingBlock.process()
         if not self.update_progress_value(1):
             return False
 
         meshBooleanBlock = meshBoolean.CMeshBoolean()
-        meshBooleanBlock.InputPath = self.ResultPath
+        meshBooleanBlock.InputPath = resultPath
         meshBooleanBlock.InputOptionInfo = self.InputData.OptionInfo
         meshBooleanBlock.process()
+        meshDecimationBlok = meshDecimation.CMeshDecimation()
+        meshDecimationBlok.InputPath = resultPath
+        meshDecimationBlok.InputOptionInfo = self.InputData.OptionInfo
+        meshDecimationBlok.process()
         if not self.update_progress_value(1):
             return False
 
@@ -286,96 +246,6 @@ class CSubReconLiver(commandRecon.CCommandRecon) :
         meshHealingBlock.clear()
         meshBooleanBlock.clear()
 
-        # phaseInfoFileName = "phaseInfo"
-
-        # diaphragm = createDiaphragm.CCreateDiaphragm()
-        # diaphragm.InputPath = maskCpyPath
-        # diaphragm.OutputPath = outputMaskPath
-        # diaphragm.InputNiftiName = "Skin.nii.gz"
-        # diaphragm.process()
-        
-        # niftiContainerBlock = niftiContainer.CNiftiContainerTerritory()
-        # niftiContainerBlock.InputOptionInfo = self.m_optionInfo
-        # niftiContainerBlock.InputPath = outputMaskPath 
-        # niftiContainerBlock.process()
-        # self.ProgressValue += int(1 / self.TotalPatientCnt)
-        # self.progress_callback(self.ProgressValue)
-        
-        # self._update_organ_phase(niftiContainerBlock)
-
-        # originOffsetBlock = originOffset.COriginOffset()
-        # originOffsetBlock.InputOptionInfo = self.m_optionInfo
-        # originOffsetBlock.InputNiftiContainer = niftiContainerBlock
-        # originOffsetBlock.process()
-        # self.ProgressValue += int(1 / self.TotalPatientCnt)
-        # self.progress_callback(self.ProgressValue, "Registration ...")
-        
-        # registrationBlock = registration.CRegistration()
-        # registrationBlock.InputOptionInfo = self.m_optionInfo
-        # registrationBlock.InputNiftiContainer = niftiContainerBlock
-        # registrationBlock.process()
-        # self.ProgressValue += int(14 / self.TotalPatientCnt)
-        # self.progress_callback(self.ProgressValue)
-        # if self.is_interrupted():
-        #     return False
-
-        # self.__update_phase_offset(self.m_optionInfo, niftiContainerBlock, registrationBlock, originOffsetBlock)
-        # fileSavePhaseInfoBlock = niftiContainer.CFileSavePhaseInfo()
-        # fileSavePhaseInfoBlock.InputNiftiContainer = niftiContainerBlock
-        # fileSavePhaseInfoBlock.m_outputSavePath = outputPatientFullPath
-        # fileSavePhaseInfoBlock.m_outputFileName = phaseInfoFileName
-        # fileSavePhaseInfoBlock.process()
-        # self.ProgressValue += int(2 / self.TotalPatientCnt)
-        # self.progress_callback(self.ProgressValue, "Remove Stricture ...")
-        
-        # removeStrictureBlock = removeStricture.CRemoveStricture()
-        # removeStrictureBlock.InputNiftiContainer = niftiContainerBlock
-        # removeStrictureBlock.process()
-        # self.ProgressValue += int(28 / self.TotalPatientCnt)
-        # self.progress_callback(self.ProgressValue, "Reconstruction ...")
-        # if self.is_interrupted():
-        #     return False
-        
-        # reconstructionBlock = reconstruction.CReconstruction()
-        # reconstructionBlock.InputOptionInfo = self.m_optionInfo
-        # reconstructionBlock.InputNiftiContainer = niftiContainerBlock
-        # reconstructionBlock.OutputPath = outputResultFullPath
-        # reconstructionBlock.process()
-        # self.ProgressValue += int(48 / self.TotalPatientCnt)
-        # self.progress_callback(self.ProgressValue)
-        # if self.is_interrupted():
-        #     return False
-        
-        # clippingCls = clipUnderUmbilicusPolyLiver.CClipUnderUmbilicusPoly()
-        # clippingCls.InputStlPath = outputResultFullPath
-        # clippingCls.InputNiftiContainer = niftiContainerBlock
-        # clippingCls.InputSliceID = self.InputSliceID
-        # clippingCls.process()
-        # self.ProgressValue += int(1 / self.TotalPatientCnt)
-        # self.progress_callback(self.ProgressValue)
-
-        # meshHealingBlock = meshHealing.CMeshHealing()
-        # meshHealingBlock.InputPath = outputResultFullPath
-        # meshHealingBlock.InputOptionInfo = self.m_optionInfo
-        # meshHealingBlock.process()
-        # self.ProgressValue += int(1 / self.TotalPatientCnt)
-        # self.progress_callback(self.ProgressValue)
-        
-        # meshBooleanBlock = meshBoolean.CMeshBoolean()
-        # meshBooleanBlock.InputPath = outputResultFullPath
-        # meshBooleanBlock.InputOptionInfo = self.m_optionInfo
-        # meshBooleanBlock.process()
-        # self.ProgressValue += int(1 / self.TotalPatientCnt)
-        # self.progress_callback(self.ProgressValue)
-
-        # niftiContainerBlock.clear()
-        # originOffsetBlock.clear()
-        # registrationBlock.clear()
-        # removeStrictureBlock.clear()
-        # reconstructionBlock.clear()
-        # fileSavePhaseInfoBlock.clear()
-        # meshHealingBlock.clear()
-        # meshBooleanBlock.clear()
         
         return True
     
@@ -423,6 +293,24 @@ class CSubReconLiver(commandRecon.CCommandRecon) :
     #     for inx in range(0, iPhaseCnt) :
     #         phaseInfo = niftiContainerBlock.get_phase_info(inx)
     #         phaseInfo.Offset = phaseInfo.Offset - originOffsetBlock.OutputOriginOffset
+
+    # protected
+    def _copy_mask(self, copiedMaskPath) :
+        dataRootPath = self.OptionInfo.DataRootPath
+        patientID = self.InputData.PatientID
+        patientPath = os.path.join(dataRootPath, patientID)
+        maskPath = os.path.join("02_SAVE", "01_MASK")
+
+        if os.path.exists(copiedMaskPath) == False :
+            os.makedirs(copiedMaskPath, exist_ok=True)
+
+        for phase in ["AP", "PP", "HVP", "MR"] :
+            maskFullPath = os.path.join(patientPath, maskPath, phase)
+            if os.path.exists(maskFullPath) == False :
+                print(f"not found path : {maskFullPath}")
+                continue
+            for file in glob.glob(os.path.join(maskFullPath, "*.nii.gz")):
+                shutil.copy(file, copiedMaskPath)
 
 
     @property

@@ -6,9 +6,6 @@ import vtk
 import subprocess
 import math
 
-from scipy.spatial import KDTree
-# from scipy.spatial import cKDTree
-
 from PySide6.QtCore import Qt, QItemSelection, QItemSelectionModel
 from PySide6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QHBoxLayout, QWidget, QTreeView, QPushButton, QLineEdit, QLabel, QSizePolicy, QListWidget, QFileDialog, QFrame, QCheckBox, QTabWidget, QComboBox, QListWidgetItem, QMessageBox, QAbstractItemView
 from PySide6.QtGui import QStandardItemModel, QStandardItem
@@ -275,7 +272,7 @@ class CTabStateCommonTerritory(tabState.CTabState) :
 
     # protected
     def _get_userdata(self) -> userDataCommon.CUserDataCommon :
-        return self.get_data().find_userdata(userDataCommon.CUserDataCommon.s_userDataKey)
+        return self.get_data().UserData
     
     
     # ui setting

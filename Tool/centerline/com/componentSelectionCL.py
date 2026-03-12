@@ -728,7 +728,7 @@ class CComDragSelCLTP(CComDrag) :
             if inx == skeleton.RootCenterline.ID :
                 color = dataInst.RootCLColor
             else :
-                color = dataInst.CLColor
+                color = dataInst.s_clColor
 
             clKey = data.CData.make_key(data.CData.s_skelTypeCenterline, clinfoInx, inx)
             clObj = dataInst.find_obj_by_key(clKey)
@@ -751,7 +751,7 @@ class CComDragSelCLTP(CComDrag) :
             if clID == skeleton.RootCenterline.ID :
                 color = dataInst.RootCLColor
             else :
-                color = dataInst.CLColor
+                color = dataInst.s_clColor
             clKey = data.CData.make_key(data.CData.s_skelTypeCenterline, clinfoInx, clID)
             clObj = dataInst.find_obj_by_key(clKey)
             clObj.Color = color
@@ -825,11 +825,13 @@ class CComDragSkelCL(CComDrag) :
         self.m_opDragToggleCL = operation.COperationDragSelectionCLToggle(self.App)
         self.m_rt = None
         self.m_actorRt = self._create_rt_actor()
+        self.m_enSkeleton = False
     def clear(self) :
         # input your code
         self.m_inputSkeleton = None
         self.m_inputSkelGroupID = -1
         self.m_opDragToggleCL = None
+        self.m_enSkeleton = False
         super().clear()
 
     def ready(self) -> bool :
@@ -851,7 +853,10 @@ class CComDragSkelCL(CComDrag) :
         if self.ready() == False :
             return False
         
-        self.m_opDragToggleCL.process_reset()
+        if self.m_enSkeleton:
+            self.m_opDragToggleCL.process_reset_for_en()    
+        else:
+            self.m_opDragToggleCL.process_reset()
         # input your code
         super().process_end()
         
@@ -860,7 +865,10 @@ class CComDragSkelCL(CComDrag) :
             return False
         
         super().click(clickX, clickY, listExceptKeyType)
-        self.m_opDragToggleCL.process_reset()
+        if self.m_enSkeleton:
+            self.m_opDragToggleCL.process_reset_for_en()    
+        else:
+            self.m_opDragToggleCL.process_reset()
         renderer = self._get_renderer()
         renderer.AddActor2D(self.m_actorRt)
         self._update_rt_actor()
@@ -920,7 +928,7 @@ class CComDragSkelCL(CComDrag) :
             key = data.CData.make_key(data.CData.s_skelTypeCenterline, self.InputSkelGroupID, clid)
             listKey.append(key)
 
-        self.m_opDragToggleCL.process_reset()
+        self.m_opDragToggleCL.process_reset_for_en()
         if len(listKey) > 0 :
             childMode = self.m_opDragToggleCL.ChildSelectionMode
             self.m_opDragToggleCL.ChildSelectionMode = False
@@ -1485,7 +1493,7 @@ class CComDragSkelCL(CComDrag) :
     
             depthToClID[depth].add(id)
             
-            relativeAngleRadius = {}
+            relativeRadiusAngle = {}
             for CID in listChildCLID:
                 if CID in visited:
                     continue
@@ -1500,7 +1508,7 @@ class CComDragSkelCL(CComDrag) :
                         continue
                     
                     # 이전 대비 상대 angle, 상대 radius
-                    relativeAngleRadius[CID] = ((1-childR/parentR), self.calculate_angle_radian_parent_child(cl, childCL))
+                    relativeRadiusAngle[CID] = ((1-childR/parentR), self.calculate_angle_radian_parent_child(cl, childCL))
                     # if self.calculate_angle_radian_parent_child(cl, childCL) > 0.6:
                     #     queue.append((CID, depth+1))
                     # else:
@@ -1513,16 +1521,16 @@ class CComDragSkelCL(CComDrag) :
                     queue.append((CID, depth))
 
             # # radius 조건 우선
-            # sortedCID = sorted(list(relativeAngleRadius.keys()), key=lambda x : (relativeAngleRadius[x][0], relativeAngleRadius[x][1]))
-            # if len(relativeAngleRadius.keys()) >1:
-            #     if abs(relativeAngleRadius[sortedCID[0]][0]-relativeAngleRadius[sortedCID[1]][0]) < RelativaRadiusRatioThreshold:
+            # sortedCID = sorted(list(relativeRadiusAngle.keys()), key=lambda x : (relativeRadiusAngle[x][0], relativeRadiusAngle[x][1]))
+            # if len(relativeRadiusAngle.keys()) >1:
+            #     if abs(relativeRadiusAngle[sortedCID[0]][0]-relativeRadiusAngle[sortedCID[1]][0]) < RelativaRadiusRatioThreshold:
             #         queue.append((sortedCID[0], depth+1))
             #         for i in range(1, len(sortedCID)):
             #             queue.append((sortedCID[i], depth+1))
             #     else:
-            #         if relativeAngleRadius[sortedCID[0]][0] < RadiusRatioThreshold:
+            #         if relativeRadiusAngle[sortedCID[0]][0] < RadiusRatioThreshold:
             #             queue.append((sortedCID[0], depth))
-            #         elif relativeAngleRadius[sortedCID[0]][1] < AngleRadianThreshold:
+            #         elif relativeRadiusAngle[sortedCID[0]][1] < AngleRadianThreshold:
             #             queue.append((sortedCID[0], depth))
             #         else:
             #             queue.append((sortedCID[0], depth+1))
@@ -1532,13 +1540,13 @@ class CComDragSkelCL(CComDrag) :
                         
                         
             # angle 조건 우선
-            sortedAngleCID = sorted(list(relativeAngleRadius.keys()), key=lambda x : relativeAngleRadius[x][1])
-            sortedRadiusCID = sorted(list(relativeAngleRadius.keys()), key=lambda x : relativeAngleRadius[x][0])
+            sortedAngleCID = sorted(list(relativeRadiusAngle.keys()), key=lambda x : relativeRadiusAngle[x][1])
+            sortedRadiusCID = sorted(list(relativeRadiusAngle.keys()), key=lambda x : relativeRadiusAngle[x][0])
             
-            if len(relativeAngleRadius.keys()) >1:
-                #if abs(relativeAngleRadius[sortedCID[0]][0]-relativeAngleRadius[sortedCID[1]][0]) < RelativaRadiusRatioThreshold:
-                if relativeAngleRadius[sortedAngleCID[0]][1] < AngleRadianThreshold:
-                    if abs(relativeAngleRadius[sortedAngleCID[0]][0]-relativeAngleRadius[sortedAngleCID[1]][0]) < RelativaRadiusRatioThreshold:
+            if len(relativeRadiusAngle.keys()) >1:
+                #if abs(relativeRadiusAngle[sortedCID[0]][0]-relativeRadiusAngle[sortedCID[1]][0]) < RelativaRadiusRatioThreshold:
+                if relativeRadiusAngle[sortedAngleCID[0]][1] < AngleRadianThreshold:
+                    if abs(relativeRadiusAngle[sortedAngleCID[0]][0]-relativeRadiusAngle[sortedAngleCID[1]][0]) < RelativaRadiusRatioThreshold:
                         queue.append((sortedAngleCID[0], depth))
                         for i in range(1, len(sortedAngleCID)):
                             queue.append((sortedAngleCID[i], depth+1))
@@ -1548,8 +1556,8 @@ class CComDragSkelCL(CComDrag) :
                             queue.append((sortedRadiusCID[i], depth+1))
                         
                 else:
-                    if abs(relativeAngleRadius[sortedRadiusCID[0]][0]-relativeAngleRadius[sortedRadiusCID[1]][0]) < RelativaRadiusRatioThreshold:
-                        if relativeAngleRadius[sortedRadiusCID[0]][0] < RelativaRadiusRatioThreshold:
+                    if abs(relativeRadiusAngle[sortedRadiusCID[1]][0]-relativeRadiusAngle[sortedRadiusCID[0]][0]) > RelativaRadiusRatioThreshold:
+                        if relativeRadiusAngle[sortedRadiusCID[0]][0] < RelativaRadiusRatioThreshold:
                             queue.append((sortedRadiusCID[0], depth))
                             for i in range(1, len(sortedRadiusCID)):
                                 queue.append((sortedRadiusCID[i], depth+1))
@@ -1557,14 +1565,13 @@ class CComDragSkelCL(CComDrag) :
                             for i in range(len(sortedAngleCID)):
                                 queue.append((sortedAngleCID[i], depth+1))
                     else:
-                        queue.append((sortedRadiusCID[0], depth))
-                        for i in range(1, len(sortedRadiusCID)):
+                        for i in range(len(sortedRadiusCID)):
                             queue.append((sortedRadiusCID[i], depth+1))
             else:
-                for CID in relativeAngleRadius.keys():
-                    # if relativeAngleRadius[CID][0] < RadiusRatioThreshold:
+                for CID in relativeRadiusAngle.keys():
+                    # if relativeRadiusAngle[CID][0] < RadiusRatioThreshold:
                     #     queue.append((CID, depth))
-                    if relativeAngleRadius[CID][1] < AngleRadianThreshold:
+                    if relativeRadiusAngle[CID][1] < AngleRadianThreshold:
                         queue.append((CID, depth))
                     else:
                         queue.append((CID, depth+1))
@@ -1596,7 +1603,7 @@ class CComDragSkelCL(CComDrag) :
             
             parentR2 = self.get_representative_radius(cl)
             
-            relativeAngleRadius = {}
+            relativeRadiusAngle = {}
             relativeAngleRadius2 = {}
             for CID in listChildCLID:
                     
@@ -1607,7 +1614,7 @@ class CComDragSkelCL(CComDrag) :
                 
                 childR2 = self.get_representative_radius(childCL)
                     # 이전 대비 상대 angle, 상대 radius
-                relativeAngleRadius[CID] = ((1-childR/parentR), self.calculate_angle_radian_parent_child(cl, childCL))
+                relativeRadiusAngle[CID] = ((1-childR/parentR), self.calculate_angle_radian_parent_child(cl, childCL))
                 relativeAngleRadius2[CID] = ((1-childR2/parentR2), self.calculate_angle_radian_parent_child(cl, childCL))
                 
                 # print(f"CID : {childCL.Vertex.shape[0]}")
@@ -1620,7 +1627,7 @@ class CComDragSkelCL(CComDrag) :
                         
                 # if childCL.Vertex.shape[0] < 5 and (1-childR2/parentR2) < RadiusRatioThreshold and not childCL.is_leaf():
                 #     print(f"!!!!!33333333333333333333333333333333333!!!{CID}", file=sys.__stdout__, flush=True)
-#            print(relativeAngleRadius, file=sys.__stdout__, flush=True)
+#            print(relativeRadiusAngle, file=sys.__stdout__, flush=True)
             print(relativeAngleRadius2, file=sys.__stdout__, flush=True)
             
             
@@ -1742,7 +1749,7 @@ class CComDragSkelCL(CComDrag) :
         for clID in listClID:
             pickingKey = data.CData.make_key(data.CData.s_skelTypeCenterline, self.InputSkelGroupID, clID)
             listKey.append(pickingKey)
-        self.m_opDragToggleCL.process_reset()
+        self.m_opDragToggleCL.process_reset_for_en()
         self.m_opDragToggleCL.add_toggle_selection_keys(listKey)
         self.m_opDragToggleCL.process()
 

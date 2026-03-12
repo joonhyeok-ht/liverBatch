@@ -209,25 +209,32 @@ class CData :
 
         self.m_phase = None
 
-        self.m_dicUserData = {}
+        self.m_userData = None
 
         self.m_clinfoIndex = -1
 
         self.m_dicObj = {}
         self.m_listSkelInfo = []
         self.m_listTerriInfo = []
-        self.m_clinfoIndexList = []
     def clear(self) : 
+        self.clear_optioninfo()
+        self.m_userData = None
+    def clear_optioninfo(self) :
         self.clear_patient()
 
-        self.m_outputPath = ""
-        self.m_patientID = ""
         if self.m_optionInfo is not None :
             self.OptionInfo.clear()
         self.m_optionInfo = None
-
-        self.m_clinfoIndex = -1
     def clear_patient(self) :
+        '''
+        desc : clear patient centerline + patient recon  
+        '''
+        self.clear_centerline()
+        self.m_outputPath = ""
+        self.m_patientID = ""
+        if self.UserData is not None :
+            self.UserData.override_changed_optioninfo() 
+    def clear_centerline(self) :
         for key, obj in self.m_dicObj.items() :
             obj.clear()
         self.m_dicObj.clear()
@@ -239,21 +246,12 @@ class CData :
         for terriInfo in self.m_listTerriInfo :
             terriInfo.clear()
         self.m_listTerriInfo.clear()
-        
-        # for clIndexInfo in self.m_clinfoIndexList :
-        #     clIndexInfo.clear()
-        self.m_clinfoIndexList.clear()
 
         if self.Phase is not None :
             self.Phase.clear()
         self.Phase = None
-
-        for key, userData in self.m_dicUserData.items() :
-            userData.clear()
-        self.m_dicUserData.clear()
-
         self.m_clinfoIndex = -1
-    
+
     def save(self, fullPath : str) -> bool :
         '''
         fullPath : dataInfo.json의 full 경로 
@@ -291,9 +289,9 @@ class CData :
             print("failed load : not ready")
             return False
         
-        patientID = self.PatientID
-        self.clear_patient()
-        self.PatientID = patientID
+        # patientID = self.PatientID
+        self.clear_centerline()
+        # self.PatientID = patientID
 
         if os.path.exists(fullPath) == False :
             return False 
@@ -344,30 +342,6 @@ class CData :
     def get_terri_out_path(self) -> str :
         terriOutPath = os.path.join(self.get_terri_path(), "out")
         return terriOutPath
-    def add_clinfoIndex(self, inx : int):
-        self.m_clinfoIndexList.append(inx)
-    def add_userdata(self, key : str, userData) :
-        self.m_dicUserData[key] = userData
-    def get_userdata_count(self) -> int :
-        return len(self.m_dicUserData)
-    def get_clinfoIndex_count(self) -> int :
-        return len(self.m_clinfoIndexList)
-    def find_userdata(self, key : str) :
-        if key in self.m_dicUserData : 
-            return self.m_dicUserData[key]
-        return None
-    def get_userdata(self) :
-        for key, userData in self.m_dicUserData.items() :
-            return userData
-        return None
-    def remove_userdata(self, key : str) :
-        userData = self.m_dicUserData.pop(key, None)
-        if userData is not None :
-            userData.clear()
-    def remove_all_userdata(self) :
-        for key, userData in self.m_dicUserData.items() :
-            userData.clear()
-        self.m_dicUserData.clear()
     
     def add_vtk_obj(self, vtkObj : vtkObj.CVTKObj) :
         # vtkObj.Key = key
@@ -428,12 +402,6 @@ class CData :
         if detachedObj is not None :
             return detachedObj
         return None
-    def remove_all_key_by_type_groupID(self, type, groupID):
-        dictKeys = [k for k in self.m_dicObj.keys()]
-        for key in dictKeys :
-            _type, _groupID, _id = CData.get_keyinfo(key)
-            if _type == type and _groupID == groupID :
-                self.remove_key(key)
     def remove_key(self, key : str) :
         removedObj = self.m_dicObj.pop(key, None)
         if removedObj is not None :
@@ -443,11 +411,7 @@ class CData :
         for key, obj in self.m_dicObj.items() :
             obj.clear()
         self.m_dicObj.clear()
-        
-    def get_clinfoIndex(self, inx : int) -> CTerritoryInfo :
-        return self.m_clinfoIndexList[inx]
-    def clear_clinfoIndex(self) :
-        self.m_clinfoIndexList = []
+
         
     def add_skelinfo(self, skelinfo : CSkelInfo) :
         self.m_listSkelInfo.append(skelinfo)
@@ -455,8 +419,6 @@ class CData :
         return len(self.m_listSkelInfo)
     def get_skelinfo(self, inx : int) -> CSkelInfo :
         return self.m_listSkelInfo[inx]
-    def remove_skelinfo(self, inx : int):
-        self.m_listSkelInfo.pop(inx)
     def get_skeleton(self, inx : int) -> algSkeletonGraph.CSkeleton :
         skelinfo = self.get_skelinfo(inx)
         if skelinfo is None :
@@ -469,6 +431,13 @@ class CData :
         return len(self.m_listTerriInfo)
     def get_terriinfo(self, inx : int) -> CTerritoryInfo :
         return self.m_listTerriInfo[inx]
+    def find_terriinfo_index_by_blender_name(self, blenderName : str) -> int :
+        iCnt = self.get_terriinfo_count()
+        for inx in range(0, iCnt) :
+            terriinfo = self.get_terriinfo(inx)
+            if terriinfo.BlenderName == blenderName :
+                return inx
+        return -1
     
 
     # protected
@@ -489,6 +458,8 @@ class CData :
     @OptionInfo.setter
     def OptionInfo(self, optionInfo : optionInfo.COptionInfo) :
         self.m_optionInfo = optionInfo
+        if self.UserData is not None :
+            self.UserData.override_changed_optioninfo()
     @property
     def OptionInfoPath(self) -> str :
         if self.OptionInfo is None :
@@ -510,6 +481,14 @@ class CData :
     def OutputPatientPath(self) -> str :
         return os.path.join(self.OutputPath, self.PatientID)
 
+    @property
+    def UserData(self) :
+        return self.m_userData
+    @UserData.setter
+    def UserData(self, userData) :
+        self.m_userData = userData
+        if self.m_userData is not None :
+            self.m_userData.override_changed_optioninfo()
     @property
     def Phase(self) -> niftiContainer.CPhase :
         return self.m_phase

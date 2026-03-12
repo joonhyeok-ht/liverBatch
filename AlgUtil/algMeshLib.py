@@ -84,7 +84,7 @@ class CMeshLib :
 
         return mesh
     @staticmethod
-    def meshlib_healing(mesh) :
+    def meshlib_healing(mesh, bFill=True) :
         '''
         mesh : meshlib mesh type
         '''
@@ -94,8 +94,9 @@ class CMeshLib :
         mesh.deleteFaces(mesh.topology.getValidFaces() - bigComps)
 
         # fill all holes
-        for e in mesh.topology.findHoleRepresentiveEdges():
-            mrmesh.fillHole(mesh,e)
+        if bFill == True :
+            for e in mesh.topology.findHoleRepresentiveEdges():
+                mrmesh.fillHole(mesh,e)
 
         # fix possible multiple edges
         mrmesh.fixMultipleEdges(mesh)

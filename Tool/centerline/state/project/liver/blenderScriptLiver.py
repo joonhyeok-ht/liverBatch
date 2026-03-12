@@ -125,16 +125,16 @@ class CBlenderScriptLiver :
     def process(self) -> bool:
         if self.m_optionInfo.process(self.m_optionFullPath) == False :
             return False   
-        if not os.path.exists(self.m_outPath) : 
-            print(f"outPath not extist : {self.m_outPath}. Return.")
-            return False
+        # if not os.path.exists(self.m_outPath) : 
+        #     print(f"outPath not extist : {self.m_outPath}. Return.")
+        #     return False
         
-        self.m_auto01Path = os.path.join(self.m_outPath, "Auto01_Recon")
-        self.m_auto02Path = os.path.join(self.m_outPath, "Auto02_Overlap")
-        self.m_auto03Path = os.path.join(self.m_outPath, "Auto03_MeshClean")        
-        os.makedirs(self.m_auto01Path, exist_ok=True)
-        os.makedirs(self.m_auto02Path, exist_ok=True)
-        os.makedirs(self.m_auto03Path, exist_ok=True)
+        # self.m_auto01Path = os.path.join(self.m_outPath, "Auto01_Recon")
+        # self.m_auto02Path = os.path.join(self.m_outPath, "Auto02_Overlap")
+        # self.m_auto03Path = os.path.join(self.m_outPath, "Auto03_MeshClean")        
+        # os.makedirs(self.m_auto01Path, exist_ok=True)
+        # os.makedirs(self.m_auto02Path, exist_ok=True)
+        # os.makedirs(self.m_auto03Path, exist_ok=True)
         
         return True
     
@@ -460,9 +460,12 @@ class CBlenderScriptLiver :
             else :
                 print(f"_recalc_normal() : {objName} is not in Mesh Objects. Skip.")
 
-    def _save_blender_with_patientID(self, outputPath : str, saveAs : str) :
+    def _save_blender_with_patientID(self, outputPath : str, saveAs : str = "") :
         blenderPath = os.path.join(outputPath)
-        blenderFullPath = os.path.join(blenderPath, saveAs)
+        if saveAs != "":
+            blenderFullPath = os.path.join(blenderPath, saveAs)
+        else:
+            blenderFullPath = outputPath
         if os.path.exists(blenderFullPath):
             os.remove(blenderFullPath)
             
@@ -595,8 +598,8 @@ class CBlenderScriptStomachBasic(CBlenderScriptLiver) :
         
         # save
         # DataRootPath의 해당 저장 폴더에 최종 파일 저장하기.
-        patientBlenderName = f"{self.m_patientID}.blend"
-        self._save_blender_with_patientID(self.m_auto01Path, patientBlenderName) 
+        patientBlenderName = f"{self.m_patientID}_recon.blend"
+        self._save_blender_with_patientID(self.m_outPath, patientBlenderName) 
         # self._save_blender_with_bak(self.m_auto01Path, self.m_patientID)
         #bpy.ops.wm.quit_blender()
 
@@ -657,15 +660,15 @@ class CBlenderScriptStomachExport() :
             print(f"Not Exitst : {self.m_exportPath}")
             return False
         
-        patientBlenderName = os.path.join(self.m_inputBlendPath, f"{self.m_patientID}.blend")
+        patientBlenderName = os.path.join(self.m_inputBlendPath, f"{self.m_patientID}_recon.blend")
         bpy.ops.wm.open_mainfile(filepath=patientBlenderName) 
-        export_path = self.m_exportPath
-        self._do_export(export_path)
+        exportPath = self.m_exportPath
+        self._do_export(exportPath)
         bpy.ops.wm.quit_blender()
         
         return True
     
-    def _export_stl2(self, out_path) :
+    def _export_stl2(self, outputPath) :
         # selection = bpy.context.selected_objects
         objects = bpy.data.objects
         # Export each object.
@@ -677,30 +680,30 @@ class CBlenderScriptStomachExport() :
             object.select_set(True)
             bpy.context.view_layer.objects.active = object
             print('Exporting {}'.format(object.name))
-            fpath = os.path.join(out_path, f"{object.name}.stl")
+            fpath = os.path.join(outputPath, f"{object.name}.stl")
             bpy.ops.export_mesh.stl(filepath=fpath,
                                 use_selection=True)
         # Reset the selection to original.
         bpy.ops.object.select_all(action='DESELECT')
         
-    def _do_export(self, out_path) :
-        print(f"export out_path = {out_path}")
-        if not os.path.exists(out_path) :
-            # print(f"export_stl-ERROR) - Not found STL Path : {out_path}")
-            os.makedirs(out_path)
+    def _do_export(self, outputPath) :
+        print(f"export outputPath = {outputPath}")
+        if not os.path.exists(outputPath) :
+            # print(f"export_stl-ERROR) - Not found STL Path : {outputPath}")
+            os.makedirs(outputPath)
         else :
-            filelist = os.listdir(out_path)
+            filelist = os.listdir(outputPath)
             for ff in filelist:
                 ext = os.path.splitext(ff)[1] 
                 if ext == '.stl':
-                    fullpath = os.path.join(out_path, ff)
+                    fullpath = os.path.join(outputPath, ff)
                     os.remove(fullpath)
                     print(f"removed {ff}")
             
-        # _export_stl(out_path) # for blender v4.1.1
-        self._export_stl2(out_path) # for blender v3.6 ~ v4.1.1
+        # _export_stl(outputPath) # for blender v4.1.1
+        self._export_stl2(outputPath) # for blender v3.6 ~ v4.1.1
         
-class CBlenderScriptStomachImportSave(CBlenderScriptLiver) :
+class CBlenderScriptLiverImportSave(CBlenderScriptLiver) :
     
     def __init__(self, patientID : str, optionPath : str, stlPath : str, outputPath = "" ) :
         super().__init__(patientID, optionPath, stlPath, outputPath)    
@@ -709,16 +712,18 @@ class CBlenderScriptStomachImportSave(CBlenderScriptLiver) :
         if super().process() == False :
             return False
         
-        self._delete_all_object()
-        self._delete_etc_objects()
+        if "overlap" in str(self.m_outPath):
+            self._delete_all_object()
+            self._delete_etc_objects()
+        else:
+            pass
         
         if self._import_stl(self.m_stlPath) == False :
             print("failed import stl")
             return False
         
         # DataRootPath의 해당 저장 폴더에 최종 파일 저장하기.
-        patientBlenderName = f"{self.m_patientID}.blend"
-        self._save_blender_with_patientID(self.m_auto02Path, patientBlenderName) 
+        self._save_blender_with_patientID(self.m_outPath) 
         # self._save_blender_with_bak(self.m_auto02Path, self.m_patientID)
         # bpy.ops.wm.quit_blender()
 
@@ -817,7 +822,7 @@ class CBlenderScriptLiverImportSaveForRemodeling(CBlenderScriptLiver) :
         return mesh_objects
         
     
-class CBlenderScriptStomachMeshClean(CBlenderScriptLiver) :
+class CBlenderScriptLiverMeshClean(CBlenderScriptLiver) :
     def __init__(self, patientID : str, optionPath : str, stlPath : str, outputPath = "", overlapPath = "") :
         super().__init__(patientID, optionPath, stlPath, outputPath)    
 
@@ -850,8 +855,8 @@ class CBlenderScriptStomachMeshClean(CBlenderScriptLiver) :
         self._delete_etc_objects()
         
         # DataRootPath의 해당 저장 폴더에 최종 파일 저장하기.
-        patientBlenderName = f"{self.m_patientID}.blend"
-        self._save_blender_with_patientID(self.m_auto03Path, patientBlenderName) 
+        patientBlenderName = f"{self.m_patientID}_clean.blend"
+        self._save_blender_with_patientID(self.m_outPath, patientBlenderName) 
         # self._save_blender_with_bak(self.m_auto03Path, self.m_patientID)
         bpy.ops.wm.quit_blender()
         return True 
@@ -960,51 +965,51 @@ if __name__=='__main__' :
         inx = args.index("--")
         scriptArgs = args[inx + 1 : ]
         
-        funcMode = find_param(scriptArgs, "--func_mode") 
-        print(f"blender script : func_mode -> {funcMode}")
-        patientID = find_param(scriptArgs, "--patient_id")
+        funcMode = find_param(scriptArgs, "--funcMode") 
+        print(f"blender script : funcMode -> {funcMode}")
+        patientID = find_param(scriptArgs, "--patientID")
 
         if patientID is None or funcMode is None:
             print(f"blender script : not found param")
         else :
             if funcMode == "Basic" :
-                optionPath = find_param(scriptArgs, "--option_path")
-                stlPath = find_param(scriptArgs, "--stl_path")
-                outputPath = find_param(scriptArgs, "--out_path")
+                optionPath = find_param(scriptArgs, "--optionFullPath")
+                stlPath = find_param(scriptArgs, "--stlPath")
+                outputPath = find_param(scriptArgs, "--outputPath")
                 inst = CBlenderScriptStomachBasic(patientID, optionPath, stlPath, outputPath)
                 inst.process()  
             elif funcMode == "Export" :
-                inputBlendPath = find_param(scriptArgs, "--input_blend_path")
-                exportPath = find_param(scriptArgs, "--export_path")
+                inputBlendPath = find_param(scriptArgs, "--inputBlendPath")
+                exportPath = find_param(scriptArgs, "--exportPath")
                 inst = CBlenderScriptStomachExport(patientID, inputBlendPath, exportPath)
                 inst.process()
             elif funcMode == "ImportSave" :
-                optionPath = find_param(scriptArgs, "--option_path")
-                stlPath = find_param(scriptArgs, "--stl_path")
-                outputPath = find_param(scriptArgs, "--out_path")
-                inst = CBlenderScriptStomachImportSave(patientID, optionPath, stlPath, outputPath)
+                optionPath = find_param(scriptArgs, "--optionFullPath")
+                stlPath = find_param(scriptArgs, "--stlPath")
+                outputPath = find_param(scriptArgs, "--outputPath")
+                inst = CBlenderScriptLiverImportSave(patientID, optionPath, stlPath, outputPath)
                 inst.process()             
             elif funcMode == "MeshClean" :
-                optionPath = find_param(scriptArgs, "--option_path")
-                stlPath = find_param(scriptArgs, "--stl_path")
-                outputPath = find_param(scriptArgs, "--out_path")
-                overlapPath = find_param(scriptArgs, "--overlap_path")
-                inst = CBlenderScriptStomachMeshClean(patientID, optionPath, stlPath, outputPath)
+                optionPath = find_param(scriptArgs, "--optionFullPath")
+                stlPath = find_param(scriptArgs, "--stlPath")
+                outputPath = find_param(scriptArgs, "--outputPath")
+                overlapPath = find_param(scriptArgs, "--overlapPath")
+                inst = CBlenderScriptLiverMeshClean(patientID, optionPath, stlPath, outputPath)
                 inst.process() 
             elif funcMode == "RemodelingImportSave" :
-                optionPath = find_param(scriptArgs, "--option_path")
-                stlPath = find_param(scriptArgs, "--stl_path")
-                outputPath = find_param(scriptArgs, "--out_path")
+                optionPath = find_param(scriptArgs, "--optionFullPath")
+                stlPath = find_param(scriptArgs, "--stlPath")
+                outputPath = find_param(scriptArgs, "--outputPath")
                 meshCleanPath = find_param(scriptArgs, "--meshclean_path")
                 inst = CBlenderScriptLiverImportSaveForRemodeling(patientID, optionPath, stlPath, outputPath, meshCleanPath)
                 inst.process() 
             elif funcMode == "OpenBlend" :
-                openPath = find_param(scriptArgs, "--open_path")
-                stlPath = find_param(scriptArgs, "--stl_path")
-                optionPath = find_param(scriptArgs, "--option_path")
-                outputPath = find_param(scriptArgs, "--out_path")
+                #openPath = find_param(scriptArgs, "--openPath")
+                stlPath = find_param(scriptArgs, "--stlPath")
+                optionPath = find_param(scriptArgs, "--optionFullPath")
+                outputPath = find_param(scriptArgs, "--outputPath")
                 
                 inst = CBlenderScriptLiverOpen(patientID, optionPath, stlPath, outputPath)
-                inst.OpenPath = openPath
+                inst.OpenPath = outputPath
                 inst.process()
     

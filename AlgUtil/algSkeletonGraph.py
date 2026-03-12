@@ -234,7 +234,7 @@ class CSkeletonCenterline(CSkeletonNode) :
         closestIndex = np.argmin(dist)
         if closestIndex != 0 :
             self.reverse()
-    def is_leaf(self) -> bool:
+    def is_leaf(self) -> bool :
         if self.get_conn(0) is None or self.get_conn(1) is None :
             return True
         return False
@@ -549,7 +549,7 @@ class CSkeleton :
             for centerline in self.m_listCenterline :
                 if centerline == rootCenterline :
                     continue
-                
+
                 srcGraphID = centerline.GraphID
                 graphNode = self.get_graph(srcGraphID)
                 # 현재 node가 이미 tree로 구축된 상황이므로 건너뛴다. 
@@ -716,14 +716,27 @@ class CSkeleton :
 
         for clID in listCLID :
             cl = self.get_centerline(clID)
-            flag = False
-            for ancestorCLID in listCLID :
-                if clID == ancestorCLID :
-                    continue
-                if self.is_ancestor(ancestorCLID, clID) == True :
-                    flag = True
-            if flag == False :
+
+            ret = self.get_conn_centerline_id(clID)
+            if ret is None :
+                continue
+
+            parentCLID = ret[0]
+            if parentCLID == -1 :
                 retList.append(cl)
+            elif parentCLID not in listCLID :
+                retList.append(cl)
+
+        # for clID in listCLID :
+        #     cl = self.get_centerline(clID)
+        #     flag = False
+        #     for ancestorCLID in listCLID :
+        #         if clID == ancestorCLID :
+        #             continue
+        #         if self.is_ancestor(ancestorCLID, clID) == True :
+        #             flag = True
+        #     if flag == False :
+        #         retList.append(cl)
 
         if len(retList) == 0 :
             return None
@@ -762,6 +775,20 @@ class CSkeleton :
             rootCL.reverse()
         
         return True
+
+
+
+
+        # graphNode = treeNode.Node
+        # if graphNode.get_class_name() == "CSkeletonCenterline" :
+        #     retList.append(graphNode)
+        # treeChildCnt = treeNode.get_child_count()
+        # for childInx in range(0, treeChildCnt) :
+        #     treeNodeChild = treeNode.get_child(childInx)
+        #     listTreeNode.append(treeNodeChild)
+        
+        return True
+    
 
     # kd-tree member
     def init_kd_anchor(self) -> bool :
@@ -806,25 +833,6 @@ class CSkeleton :
 
     # private
     def __init_conn_centerline(self, centerline) :
-        for inx in [0, -1] :
-            branch = centerline.get_conn(inx)
-            if branch is not None :
-                continue
-
-            vertex = centerline.get_vertex(inx)
-            listNeighborCenterline = self.find_conn_centerline(vertex)
-            if listNeighborCenterline is None :
-                continue
-            # 연결된 것이 자신밖에 없으므로 branch가 아니다. 
-            if len(listNeighborCenterline) == 1 :
-                continue
-
-            branch = CSkeletonBranch(len(self.m_listBranch))
-            branch.BranchPoint = vertex
-            self.m_listBranch.append(branch)
-            for neighborCenterline in listNeighborCenterline :
-                self.attach_branch_centerline(branch, neighborCenterline)
-    def init_conn_centerline(self, centerline) :
         for inx in [0, -1] :
             branch = centerline.get_conn(inx)
             if branch is not None :

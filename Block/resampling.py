@@ -220,7 +220,7 @@ class CResamplingToMinSpacing(multiProcessTask.CMultiProcessTaskProgress) :
             outMaskFullPath = os.path.join(self.OutputMaskPath, f"{outMaskName}.nii.gz")
 
             if os.path.exists(inMaskFullPath) == False :
-                print(f"skip resampling : {inMaskName}")
+                #print(f"skip resampling : {inMaskName}")
                 continue
 
             listParam.append((inMaskFullPath, outMaskFullPath))

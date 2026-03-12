@@ -1,11 +1,11 @@
 {
     "Version" : {
-        "Release" : "Common Pipeline v2.0",
+        "Release" : "Common Pipeline v2.1",
         "DESC": "Solution Common Pipeline"
     },
   
 	"DataRootPath" : "C:\\Users\\hutom\\Desktop\\jh_test\\data\\liver\\LIVER0060\\dataRoot_liver_0223_102822",
-   "CL"  : "../srcCL/processCL.bat",
+   "CL"  : "../app_cl/processCL.bat",
 
     "RegistrationInfo" : [
         {"Target" : "MPV_PP", "Src" : "MPV_AP", "RigidAABB" : 0},
@@ -50,15 +50,24 @@
 		    "List" : [
 			    ["MPV_PP", "", "PP", -1],
                 ["MPV_AP", "", "AP", -1],
-                ["MPV_HVP", "", "HVP", -1],                
+                ["MPV_HVP", "", "HVP", -1],    
+                ["Artery", "", "AP", -1],
+                ["Vein", "", "HVP", -1],
+                ["Portal", "", "PP", -1],
                 ["MPV_AP_st", "MPV_AP", "AP", 30000],
                 ["Artery_st", "Artery", "AP", 20000],
                 ["MPV_PP_st", "MPV_PP", "PP", 10000],
                 ["Portal_st", "Portal", "PP", 60000],
                 ["MPV_HVP_st", "MPV_HVP", "HVP", 10000],
-                ["Vein_st", "Vein", "HVP", 60000]
+                ["Vein_st", "Vein", "HVP", 60000],
+                ["Liver", "Liver", "HVP", 60000]
 		    ]
 	    }
+    ],
+
+    "MeshHealing" : [
+        ["blenderName0", 0],
+        ["blenderName0", 0]
     ],
     
     "MeshBoolean" : [
@@ -68,9 +77,9 @@
         ["inside", "blenderName0", "blenderName1", "blenderName"],
         ["outside", "blenderName0", "blenderName1", "blenderName"]
     ],
-    "MeshHealing" : [
-        "blenderName0",
-        "blenderName1"
+    "MeshDecimation" : [
+        ["blenderName0", 10000],
+        ["blenderName1", 10000]
     ],
 
     "Blender" : {

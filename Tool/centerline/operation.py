@@ -101,7 +101,7 @@ class COperationSelectionVertex(COperationSelection) :
         self._color_setting(self.m_listSelectionKey, dataInst.s_selectionCLColor)
     def process_reset(self) :
         dataInst = self.Data
-        self._color_setting(self.m_listSelectionKey, dataInst.CLColor)
+        self._color_setting(self.m_listSelectionKey, dataInst.s_clColor)
         self.m_listSelectionKey.clear()
 
     def _color_setting(self, listSelectionKey : list, color : np.ndarray) :
@@ -227,6 +227,8 @@ class COperationSelectionCL(COperationSelection) :
         self.m_listChildSelectionKey.clear()
 
         dataInst = self.Data
+        if self.get_selection_groupID() == None:
+            return
         skeleton = dataInst.get_skeleton(self.get_selection_groupID())
         #skeleton = self.Skeleton
         if skeleton is None :
@@ -396,7 +398,7 @@ class COperationDragSelectionCL(COperationSelection) :
         if len(listRet) == 0 :
             return None
         return listRet
-    def _color_setting(self, listSelectionKey : list, rootColor : np.ndarray, _color : np.ndarray) :
+    def _color_setting(self, listSelectionKey : list, rootColor : np.ndarray, _color : np.ndarray, is_en = False) :
         dataInst = self.Data
         skeleton = self.Skeleton
         if skeleton is None :
@@ -411,8 +413,8 @@ class COperationDragSelectionCL(COperationSelection) :
                 # sally
                 cl = skeleton.get_centerline(id)
                 ##_color != self.m_mediator.m_
-                if not np.array_equal(_color, dataInst.SelectionCLColor) :
-                    if cl.Name != '':
+                if not np.array_equal(_color, dataInst.s_selectionCLColor) :
+                    if cl.Name != '' and not is_en:
                         color = self.m_mediator.get_cl_color(cl.Name)
                     else :
                         color = _color  
@@ -458,6 +460,12 @@ class COperationDragSelectionCLToggle(COperationDragSelectionCL) :
             self._color_setting(self.m_listUnSelectionKey, data.CData.s_rootCLColor, data.CData.s_clColor)
             self.m_listUnSelectionKey.clear()
         self._color_setting(self.m_listSelectionKey, data.CData.s_rootCLColor, data.CData.s_clColor)
+        self.m_listSelectionKey.clear()
+    def process_reset_for_en(self) :
+        if len(self.m_listUnSelectionKey) > 0 :
+            self._color_setting(self.m_listUnSelectionKey, data.CData.s_rootCLColor, data.CData.s_clColor, is_en=True)
+            self.m_listUnSelectionKey.clear()
+        self._color_setting(self.m_listSelectionKey, data.CData.s_rootCLColor, data.CData.s_clColor, is_en=True)
         self.m_listSelectionKey.clear()
 
     def add_toggle_selection_keys(self, listSelectionKey : list) :

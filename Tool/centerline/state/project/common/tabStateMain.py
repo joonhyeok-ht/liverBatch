@@ -4,9 +4,10 @@ import numpy as np
 import shutil
 import vtk
 import subprocess
+from pathlib import Path
 
 from PySide6.QtCore import Qt, QItemSelectionModel, QModelIndex
-from PySide6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QHBoxLayout, QWidget, QPushButton, QLineEdit, QLabel, QSizePolicy, QListWidget, QFileDialog, QFrame, QCheckBox, QTabWidget, QComboBox, QTableView, QMessageBox
+from PySide6.QtWidgets import QApplication, QMainWindow, QDialog, QDialogButtonBox, QVBoxLayout, QHBoxLayout, QWidget, QPushButton, QLineEdit, QLabel, QSizePolicy, QListWidget, QFileDialog, QFrame, QCheckBox, QTabWidget, QComboBox, QTableView, QMessageBox
 from PySide6.QtGui import QStandardItemModel, QStandardItem
 from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 
@@ -33,6 +34,7 @@ import AlgUtil.algSkeletonGraph as algSkeletonGraph
 import Block.optionInfo as optionInfo
 import Block.niftiContainer as niftiContainer
 import Block.reconstruction as reconstruction
+import Block.makeInputFolder as makeInputFolder
 
 import VtkObj.vtkObj as vtkObj
 import vtkObjInterface as vtkObjInterface
@@ -42,12 +44,16 @@ import command.commandLoadingPatient as commandLoadingPatient
 import command.commandExtractionCL as commandExtractionCL
 import command.commandRecon as commandRecon
 
+
+import dlgCommon as dlgCommon
+
 import state.project.userData as userData
 
 import data as data
 import operation as op
 
 import tabState as tabState
+
 
 
 class CTabStateMain(tabState.CTabState) :
@@ -61,6 +67,7 @@ class CTabStateMain(tabState.CTabState) :
         "Centerline",
         "Clean",
     ]
+    s_intermediatePathAlias = "OutTemp"
     
     def __init__(self, mediator) :
         self.m_bReady = False
@@ -110,7 +117,7 @@ class CTabStateMain(tabState.CTabState) :
             optionFullPath = os.path.join(self.m_mediator.CommonPipelinePath, "option.json")
             if os.path.exists(optionFullPath) == False :
                 optionFullPath = ""
-        self._command_option_path(optionFullPath)
+        self.command_option_path(optionFullPath)
 
 
     def init_ui(self) :
@@ -123,16 +130,26 @@ class CTabStateMain(tabState.CTabState) :
         label.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
         tabLayout.addWidget(label)
 
-        layout, self.m_editOptionPath, btn = self.m_mediator.create_layout_label_editbox_btn("Option", False, "..")
+        layout, self.m_editOptionPath, btn = self.m_mediator.create_layout_label_dropeditbox_btn(
+            "Option", False, "..",
+            placeHolderText="Drag&Drop Option File", slotFunc=self.slot_drop_option_path
+            )
         btn.clicked.connect(self._on_btn_option_path)
         tabLayout.addLayout(layout)
-
-        layout, self.m_editOutputPath, btn = self.m_mediator.create_layout_label_editbox_btn("Output", False, "..")
-        btn.clicked.connect(self._on_btn_output_path)
+        # sally
+        layout, self.m_editInputPath, btn = self.m_mediator.create_layout_label_dropeditbox_btn(
+            "Input", False, "..",
+            placeHolderText="Drag&Drop Patient Zip Folder", slotFunc=self.slot_drop_input_zip_path
+            )
+        btn.clicked.connect(self._on_btn_input_zip_path)
         tabLayout.addLayout(layout)
 
-        layout, self.m_cbPatientID = self.m_mediator.create_layout_label_combobox("PatientID")
-        self.m_cbPatientID.currentIndexChanged.connect(self._on_cb_patientID_changed)
+        # sally
+        layout, self.m_editUnzipPath = self.m_mediator.create_layout_label_editbox("Output", False)
+        tabLayout.addLayout(layout) 
+        layout, self.m_editHuIDPath = self.m_mediator.create_layout_label_editbox("HuIDIn", False)
+        tabLayout.addLayout(layout) 
+        layout, self.m_editOutputPath = self.m_mediator.create_layout_label_editbox(f"{CTabStateMain.s_intermediatePathAlias}", False)
         tabLayout.addLayout(layout)
 
         line = QFrame()
@@ -150,6 +167,18 @@ class CTabStateMain(tabState.CTabState) :
             btnList[inx].clicked.connect(self.m_listStepBtnEvent[inx])
         tabLayout.addLayout(layout)
         self.m_btnCL = btnList[1]
+
+        label = QLabel("-- Individual Reconstruction STEP --")
+        label.setStyleSheet("QLabel { margin-top: 1px; margin-bottom: 1px; }")
+        label.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
+        tabLayout.addWidget(label)
+
+        layout = QHBoxLayout()
+        btn = QPushButton("Individual Recon")
+        btn.setStyleSheet(self.get_btn_stylesheet())
+        btn.clicked.connect(self._on_btn_individual_recon)
+        layout.addWidget(btn)
+        tabLayout.addLayout(layout)
 
 
         line = QFrame()
@@ -189,12 +218,10 @@ class CTabStateMain(tabState.CTabState) :
         layout.addWidget(self.m_editBoxCellID)
         tabLayout.addLayout(layout)
 
-
         btn = QPushButton("Extraction Centerline")
         btn.setStyleSheet(self.get_btn_stylesheet())
         btn.clicked.connect(self._on_btn_extraction_centerline)
         tabLayout.addWidget(btn)
-
 
         line = QFrame()
         line.setFrameShape(QFrame.Shape.HLine)
@@ -252,23 +279,17 @@ class CTabStateMain(tabState.CTabState) :
             guideCell.PolyData = retPoly
         self.m_mediator.update_viewer()
 
-
-    def setui_patientID(self, inx : int) :
-        self.m_cbPatientID.blockSignals(True)
-        self.m_cbPatientID.setCurrentIndex(inx)
-        self.m_cbPatientID.blockSignals(False)
-
-        patientID = self.getui_patientID()
-        self.m_mediator.set_title(patientID)
-    def setui_reset_patientID(self, listPatientID : str) :
-        self.m_cbPatientID.blockSignals(True)
-        self.m_cbPatientID.clear()
-        for patientID in listPatientID :
-            self.m_cbPatientID.addItem(f"{patientID}")
-        self.m_cbPatientID.blockSignals(False)
-        self.setui_patientID(0)
-    def setui_output_path(self, outputPath : str) :
-        self.m_editOutputPath.setText(outputPath)
+    # ui 
+    def setui_edit_input_path(self, inputPath : str) :
+        self.m_editInputPath.setText(inputPath)
+    def setui_edit_unzip_path(self, unzipPath : str) :
+        self.m_editUnzipPath.setText(unzipPath)
+    def setui_edit_huid_path(self, huidPath : str) :
+        self.m_editHuIDPath.setText(huidPath)
+    def setui_edit_option_path(self, optionPath : str) :
+        self.m_editOptionPath.setText(optionPath)
+    def setui_edit_outtemp_path(self, outtempPath : str) :
+        self.m_editOutputPath.setText(outtempPath)
     def setui_clear_clinfo(self) :
         self.m_tvCLInfo.blockSignals(True)
         self.m_modelCLInfo.removeRows(0, self.m_modelCLInfo.rowCount())
@@ -296,10 +317,16 @@ class CTabStateMain(tabState.CTabState) :
         self.m_editBoxCellID.setText(str(cellID))
     def setui_check_sel_cell(self, bCheck : bool) -> bool :
         self.m_checkSelectionStartCell.setChecked(bCheck)
-
-    def getui_patientID(self) -> str :
-        return self.m_cbPatientID.currentText()
-    def getui_output_path(self) -> str :
+    
+    def getui_edit_input_path(self) -> str :
+        return self.m_editInputPath.text()
+    def getui_edit_unzip_path(self) -> str :
+        return self.m_editUnzipPath.text()
+    def getui_edit_huid_path(self) -> str :
+        return self.m_editHuIDPath.text()
+    def getui_edit_option_path(self) -> str :
+        return self.m_editOptionPath.text()
+    def getui_edit_outtemp_path(self) -> str :
         return self.m_editOutputPath.text()
     def getui_clinfo_inx(self) -> int :
         '''
@@ -345,99 +372,72 @@ class CTabStateMain(tabState.CTabState) :
         except ValueError:
             cellID = -1
         return cellID
-
+    
     # command
-    def _command_option_path(self, optionFullPath : str) :
-        # 기존 ui reset
-        # optionInfo loading 
+    def command_option_path(self, optionFullPath : str) :
+        self._clear_optioninfo()
+        datainst = self.get_data()
 
-        dataInst = self.get_data()
-        self.m_mediator.remove_all_key()
-        dataInst.clear_patient()
-
-        self.m_editOptionPath.setText(optionFullPath)
-        self.setui_clear_clinfo()
-        self.setui_reset_patientID([])
-        self.setui_output_path("")
+        self.setui_edit_input_path("")
+        self.setui_edit_unzip_path("")
+        self.setui_edit_huid_path("")
+        self.setui_edit_outtemp_path("")
 
         if os.path.exists(optionFullPath) == False :
             QMessageBox.information(self.m_mediator, "Alarm", "not found option file")
-            self.m_editOptionPath.setText("")
-            dataInst.OptionInfo = None
+            optionFullPath = ""
+            datainst.OptionInfo = None
+        else :
+            optionInfoInst = optionInfo.COptionInfo(optionFullPath)
+            datainst.OptionInfo = optionInfoInst
+        self.setui_edit_option_path(optionFullPath)
+        self.m_mediator.update_viewer()
+    def command_input_zip_path(self, inputZipPath : str) :
+        '''
+        - 이 부분에서 반드시 data clear가 일어나야 되며, patientID와 outputTempPath가 세팅이 된 상태여야만 한다. 
+        '''
+        self._clear_patient()
+
+        self.setui_edit_input_path(inputZipPath)
+        self.setui_edit_unzip_path("")
+        self.setui_edit_huid_path("")
+        self.setui_edit_outtemp_path("")
+        if inputZipPath == "" :
             return
         
-        optionInfoInst = optionInfo.COptionInfo(optionFullPath)
-        dataInst.OptionInfo = optionInfoInst
-
-        self.m_mediator.update_viewer()
-    def _command_output_path(self, outputPath : str) :
-        dataInst = self.get_data()
-        self.m_mediator.remove_all_key()
-        dataInst.clear_patient()
-
-        dataInst.PatientID = ""
-        dataInst.OutputPath = ""
-
-        self.setui_output_path("")
-        self.setui_clear_clinfo()
-        self.setui_reset_patientID([])
-
-        optionInfoInst = self.get_optioninfo()
-        if optionInfoInst is None :
-            QMessageBox.information(self.m_mediator, "Alarm", "not found valid option")
+        datainst = self.get_data()
+        userdata = datainst.UserData
+        userdata.set_patient_zippath(inputZipPath)
+        folderInfo = userdata.MakeInputFolder
+        if folderInfo.Ready == False :
             return
+        
+        rootPath = folderInfo.DataRootPath
+        huid = folderInfo.PatientID
 
-        self.setui_output_path(outputPath)
+        self.setui_edit_unzip_path(rootPath)
+        self.setui_edit_huid_path(huid)
 
-        # patient info refresh 
-        retList = []
-
-        optionInfoInst = self.get_optioninfo()
-        if os.path.exists(optionInfoInst.DataRootPath) : 
-            listTmp = os.listdir(optionInfoInst.DataRootPath)
-            for patientID in listTmp :
-                patientFullPath = os.path.join(optionInfoInst.DataRootPath, patientID)
-                patientMaskFullPath = os.path.join(patientFullPath, "Mask")
-                if os.path.exists(patientMaskFullPath) == True :
-                    retList.append(patientID)
-
-        if os.path.exists(outputPath) == True :
-            listTmp = os.listdir(outputPath)
-            for patientID in listTmp :
-                patientFullPath = os.path.join(outputPath, patientID)
-                reconBlendFullPath = os.path.join(patientFullPath, f"{patientID}_recon.blend")
-                if os.path.exists(reconBlendFullPath) == True :
-                    retList.append(patientID)
-
-        # 중복되지 않게 한다.
-        retList = list(set(retList))
-        self.setui_reset_patientID(retList)
-
-        dataInst.OutputPath = self.getui_output_path()
-        dataInst.PatientID = self.getui_patientID()
-        self.m_mediator.set_title(dataInst.PatientID)
+        self.command_outtemp_path()
 
         self.m_mediator.update_viewer()
-    def _command_patientID(self) :
-        dataInst = self.get_data()
-        self.m_mediator.remove_all_key()
-        dataInst.clear_patient()
+    def command_outtemp_path(self) :
+        datainst = self.get_data()
 
-        dataInst.PatientID = self.getui_patientID()
-        self.m_mediator.set_title(dataInst.PatientID)
+        self.setui_edit_outtemp_path(datainst.OutputPatientPath)
+        huid = self.getui_edit_huid_path()
+
+        self.m_mediator.set_title(huid)
         self.m_mediator.update_viewer()
-    def _command_centerline(self) :
+    def command_centerline(self) :
+        self._clear_centerline()
         dataInst = self.get_data()
-        self.m_mediator.remove_all_key()
-        dataInst.clear_patient()
-
         if dataInst.Ready == False :
             QMessageBox.information(self.m_mediator, "Alarm", "please setting option, outputPath, patientID")
             return
 
-        patientID = dataInst.PatientID
-        outputPatientPath = dataInst.OutputPatientPath
-        blenderFullPath = os.path.join(outputPatientPath, f"{patientID}_recon.blend")
+        userData = dataInst.UserData
+        blenderFullPath = userData.OutputReconBlenderFullPath
 
         if os.path.exists(blenderFullPath) == False :
             QMessageBox.information(self.m_mediator, "Alarm", f"not found {os.path.basename(blenderFullPath)}")
@@ -447,7 +447,6 @@ class CTabStateMain(tabState.CTabState) :
         cmd.InputData = dataInst
         cmd.PatientBlenderFullPath = blenderFullPath
         cmd.process()
-        self.m_mediator.load_userdata()
 
         self.setui_clear_clinfo()
         iCnt = dataInst.get_skelinfo_count()
@@ -463,6 +462,9 @@ class CTabStateMain(tabState.CTabState) :
         dataInst.save(fullPath)
 
         self.m_btnCL.setEnabled(False)
+
+
+    # command
     def _command_clinfo_inx(self) :
         dataInst = self.get_data()
         self.m_mediator.unref_all_key()
@@ -534,45 +536,86 @@ class CTabStateMain(tabState.CTabState) :
         self.m_mediator.ref_key_type_groupID(data.CData.s_skelTypeCenterline, clinfoinx)
         self.m_mediator.update_viewer()
 
-        # QMessageBox.information(self.m_mediator, "Alarm", f"completed extracting centerline")
 
     # protected 
+    def _clear_optioninfo(self) :
+        datainst = self.get_data()
+        self.m_mediator.remove_all_key()
+        datainst.clear_optioninfo()
+    def _clear_patient(self) :
+        datainst = self.get_data()
+        self.m_mediator.remove_all_key()
+        datainst.clear_patient()
+    def _clear_centerline(self) :
+        datainst = self.get_data()
+        self.m_mediator.remove_all_key()
+        datainst.clear_centerline()
 
-    
+
     # ui event 
     def _on_btn_option_path(self) :
         self.m_btnCL.setEnabled(True)
-
         optionPath, _ = QFileDialog.getOpenFileName(self.get_main_widget(), "Select Option File", "", "JSON Files (*.json)")
         if optionPath == "" :
             return
-        
-        self._command_option_path(optionPath)
-    def _on_btn_output_path(self) :
+        self.command_option_path(optionPath)
+    def _on_btn_input_zip_path(self) :
         self.m_btnCL.setEnabled(True)
+        datainst = self.get_data()
+        if datainst.OptionInfo is None :
+            QMessageBox.information(self.m_mediator, "Alarm", "please setting option file")
+            return 
 
-        outputPath = QFileDialog.getExistingDirectory(self.get_main_widget(), "Selection Output Path")
-        self._command_output_path(outputPath)
+        inputPath = QFileDialog.getExistingDirectory(self.get_main_widget(), "Select Zip Folder")
+        self.command_input_zip_path(inputPath)
     def _on_btn_recon(self) :
-        if self.getui_patientID() == "" :
+        if self.getui_edit_huid_path() == "" :
             print("not selection patientID")
             return
-        if self.getui_output_path() == "" :
+        if self.getui_edit_outtemp_path() == "" :
             print("not setting output path")
             return 
         
-        userData = self.m_mediator.ReconUserData
-        if userData is not None :
-            userData.override_recon()
-            QMessageBox.information(self.m_mediator, "Alarm", f"completed reconstruction")
+        datainst = self.get_data()
+        userdata = datainst.UserData
+        if userdata is not None :
+            userdata.override_recon()
         else :
-            QMessageBox.information(self.m_mediator, "Alarm", f"failed reconstruction")
+            QMessageBox.information(self.m_mediator, "Alarm", f"failed reconstruction : not setting userdata")
+    def _on_btn_individual_recon(self) :
+        if self.getui_edit_huid_path() == "" :
+            print("not selection patientID")
+            return
+        if self.getui_edit_outtemp_path() == "" :
+            print("not setting output path")
+            return 
+        
+        datainst = self.get_data()
+        userdata = datainst.UserData
+        if userdata is None :
+            print("not setting userdata")
+            return
+
+        if os.path.exists(userdata.OutputReconBlenderFullPath) == False :
+            QMessageBox.information(self.m_mediator, "Alarm", f"must be reconstructed")
+            return
+        
+        optioninfo = self.get_optioninfo()
+        phaseNameList = optioninfo.get_phase_list()
+        
+        dlg = dlgCommon.CDlgIndividualReconInfo(self.m_mediator, phaseNameList)
+        result = dlg.exec()
+
+        if result == QDialog.Accepted :
+            userdata.override_individual_recon(dlg.PhaseInfo)
+        else :
+            print("Cancel 클릭")
     def _on_btn_centerline(self) :
         dataInst = self.get_data()
         if dataInst.Ready == False :
             print("not setting option, outputPath, patientID")
             return
-        self._command_centerline()
+        self.command_centerline()
     def _on_btn_clean(self) :
         if self.getui_patientID() == "" :
             print("not selection patientID")
@@ -584,15 +627,6 @@ class CTabStateMain(tabState.CTabState) :
         userData = self.m_mediator.ReconUserData
         if userData is not None :
             userData.override_clean()
-        
-    def _on_cb_patientID_changed(self, index) :
-        self.m_btnCL.setEnabled(True)
-
-        patientID = self.getui_patientID()
-        if patientID == "" :
-            print("not selection patientID")
-            return
-        self._command_patientID()
     def _on_tv_clicked_clinfo(self, index) :
         dataInst = self.get_data()
         if dataInst.Ready == False :
@@ -659,6 +693,33 @@ class CTabStateMain(tabState.CTabState) :
         dataInst = self.get_data()
         guideObj = dataInst.find_obj_by_key(guideKey)
         return guideObj
+    
+
+    # slot
+    def slot_drop_option_path(self, optionFullPath : str) :
+        self.setui_edit_option_path("")
+
+        if os.path.exists(optionFullPath) == False :
+            return
+        if optionFullPath.lower().endswith(".json") == False :
+            return
+        
+        self.m_btnCL.setEnabled(True)
+        self.command_option_path(optionFullPath)
+    def slot_drop_input_zip_path(self, inputZipFolderPath : str) :
+        inputZipFolderPath = os.path.normpath(inputZipFolderPath)
+        if os.path.exists(inputZipFolderPath) == False :
+            return
+        if os.path.isdir(inputZipFolderPath) == False :
+            return
+        
+        self.m_btnCL.setEnabled(True)
+        datainst = self.get_data()
+        if datainst.OptionInfo is None :
+            QMessageBox.information(self.m_mediator, "Alarm", "please setting option file")
+            return 
+
+        self.command_input_zip_path(inputZipFolderPath)
 
 
 if __name__ == '__main__' :

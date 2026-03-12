@@ -69,7 +69,7 @@ class CRemoveStricture(multiProcessTask.CMultiProcessTaskProgress) :
             paramCnt += 1
         
         if paramCnt == 0 :
-            print("passed removed vessel stricture")
+            #print("passed removed vessel stricture")
             return
         
         #super().process(self._task, listParam)

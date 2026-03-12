@@ -50,7 +50,7 @@ class CMeshBoolean() :
         
         iBooleanCnt = self.InputOptionInfo.get_mesh_boolean_count()
         if iBooleanCnt == 0 :
-            print("not found mesh boolean list")
+            #print("not found mesh boolean list")
             return
         
         for inx in range(0, iBooleanCnt) :
@@ -84,7 +84,8 @@ class CMeshBoolean() :
             else :
                 print(f"Invalide Operator : {operator}")
                 continue
-
+            
+            retMesh = algMeshLib.CMeshLib.meshlib_healing(retMesh, bFill=False)
             algMeshLib.CMeshLib.meshlib_save_stl(outStlFullPath, retMesh)
             print(f"completed boolean : {blenderName0} {operator} {blenderName1} --> {outBlenderName}")
 

@@ -67,6 +67,10 @@ class CCommandLoadingPatient(commandInterface.CCommand) :
             self._new_patient()
         else :
             self._load_patient()
+        
+        userdata = self.InputData.UserData
+        if userdata is not None :
+            userdata.override_load_centerline()
 
     
     def _check_saved_data(self) -> bool :

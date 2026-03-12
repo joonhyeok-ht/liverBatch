@@ -97,7 +97,7 @@ import state.project.common.userDataCommon as userDataCommon
 # import state.project.lung.userDataLung as userDataLung
 import state.project.liver.userDataLiver as userDataLiver
 # import state.project.colon.userDataColon as userDataColon
-
+import ui.uiDragDrop as uiDragDrop
 
 class COutputRedirector :
     def __init__(self, listWidget) :
@@ -114,52 +114,6 @@ class CTestApp(QMainWindow) :
     # 일단 하드코딩 
     s_titleToken = "hu3D 제작도구 - "
     s_projectTypeInfo = {
-        # "Common" : {
-        #     "TabInfo" : [
-        #         {"TabName" : "Patient Info", "TabInst" : tabStateMain.CTabStateMain},
-        #         {"TabName" : "Edit", "TabInst" : tabStateSkelEdit.CTabStateSkelEdit},
-        #         # {"TabName" : "Territory", "TabInst" : tabStateCommonTerritory.CTabStateCommonTerritory},
-        #         # {"TabName" : "Labeling", "TabInst" : tabStateSkelEditLabeling.CTabStateSkelLabeling},
-        #         # {"TabName" : "Territory", "TabInst" : tabStateTerritory.CTabStateTerritory},
-        #         # {"TabName" : "Territory Enhanced", "TabInst" : tabStateTerritoryEnhanced.CTabStateTerritoryEnhanced},
-        #         {"TabName" : "VesselRemodeling", "TabInst" : tabStateVesselRemodeling.CTabStateVesselRemodeling},
-        #     ],
-        #     "UserDataKey" : userDataCommon.CUserDataCommon.s_userDataKey,
-        #     "UserDataInst" : userDataCommon.CUserDataCommon
-        # },
-        # "Stomach" : {
-        #     "TabInfo" : [
-        #         {"TabName" : "Patient Info", "TabInst" : tabStateMain.CTabStateMain},
-        #         {"TabName" : "Edit", "TabInst" : tabStateSkelEdit.CTabStateSkelEdit},
-        #         {"TabName" : "Vessel Labeling", "TabInst" : tabStateStomachVesselLabeling.CTabStateStomachVesselLabeling},
-        #         {"TabName" : "Vessel Cutting", "TabInst" : tabStateStomachVesselKnife.CTabStateStomachVesselKnife},
-        #         {"TabName" : "Vessel Remodeling", "TabInst" : tabStateVesselRemodeling.CTabStateVesselRemodeling},
-        #     ],
-        #     "UserDataKey" : userDataStomach.CUserDataStomach.s_userDataKey,
-        #     "UserDataInst" : userDataStomach.CUserDataStomach
-        # },
-        # "Kidney" : {
-        #     "TabInfo" : [
-        #         {"TabName" : "Patient Info", "TabInst" : tabStateMain.CTabStateMain},
-        #         {"TabName" : "Edit", "TabInst" : tabStateSkelEdit.CTabStateSkelEdit},
-        #         {"TabName" : "Labeling", "TabInst" : tabStateSkelEditLabeling.CTabStateSkelLabeling},
-        #         {"TabName" : "Territory", "TabInst" : tabStateTerritory.CTabStateTerritory},
-        #         {"TabName" : "Kidney-Tumor Separation", "TabInst" : tabStateKidneySepTest.CTabStateKidneySepTest},
-        #     ],
-        #     "UserDataKey" : userDataKidney.CUserDataKidney.s_userDataKey,
-        #     "UserDataInst" : userDataKidney.CUserDataKidney
-        # },
-        # "Lung" : {
-        #     "TabInfo" : [
-        #         {"TabName" : "Patient Info", "TabInst" : tabStateMain.CTabStateMain},
-        #         {"TabName" : "Edit", "TabInst" : tabStateSkelEdit.CTabStateSkelEdit},
-        #         {"TabName" : "Labeling", "TabInst" : tabStateSkelEditLabeling.CTabStateSkelLabeling},
-        #         {"TabName" : "Territory", "TabInst" : tabStateTerritory.CTabStateTerritory},
-        #         {"TabName" : "VesselRemodeling", "TabInst" : tabStateVesselRemodeling.CTabStateVesselRemodeling},
-        #     ],
-        #     "UserDataKey" : userDataLung.CUserDataLung.s_userDataKey,
-        #     "UserDataInst" : userDataLung.CUserDataLung
-        # },
         "Liver" : {
             "TabInfo" : [
                 {"TabName" : "Patient Info", "TabInst" : tabStatePatientLiver.CTabStatePatient},
@@ -172,17 +126,6 @@ class CTestApp(QMainWindow) :
             "UserDataKey" : userDataLiver.CUserDataLiver.s_userDataKey,
             "UserDataInst" : userDataLiver.CUserDataLiver
         }
-        # "Colon" : {
-        #     "TabInfo" : [
-        #         {"TabName" : "Patient Info", "TabInst" : tabStateColonMain.CTabStateColonMain},
-        #         {"TabName" : "Edit", "TabInst" : tabStateSkelEdit.CTabStateSkelEdit},
-        #         # {"TabName" : "Colon Merge", "TabInst" : tabStateColonMerge.CTabStateColonMerge},
-        #         {"TabName" : "Colon Merge En", "TabInst" : tabStateColonMergeEn.CTabStateColonMerge},
-        #         {"TabName" : "Vessel Cutting", "TabInst" : tabStateColonVesselCutting.CTabStateColonVesselCutting},
-        #     ],
-        #     "UserDataKey" : userDataColon.CUserDataColon.s_userDataKey,
-        #     "UserDataInst" : userDataColon.CUserDataColon
-        # },
     }
 
     def __init__(self, width : int, height : int) :
@@ -277,6 +220,7 @@ QPushButton {
 
 
         self.m_data = data.CData()
+        self.Data.UserData = CTestApp.s_projectTypeInfo[self.m_projectType]["UserDataInst"](self.Data, self)
         self.m_listUndoCmd = []
         self.m_listRedoCmd = []
 
@@ -440,6 +384,30 @@ QPushButton {
         for cb in retList :
             layout.addWidget(cb)
         return (layout, retList)
+    def create_layout_label_dropeditbox_btn(
+            self, 
+            title : str, bReadOnly : bool = False, btnTitle : str = "",
+            placeHolderText="Drop File Here", slotFunc=None
+            ) -> tuple :
+        '''
+        input
+            - slocFunc : slot_drop_path(fullPath : str)
+        ret : (QHBoxLayout, uiDragDrop.CUIDragDropLineEdit, QPushButton)
+        '''
+        layout = QHBoxLayout()
+        label = QLabel(title)
+        label.setStyleSheet("QLabel { margin-top: 1px; margin-bottom: 1px; }")
+        label.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
+        editBox = uiDragDrop.CUIDragDropLineEdit(placeHolderText)
+        editBox.setReadOnly(bReadOnly)
+        editBox.signal_drop_path = slotFunc
+        btn = QPushButton(btnTitle)
+        btn.setStyleSheet(self.m_styleSheetBtn)
+        layout.addWidget(label)
+        layout.addWidget(editBox)
+        layout.addWidget(btn)
+        return (layout, editBox, btn)
+
 
     def add_cmd(self, cmd : commandInterface.CCommand) :
         self.m_listUndoCmd.append(cmd)
@@ -1328,7 +1296,7 @@ def run():
         print("Version File Not Exists.")
 
     guiWindow = CTestApp(1920, 1080)
-    guiWindow.setWindowTitle(f"stomach Service Batch {verstr}")
+    guiWindow.setWindowTitle(f"liver Service Batch {verstr}")
     guiWindow.show()
     sys.exit(app.exec())
 

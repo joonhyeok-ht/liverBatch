@@ -53,7 +53,7 @@ class CCommandExportInterface(commandInterface.CCommand) :
 import bpy
 import os
 listObjName = [{tmpStr}]
-outputPath = '{outExportPath}'
+outputPath = r'{outExportPath}'
 for objName in listObjName :
     if objName in bpy.data.objects:
         bpy.ops.object.mode_set(mode='OBJECT')

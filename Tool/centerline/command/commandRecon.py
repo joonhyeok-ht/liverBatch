@@ -40,52 +40,17 @@ import commandInterface as commandInterface
 class CCommandReconInterface(commandInterface.CCommand) :
     '''
     Desc : Reconstruction Step의 Command들을 정의 
-
-    ## input ##
-    InputPatientID : patientID
-    InputBlenderScriptFileName : 실행해야 할 blender script 파일명 (ex : blenderScriptRecon, 확장자 제외)
-    InputSaveBlenderName : 저장되는 blender 파일명 (ex : 0058HV)
-
-    ## output ##
-    blender file 
-
-    ## property ##
-    ProgramPath : 프로그램 폴더 반환, 프로그램 실행파일은 반드시 option 파일과 동일 경로에 있어야 된다. 
-    DataRootPath : mask를 포함하는 PatientID 상위 폴더의 절대 경로
-    BlenderExe : option 파일 내에 정의된 BlenderExe
-    ScriptFullPath : blender가 실행해야 할 script 파일의 절대 경로 
-    PatientPath : mask를 포함하는 PatientID 폴더의 절대 경로
     '''
 
     @staticmethod
-    def _remove_path(path : str) :
+    def remove_path(path : str) :
         if os.path.exists(path) == False :
             return
         try :
             shutil.rmtree(path)
         except OSError as e:
             print(f"Error: {e}")
-    @staticmethod
-    def blender_process_load(blenderExe : str, blenderFullPath : str) :
-        cmd = f"{blenderExe} {blenderFullPath}"
-        os.system(cmd)
-    @staticmethod
-    def blender_process(blenderExe : str, scriptFullPath : str, optionFullPath : str, inputPath : str, outputPath : str, saveName : str, bBackground : bool = False) :
-        saveName = f"{saveName}.blend"
-        if bBackground == False :
-            cmd = f"{blenderExe} --python {scriptFullPath} -- --optionFullPath {optionFullPath} --inputPath {inputPath} --outputPath {outputPath} --saveName {saveName}"
-        else :
-            cmd = f"{blenderExe} -b --python {scriptFullPath} -- --optionFullPath {optionFullPath} --inputPath {inputPath} --outputPath {outputPath} --saveName {saveName}"
-        os.system(cmd)
-    @staticmethod
-    def blender_process_load_script(blenderExe : str, blenderFullPath : str, scriptFullPath : str, optionFullPath : str, inputPath : str, outputPath : str, saveName : str, bBackground : bool = False) :
-        saveName = f"{saveName}.blend"
-        blenderFullPath = os.path.join(outputPath, saveName)
-        if bBackground == False :
-            cmd = f"{blenderExe} {blenderFullPath} --python {scriptFullPath} -- --optionFullPath {optionFullPath} --inputPath {inputPath} --outputPath {outputPath} --saveName {saveName}"
-        else :
-            cmd = f"{blenderExe} -b {blenderFullPath} --python {scriptFullPath} -- --optionFullPath {optionFullPath} --inputPath {inputPath} --outputPath {outputPath} --saveName {saveName}"
-        os.system(cmd)
+
 
     s_phaseInfoFileName = "phaseInfo"
 
@@ -93,12 +58,8 @@ class CCommandReconInterface(commandInterface.CCommand) :
     def __init__(self, mediator) :
         super().__init__(mediator)
         # input your code
-        self.m_inputBlenderScritpFullPath = ""
-        # self.m_inputSaveBlenderName = ""
     def clear(self) :
         # input your code
-        self.m_inputBlenderScritpFullPath = ""
-        # self.m_inputSaveBlenderName = ""
         super().clear()
     def process(self) :
         super().process()
@@ -106,33 +67,9 @@ class CCommandReconInterface(commandInterface.CCommand) :
 
 
     # protected 
-    # @property
-    # def InputSaveBlenderName(self, saveBlenderName : str) :
-    #     return self.m_inputSaveBlenderName 
-    # @InputSaveBlenderName.setter
-    # def InputSaveBlenderName(self, saveBlenderName : str) :
-    #     self.m_inputSaveBlenderName = saveBlenderName
-    @property
-    def InputBlenderScritpFullPath(self) -> str :
-        return self.m_inputBlenderScritpFullPath
-    @InputBlenderScritpFullPath.setter
-    def InputBlenderScritpFullPath(self, inputBlenderScritpFullPath : str) :
-        self.m_inputBlenderScritpFullPath = inputBlenderScritpFullPath
-    
     @property
     def PhaseInfoFullPath(self) -> str :
         return os.path.join(self.InputData.OutputPatientPath, f"{CCommandReconInterface.s_phaseInfoFileName}.json")
-    
-
-    # @property
-    # def ProgramPath(self) -> str :
-    #     return self.InputData.OptionInfoPath
-    # @property
-    # def DataRootPath(self) -> str :
-    #     return self.InputData.OptionInfo.DataRootPath
-    # @property
-    # def BlenderExe(self) -> str :
-    #     return self.OptionInfo.BlenderExe
         
 
 class CCommandRecon(CCommandReconInterface) :
@@ -150,8 +87,12 @@ class CCommandRecon(CCommandReconInterface) :
     def __init__(self, mediator) :
         super().__init__(mediator)
         # input your code
+        self.m_inputMaskPath = ""
+        self.m_outputPath = ""
     def clear(self) :
         # input your code 
+        self.m_inputMaskPath = ""
+        self.m_outputPath = ""
         return super().clear()
     def process(self) :
         super().process()
@@ -164,11 +105,11 @@ class CCommandRecon(CCommandReconInterface) :
         listPhase = optioninfo.get_phase_list()
 
         phaseInst = niftiContainer.CPhase()
-        
+
         for phase in listPhase :
             listMask = optioninfo.get_phase_mask_list(phase)
             for mask in listMask :
-                maskFullPath = os.path.join(self.CopiedMaskPath, f"{mask}.nii.gz")
+                maskFullPath = os.path.join(self.InputMaskPath, f"{mask}.nii.gz")
                 if os.path.exists(maskFullPath) == False :
                     continue
 
@@ -207,21 +148,17 @@ class CCommandRecon(CCommandReconInterface) :
         
 
     @property
-    def MaskPath(self) -> str :
-        optioninfo = self.OptionInfo
-        patientID = self.InputData.PatientID
-        patientPath = os.path.join(patientID, "Mask")
-        return os.path.join(optioninfo.DataRootPath, patientPath)
+    def InputMaskPath(self) -> str :
+        return self.m_inputMaskPath
+    @InputMaskPath.setter
+    def InputMaskPath(self, inputMaskPath : str) :
+        self.m_inputMaskPath = inputMaskPath
     @property
-    def CopiedMaskPath(self) -> str :
-        outputPatientPath = self.InputData.OutputPatientPath
-        fullPath = os.path.join(outputPatientPath, "Mask")
-        return fullPath
-    @property
-    def ResultPath(self) -> str :
-        outputPatientPath = self.InputData.OutputPatientPath
-        fullPath = os.path.join(outputPatientPath, "Result")
-        return fullPath
+    def OutputPath(self) -> str :
+        return self.m_outputPath
+    @OutputPath.setter
+    def OutputPath(self, outputPath : str) :
+        self.m_outputPath = outputPath
     
 
 class CCommandReconDevelopClean(CCommandReconInterface) :
@@ -248,9 +185,9 @@ class CCommandReconDevelopClean(CCommandReconInterface) :
         inputPath = self.InputData.OutputPatientPath
         outputPath = self.InputData.OutputPatientPath
 
-        patientID = self.InputData.PatientID
-        saveName = f"{patientID}"
-        blenderFullPath = os.path.join(outputPath, f"{saveName}.blend")
+        blenderFullPath = self.PatientBlenderFullPath
+        saveName = os.path.basename(blenderFullPath)
+        saveName = saveName.split('.')[0]
 
         CCommandReconInterface.blender_process_load_script(blenderExe, blenderFullPath, scriptFullPath, self.InputData.OptionInfo.m_jsonPath, inputPath, outputPath, saveName, False)
 

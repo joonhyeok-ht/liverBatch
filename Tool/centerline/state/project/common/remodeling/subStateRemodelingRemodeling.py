@@ -355,6 +355,7 @@ class CSubStateRemodelingRemodeling(subStateRemodeling.CSubStateRemodeling) :
             self.m_comDrag.InputSkeleton = cuttedNode.SkeletonEn
             self.m_comDrag.InputSkelGroupID = cuttedNode.SkelGroupID
             self.m_comDrag.process_init()
+            self.m_comDrag.m_enSkeleton = True
 
 
 

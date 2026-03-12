@@ -345,7 +345,7 @@ class CTabStateSkelLabelingLiver(tabState.CTabState) :
                     textObj.Text = "main"
                 
         ketList = dataInst.find_key_list_by_type_groupID(dataInst.s_skelTypeCenterline, clinfoInx)
-        self.m_opSelectionCL._color_setting(ketList, dataInst.RootCLColor, dataInst.CLColor)
+        self.m_opSelectionCL._color_setting(ketList, dataInst.s_rootCLColor, dataInst.CLColor)
         self.m_mediator.update_viewer()
 
 
@@ -538,7 +538,7 @@ class CTabStateSkelLabelingLiver(tabState.CTabState) :
                     textObj.Text = ""
                     
             ketList = dataInst.find_key_list_by_type_groupID(dataInst.s_skelTypeCenterline, clinfoInx)
-            self.m_opSelectionCL._color_setting(ketList, dataInst.RootCLColor, dataInst.CLColor)
+            self.m_opSelectionCL._color_setting(ketList, dataInst.s_rootCLColor, dataInst.CLColor)
         self.m_mediator.update_viewer()
 
     # private

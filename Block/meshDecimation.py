@@ -16,7 +16,7 @@ import optionInfo as optionInfo
    
 
 
-class CMeshHealing() :
+class CMeshDecimation() :
     @staticmethod
     def get_meshlib(vtkMeshInst : vtk.vtkPolyData) :
         npVertex = algVTK.CVTK.poly_data_get_vertex(vtkMeshInst)
@@ -47,28 +47,24 @@ class CMeshHealing() :
             #print("Mesh Healing : not setting input option info")
             return 
         
-        iHealingCnt = self.InputOptionInfo.get_mesh_healing_count()
-        if iHealingCnt == 0 :
+        iDeciCnt = self.InputOptionInfo.get_mesh_decimation_count()
+        if iDeciCnt == 0 :
             #print("not found mesh healing list")
             return
         
-        for inx in range(0, iHealingCnt) :
-            stlName, bFill = self.InputOptionInfo.get_mesh_healing(inx)
-            if bFill > 0 :
-                bFill = True
-            else :
-                bFill = False
-
+        for inx in range(0, iDeciCnt) :
+            stlName, triCnt = self.InputOptionInfo.get_mesh_decimation(inx)
             stlFullPath = os.path.join(self.InputPath, f"{stlName}.stl")
+
             if os.path.exists(stlFullPath) == False :
                 #print(f"not found stl file : {stlName}")
                 continue
 
             mesh = algMeshLib.CMeshLib.meshlib_load_stl(stlFullPath)
-            mesh = algMeshLib.CMeshLib.meshlib_healing(mesh, bFill)
+            mesh = algMeshLib.CMeshLib.meshlib_decimation(mesh, triCnt)
             algMeshLib.CMeshLib.meshlib_save_stl(stlFullPath, mesh)
 
-            #print(f"completed healing : {stlName}")
+            #print(f"completed decimation : {stlName}")
 
 
     @property

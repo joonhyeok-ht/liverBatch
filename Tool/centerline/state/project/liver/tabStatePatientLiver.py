@@ -71,29 +71,10 @@ import Algorithm.scoUtil as scoUtil
 from Algorithm.scoReg import CRegTransform
 from PySide6.QtGui import QMovie
 import Block.optionInfo as optionInfo
+import Block.makeInputFolder as makeInputFolder
 import AlgUtil.algSkeletonGraph as algSkeletonGraph
-
-class CSVPopup(QDialog):
-    def __init__(self, csv_data, parent=None):
-        super().__init__(parent)
-        self.setWindowTitle("Integrity Table")
-
-        layout = QVBoxLayout(self)
-        table = QTableWidget(self)
-
-        if csv_data:
-            row_count = len(csv_data)
-            col_count = len(csv_data[0])
-
-            table.setRowCount(row_count)
-            table.setColumnCount(col_count)
-
-            for row_idx, row in enumerate(csv_data):
-                for col_idx, value in enumerate(row):
-                    table.setItem(row_idx, col_idx, QTableWidgetItem(value))
-
-        layout.addWidget(table)
-        self.setLayout(layout)
+import dlgCommon as dlgCommon
+from pathlib import Path
 
 class LoadingWorkerThread(QThread):
     result_ready = Signal(object)
@@ -266,84 +247,84 @@ class SliceIDInputDialog(QDialog):
         except:
             return 0
 
-class WorkerThread(QThread):
-    progress_changed = Signal(int, str)
-    finished = Signal()
-    canceled = Signal()
+# class WorkerThread(QThread):
+#     progress_changed = Signal(int, str)
+#     finished = Signal()
+#     canceled = Signal()
 
-    def __init__(self, inst):
-        super().__init__()
-        self._is_interrupted = False
-        self.inst = inst
+#     def __init__(self, inst):
+#         super().__init__()
+#         self._is_interrupted = False
+#         self.inst = inst
 
-    def run(self):
-        try:
-            self.inst.progress_callback = self.progress_callback
-            self.inst.is_interrupted = lambda: self._is_interrupted
-            success = self.inst.process()
-            if not success:
-                self.canceled.emit()
-            else:
-                self.finished.emit()
-        except Exception as e:
-            print(f"[WorkerThread] 예외 발생: {e}")
-            self.canceled.emit()
+#     def run(self):
+#         try:
+#             self.inst.progress_callback = self.progress_callback
+#             self.inst.is_interrupted = lambda: self._is_interrupted
+#             success = self.inst.process()
+#             if not success:
+#                 self.canceled.emit()
+#             else:
+#                 self.finished.emit()
+#         except Exception as e:
+#             print(f"[WorkerThread] 예외 발생: {e}")
+#             self.canceled.emit()
 
-    def progress_callback(self, value, status=""):
-        self.progress_changed.emit(value, status)
+#     def progress_callback(self, value, status=""):
+#         self.progress_changed.emit(value, status)
 
-    def cancel(self):
-        self._is_interrupted = True
+#     def cancel(self):
+#         self._is_interrupted = True
 
 
-class ProgressWindow(QDialog):
-    def __init__(self, parent, inst):
-        super().__init__(parent)
-        self.setWindowTitle("Processing...")
-        self.setFixedSize(300, 120)
+# class ProgressWindow(QDialog):
+#     def __init__(self, parent, inst):
+#         super().__init__(parent)
+#         self.setWindowTitle("Processing...")
+#         self.setFixedSize(300, 120)
 
-        layout = QVBoxLayout(self)
+#         layout = QVBoxLayout(self)
 
-        self.progress_bar = QProgressBar()
-        self.progress_bar.setMinimum(0)
-        self.progress_bar.setMaximum(100)
-        layout.addWidget(self.progress_bar)
+#         self.progress_bar = QProgressBar()
+#         self.progress_bar.setMinimum(0)
+#         self.progress_bar.setMaximum(100)
+#         layout.addWidget(self.progress_bar)
 
-        self.status_label = QLabel("Loading ...")
-        layout.addWidget(self.status_label)
+#         self.status_label = QLabel("Loading ...")
+#         layout.addWidget(self.status_label)
 
-        self.cancel_button = QPushButton("Cancel")
-        self.cancel_button.clicked.connect(self.cancel_task)
-        layout.addWidget(self.cancel_button)
+#         self.cancel_button = QPushButton("Cancel")
+#         self.cancel_button.clicked.connect(self.cancel_task)
+#         layout.addWidget(self.cancel_button)
 
-        self._was_canceled = False
-        self._done = False
+#         self._was_canceled = False
+#         self._done = False
 
-        self.worker = WorkerThread(inst)
-        self.worker.progress_changed.connect(self.update_progress, Qt.QueuedConnection)
-        self.worker.finished.connect(self.on_finished)
-        self.worker.canceled.connect(self.on_canceled)
-        self.worker.start()
+#         self.worker = WorkerThread(inst)
+#         self.worker.progress_changed.connect(self.update_progress, Qt.QueuedConnection)
+#         self.worker.finished.connect(self.on_finished)
+#         self.worker.canceled.connect(self.on_canceled)
+#         self.worker.start()
 
-    def update_progress(self, value: int, status: str):
-        self.progress_bar.setValue(value)
-        self.status_label.setText(status)
+#     def update_progress(self, value: int, status: str):
+#         self.progress_bar.setValue(value)
+#         self.status_label.setText(status)
 
-    def cancel_task(self):
-        self._was_canceled = True
-        self.worker.cancel()
+#     def cancel_task(self):
+#         self._was_canceled = True
+#         self.worker.cancel()
 
-    def on_finished(self):
-        if self._done:
-            return
-        self._done = True
-        self.accept()
+#     def on_finished(self):
+#         if self._done:
+#             return
+#         self._done = True
+#         self.accept()
 
-    def on_canceled(self):
-        if self._done:
-            return
-        self._done = True
-        self.reject()
+#     def on_canceled(self):
+#         if self._done:
+#             return
+#         self._done = True
+#         self.reject()
 
 
 class CTabStatePatient(tabState.CTabState):
@@ -472,7 +453,8 @@ class CTabStatePatient(tabState.CTabState):
             )
             if os.path.exists(self.m_optionFullPath) == False:
                 self.m_optionFullPath = ""
-
+                
+        self.command_option_path(self.m_optionFullPath)
         # sally : 아래 두 루틴은 _chaged_unzip_path() 안으로 옮김. 0526
         # self._command_option_path()
         # self._command_patientID()
@@ -487,44 +469,26 @@ class CTabStatePatient(tabState.CTabState):
         label.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
         tabLayout.addWidget(label)
 
-        # sally
-        layout, self.m_editInputPath, btn = (
-            self.m_mediator.create_layout_label_editbox_btn("Input", False, "..")
-        )
-        btn.clicked.connect(self._on_btn_input_zip_path)
-        tabLayout.addLayout(layout)
-        # sally
-        layout, self.m_editUnzipPath, btn = (
-            self.m_mediator.create_layout_label_editbox_btn("Output", False, "..")
-        )
-        btn.clicked.connect(self._on_btn_unzip_path)
-        tabLayout.addLayout(layout)
-
-        line = QFrame()
-        line.setFrameShape(QFrame.Shape.HLine)
-        line.setFrameShadow(QFrame.Shadow.Sunken)
-        tabLayout.addWidget(line)
-
-        layout, self.m_editOptionPath, btn = (
-            self.m_mediator.create_layout_label_editbox_btn("Option", False, "..")
-        )
+        layout, self.m_editOptionPath, btn = self.m_mediator.create_layout_label_dropeditbox_btn(
+            "Option", False, "..",
+            placeHolderText="Drag&Drop Option File", slotFunc=self.slot_drop_option_path
+            )
         btn.clicked.connect(self._on_btn_option_path)
         tabLayout.addLayout(layout)
-
-        layout, self.m_editOutputPath, btn = (
-            self.m_mediator.create_layout_label_editbox_btn(
-                f"{CTabStatePatient.s_intermediatePathAlias}", False, ".."
+        # sally
+        layout, self.m_editInputPath, btn = self.m_mediator.create_layout_label_dropeditbox_btn(
+            "Input", False, "..",
+            placeHolderText="Drag&Drop Patient Zip Folder", slotFunc=self.slot_drop_input_zip_path
             )
-        )
-        btn.clicked.connect(
-            self._on_btn_output_temp_path
-        )  # rename output -> media (sally)
+        btn.clicked.connect(self._on_btn_input_zip_path)
         tabLayout.addLayout(layout)
 
-        layout, self.m_cbPatientID = self.m_mediator.create_layout_label_combobox(
-            "PatientID"
-        )
-        self.m_cbPatientID.currentIndexChanged.connect(self._on_cb_patientID_changed)
+        # sally
+        layout, self.m_editUnzipPath = self.m_mediator.create_layout_label_editbox("Output", False)
+        tabLayout.addLayout(layout) 
+        layout, self.m_editHuIDPath = self.m_mediator.create_layout_label_editbox("HuIDIn", False)
+        tabLayout.addLayout(layout) 
+        layout, self.m_editOutputPath = self.m_mediator.create_layout_label_editbox(f"{CTabStatePatient.s_intermediatePathAlias}", False)
         tabLayout.addLayout(layout)
 
         line = QFrame()
@@ -544,6 +508,18 @@ class CTabStatePatient(tabState.CTabState):
             btnList[inx].clicked.connect(self.m_listStepBtnEvent[inx])
         tabLayout.addLayout(layout)
         #self.m_btnCL = btnList[2]
+        
+        label = QLabel("-- Individual Reconstruction STEP --")
+        label.setStyleSheet("QLabel { margin-top: 1px; margin-bottom: 1px; }")
+        label.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
+        tabLayout.addWidget(label)
+
+        layout = QHBoxLayout()
+        btn = QPushButton("Individual Recon")
+        btn.setStyleSheet(self.get_btn_stylesheet())
+        btn.clicked.connect(self._on_btn_individual_recon)
+        layout.addWidget(btn)
+        tabLayout.addLayout(layout)
 
         line = QFrame()
         line.setFrameShape(QFrame.Shape.HLine)
@@ -758,21 +734,17 @@ class CTabStatePatient(tabState.CTabState):
     def setui_cellID(self, cellID : int) :
         self.m_editBoxCellID.setText(str(cellID))
 
-    def setui_patientID(self, inx: int):
-        self.m_cbPatientID.blockSignals(True)
-        self.m_cbPatientID.setCurrentIndex(inx)
-        self.m_cbPatientID.blockSignals(False)
-
-    def setui_reset_patientID(self, listPatientID: str):
-        self.m_cbPatientID.blockSignals(True)
-        self.m_cbPatientID.clear()
-        for patientID in listPatientID:
-            self.m_cbPatientID.addItem(f"{patientID}")
-        self.m_cbPatientID.blockSignals(False)
-        self.setui_patientID(0)
-
-    def setui_output_path(self, outputPath: str):
-        self.m_editOutputPath.setText(outputPath)
+    # ui 
+    def setui_edit_input_path(self, inputPath : str) :
+        self.m_editInputPath.setText(inputPath)
+    def setui_edit_unzip_path(self, unzipPath : str) :
+        self.m_editUnzipPath.setText(unzipPath)
+    def setui_edit_huid_path(self, huidPath : str) :
+        self.m_editHuIDPath.setText(huidPath)
+    def setui_edit_option_path(self, optionPath : str) :
+        self.m_editOptionPath.setText(optionPath)
+    def setui_edit_outtemp_path(self, outtempPath : str) :
+        self.m_editOutputPath.setText(outtempPath)
         
     def setui_clinfo_inx(self, inx : int) :
         QIndex = self.m_modelCLInfo.index(inx, 0)
@@ -818,10 +790,15 @@ class CTabStatePatient(tabState.CTabState):
         result.sort()
         return result
     
-    def getui_patientID(self) -> str:
-        return self.m_cbPatientID.currentText()
-
-    def getui_output_path(self) -> str:
+    def getui_edit_input_path(self) -> str :
+        return self.m_editInputPath.text()
+    def getui_edit_unzip_path(self) -> str :
+        return self.m_editUnzipPath.text()
+    def getui_edit_huid_path(self) -> str :
+        return self.m_editHuIDPath.text()
+    def getui_edit_option_path(self) -> str :
+        return self.m_editOptionPath.text()
+    def getui_edit_outtemp_path(self) -> str :
         return self.m_editOutputPath.text()
     
     def getui_cellID(self) -> int :
@@ -833,6 +810,56 @@ class CTabStatePatient(tabState.CTabState):
         return cellID
 
     # command
+    def command_option_path(self, optionFullPath : str) :
+        self._clear_optioninfo()
+        dataInst = self.get_data()
+
+        self.setui_edit_input_path("")
+        self.setui_edit_unzip_path("")
+        self.setui_edit_huid_path("")
+        self.setui_edit_outtemp_path("")
+
+        if os.path.exists(optionFullPath) == False :
+            QMessageBox.information(self.m_mediator, "Alarm", "not found option file")
+            optionFullPath = ""
+            dataInst.OptionInfo = None
+        else :
+            optionInfoInst = optionInfo.COptionInfo(optionFullPath)
+            dataInst.OptionInfo = optionInfoInst
+        self.setui_edit_option_path(optionFullPath)
+        self.m_mediator.update_viewer()
+        
+    def command_input_zip_path(self, inputZipPath : str) :
+        '''
+        - 이 부분에서 반드시 data clear가 일어나야 되며, patientID와 outputTempPath가 세팅이 된 상태여야만 한다. 
+        '''
+        self._clear_patient()
+
+        self.setui_edit_input_path(inputZipPath)
+        self.setui_edit_unzip_path("")
+        self.setui_edit_huid_path("")
+        self.setui_edit_outtemp_path("")
+        if inputZipPath == "" :
+            return
+        
+        dataInst = self.get_data()
+        userdata = dataInst.UserData
+        userdata.set_patient_zippath(inputZipPath)
+        folderInfo = userdata.MakeInputFolder
+        if folderInfo.Ready == False :
+            return
+        
+        rootPath = folderInfo.DataRootPath
+        huid = folderInfo.PatientID
+        self.m_dataRootPath = rootPath
+
+        self.setui_edit_unzip_path(rootPath)
+        self.setui_edit_huid_path(huid)
+
+        self.command_outtemp_path(rootPath)
+        #self.command_refresh_optioninfo()
+
+        self.m_mediator.update_viewer()
     def _command_option_path(self) -> bool:
         dataInst = self.get_data()
         self.m_mediator.remove_all_key()
@@ -906,24 +933,21 @@ class CTabStatePatient(tabState.CTabState):
         return phaseMaskList
         
 
-    def _command_patientID(self):
+    def command_outtemp_path(self, dataRootPath) :
+        outputTempPath = os.path.join(os.path.dirname(dataRootPath), CTabStatePatient.s_intermediatePathAlias)
+        if os.path.exists(outputTempPath) == False :
+            os.makedirs(outputTempPath, exist_ok=True)
+        self.setui_edit_outtemp_path(outputTempPath)
+
+        huid = self.getui_edit_huid_path()
+
         dataInst = self.get_data()
-        self.m_mediator.remove_all_key()
-        dataInst.clear_patient()
-        self.m_outputPath = self.getui_output_path()
+        dataInst.PatientID = huid
+        dataInst.OutputPath = outputTempPath
+        self.OutputPath = outputTempPath
+
+        self.m_mediator.set_title(huid)
         self.m_mediator.update_viewer()
-
-    def _generate_progress_window(self, instance):
-        dialog = ProgressWindow(self.m_mediator, instance)
-        result = dialog.exec()
-
-        if result == QDialog.Accepted:
-            QMessageBox.information(self.m_mediator, "Done", "작업이 완료되었습니다!")
-            return True
-        elif result == QDialog.Rejected:
-            QMessageBox.warning(self.m_mediator, "Canceled", "작업이 취소되었습니다.")
-            return False
-
     # protected
     def _get_userdata(self) -> userDataLiver.CUserDataLiver:
         return self.get_data().find_userdata(
@@ -1074,21 +1098,6 @@ class CTabStatePatient(tabState.CTabState):
         self.m_mediator.update_viewer()
 
 
-
-    def _changed_input_path(self, inputPath) -> str:
-        rootpath = ""
-        huid = ""
-        mkInputFold = makeInputFolder.CMakeInputFolder()
-        mkInputFold.ZipPath = inputPath  # "D:\\jys\\StomachKidney_newfolder\\zippath"
-        mkInputFold.FolderMode = mkInputFold.eMode_Liver
-        result = mkInputFold.process()
-        if result == True:
-            rootpath = mkInputFold.get_data_root_path()
-            huid = mkInputFold.PatientID
-            print(f"Making Input Folder Done. RootPath={rootpath}")
-
-        return rootpath, huid
-
     def _changed_unzip_path(self, option_path, data_root_path) -> str:
         # 현재 option 파일의 dataRootPath를 변경해줘야 함.
         new_data_root_path = data_root_path.replace("\\", "\\\\").replace("/", "\\\\")
@@ -1136,11 +1145,11 @@ class CTabStatePatient(tabState.CTabState):
     def do_blender(self):
         dataInst = self.get_data()
 
-        currPatientID = self.getui_patientID()
+        currPatientID = self.getui_edit_huid_path()
         if currPatientID == "":
             print(f"ERROR : CurrPatientID is empty.")
             return
-        stlPath = os.path.join(self.m_outputPath, currPatientID, "Result")
+        stlPath = os.path.join(dataInst.OutputPath, currPatientID, "Result")
         savePath = os.path.join(
             self.m_dataRootPath, currPatientID, "02_SAVE", "02_BLENDER_SAVE"
         )
@@ -1152,7 +1161,7 @@ class CTabStatePatient(tabState.CTabState):
         unzipPath = self.m_editUnzipPath.text()
         
         BlenderPath = os.path.join(
-            unzipPath, self.getui_patientID(), "02_SAVE", "02_BLENDER_SAVE", "Auto01_Recon", f"{self.getui_patientID()}.blend"
+            unzipPath, self.getui_edit_huid_path(), "02_SAVE", "02_BLENDER_SAVE", "Auto01_Recon", f"{self.getui_edit_huid_path()}.blend"
         )
         cmd = f'{dataInst.OptionInfo.BlenderExe} "{BlenderPath}"'
         os.system(cmd)
@@ -1171,32 +1180,59 @@ class CTabStatePatient(tabState.CTabState):
             )
 
     def _clicked_recon_mask(self, inputSliceID: int):
-        dataInst = self.get_data()
+        # dataInst = self.get_data()
+        # userdata = dataInst.UserData
+        # if userdata is not None :
+        #     userdata.override_recon()
+            
+        
+        
         # if dataInst.OptionInfo.m_registrationInfo == None:
         #     self.m_mediator.show_dialog("ERROR !!!! : m_registrationInfo is None .")
         #     return
 
         if self.m_reconReady == True:
+
+            
+            
+            dataInst = self.get_data()
+            userdata = dataInst.UserData
+            if userdata is not None :
+                userdata.override_recon(inputSliceID)
+            else :
+                QMessageBox.information(self.m_mediator, "Alarm", f"failed reconstruction : not setting userdata")
+            
+            return
+            optioninfo = dataInst.OptionInfo
+            folderInfo = userdata.MakeInputFolder
+            if folderInfo.Ready == False :
+                return
+            
+            # dataRoot의 Mask를 OutTemp로 복사
+            copiedMaskPath = os.path.join(dataInst.OutputPatientPath, "Mask")
+            if os.path.exists(self.OutputReconBlenderFullPath) == False :
+                folderInfo.copy_mask(copiedMaskPath)
+            reconStlPath = os.path.join(dataInst.OutputPatientPath, "Result")
+            blendSavePath = dataInst.OutputPatientPath
+            
             reconInst = reconLiver.CSubReconLiver()
             reconInst.InputSliceID = inputSliceID
             reconInst.OptionPath = self.m_optionFullPath
-            reconInst.PatientID = self.getui_patientID()
+            reconInst.PatientID = self.getui_edit_huid_path()
             unzipPath = self.m_editUnzipPath.text()
-            maskRoot = os.path.join(
-                unzipPath, self.getui_patientID(), "02_SAVE", "01_MASK"
-            )
-            reconInst.APPath = os.path.join(maskRoot, "Mask_AP")
-            reconInst.PPPath = os.path.join(maskRoot, "Mask_PP")
-            reconInst.HVPPath = os.path.join(maskRoot, "Mask_HVP")
-            reconInst.MRPath = os.path.join(maskRoot, "Mask_MR")
+            # maskRoot = os.path.join(
+            #     unzipPath, self.getui_edit_huid_path(), "02_SAVE", "01_MASK"
+            # )
+            # reconInst.APPath = os.path.join(maskRoot, "Mask_AP")
+            # reconInst.PPPath = os.path.join(maskRoot, "Mask_PP")
+            # reconInst.HVPPath = os.path.join(maskRoot, "Mask_HVP")
+            # reconInst.MRPath = os.path.join(maskRoot, "Mask_MR")
             reconInst.m_optionInfo = self.get_optioninfo()
             reconInst.PatientBlenderFullPath = os.path.join(
-                unzipPath, self.getui_patientID(), "02_SAVE", "02_BLENDER_SAVE", "Auto01_Recon" , str(self.getui_patientID())+".blender"
+                unzipPath, self.getui_edit_huid_path(), "02_SAVE", "02_BLENDER_SAVE", "Auto01_Recon" , str(self.getui_edit_huid_path())+".blender"
             )
             reconInst.IntermediateDataPath = self.m_outputPath
             reconInst.InputData = self.get_data()
-            self.m_mediator.load_userdata()
-            userData = self._get_userdata()
             #dataInst = self.get_data()
             #result = reconInst.init(dataInst.OptionInfo, userData)
             success = self._generate_progress_window(reconInst)
@@ -1219,7 +1255,7 @@ class CTabStatePatient(tabState.CTabState):
         def _clicked_overlap(self):
             # Step1 : Auto01_Recon의 .blend의 obj들을 export.
             dataInst = self.get_data()
-            currPatientID = self.getui_patientID()
+            currPatientID = self.getui_edit_huid_path()
             if currPatientID == "":
                 print(f"ERROR : CurrPatientID is empty.")
                 return
@@ -1228,33 +1264,33 @@ class CTabStatePatient(tabState.CTabState):
                 self.m_dataRootPath, currPatientID, "02_SAVE", "02_BLENDER_SAVE"
             )
 
-            outputPatientFullPath = os.path.join(self.m_outputPath, currPatientID)
+            outputPatientFullPath = os.path.join(dataInst.OutputPath, currPatientID)
             exportStlPath = os.path.join(outputPatientFullPath, "ExportStl")
             
             if not os.path.exists(exportStlPath):
                 os.makedirs(exportStlPath)
             
             cmd = f"{dataInst.OptionInfo.BlenderExe} -b --python {os.path.join(self.fileAbsPath, 'blenderScriptLiver.py')} --\
-                --patient_id {currPatientID} \
-                --func_mode Export \
-                --input_blend_path {os.path.join(savePath, 'Auto01_Recon')}\
-                --export_path {exportStlPath}"
+                --patientID {currPatientID} \
+                --funcMode Export \
+                --inputBlendPath {savePath}\
+                --exportPath {exportStlPath}"
             os.system(cmd)
 
             # Step2 : Overlap Detect 수행
             # Step3 : Detecting결과를 다시 .blend 에 import
             overlap = detectOverlap.CSubDetectOverlap()
-            outputPatientFullPath = os.path.join(self.m_outputPath, currPatientID)
+            outputPatientFullPath = os.path.join(dataInst.OutputPath, currPatientID)
             overlap.StlPath = os.path.join(outputPatientFullPath, "ExportStl")
             overlap.LogPath = outputPatientFullPath
             overlap.process()
 
             cmd = f"{dataInst.OptionInfo.BlenderExe} --python {os.path.join(self.fileAbsPath, 'blenderScriptLiver.py')} -- \
-            --func_mode ImportSave \
-            --patient_id {currPatientID} \
-            --option_path {self.m_optionFullPath} \
-            --stl_path {exportStlPath} \
-            --out_path {savePath}"
+            --funcMode ImportSave \
+            --patientID {currPatientID} \
+            --optionFullPath {self.m_optionFullPath} \
+            --stlPath {exportStlPath} \
+            --outputPath {savePath}/{currPatientID}_overlap.blend"
             os.system(cmd)
             
         def end_overlap(result):
@@ -1266,47 +1302,23 @@ class CTabStatePatient(tabState.CTabState):
         self.worker.result_ready.connect(end_overlap)
         self.worker.finished.connect(self.worker.deleteLater)
         self.worker.start()
-      
-    def _cliked_integrity_check(self):
-        integrityInst = checkIntegrity.CCheckIntegrityStomach()
-        integrityInst.OptionPath = self.m_optionFullPath
-        self._generate_progress_window(integrityInst)
-        
-        unzipPath = self.m_editUnzipPath.text()
-        file_path = os.path.join(unzipPath, "Integrity_Check.csv")
-
-        if os.path.exists(file_path):
-            with open(file_path, newline='', encoding='utf-8') as csvfile:
-                reader = csv.reader(csvfile)
-                data = list(reader)
-                
-            if len(data) == 0:
-                self.m_mediator.show_dialog("No integrity issues.")
-            else:
-                integrityPopup = CSVPopup(data, self.m_mediator)
-                integrityPopup.resize(600, 400)
-                integrityPopup.exec()
-                
-        else:
-            self.m_mediator.show_dialog("No integrity issues.")
-        
 
     def _cliked_clean_loading(self):
         self.loading_dialog = LoadingDialog(self.m_mediator)
         self.loading_dialog.show()
         dataInst = self.get_data()
         unzipPath = self.m_editUnzipPath.text()
-        currPatientID = self.getui_patientID()
+        currPatientID = self.getui_edit_huid_path()
 
         if currPatientID == "":
             print(f"ERROR : CurrPatientID is empty.")
             return
-        stlPath = os.path.join(self.m_outputPath, currPatientID, "Result")
+        stlPath = os.path.join(dataInst.OutputPath, currPatientID, "Result")
         savePath = os.path.join(
             self.m_dataRootPath, currPatientID, "02_SAVE", "02_BLENDER_SAVE"
         )
         def _clicked_clean(self):
-            # currPatientID = self.getui_patientID()
+            # currPatientID = self.getui_edit_huid_path()
 
             # if currPatientID == "":
             #     print(f"ERROR : CurrPatientID is empty.")
@@ -1317,7 +1329,7 @@ class CTabStatePatient(tabState.CTabState):
             # )
             
             overlapBlenderPath = os.path.join(
-                unzipPath, self.getui_patientID(), "02_SAVE", "02_BLENDER_SAVE", "Auto02_Overlap", f"{self.getui_patientID()}.blend"
+                unzipPath, self.getui_edit_huid_path(), "02_SAVE", "02_BLENDER_SAVE", f"{self.getui_edit_huid_path()}_overlap.blend"
             )
             
             if os.path.exists(overlapBlenderPath) == False :
@@ -1326,12 +1338,12 @@ class CTabStatePatient(tabState.CTabState):
                 return
 
             cmd = f'{dataInst.OptionInfo.BlenderExe} -b --python {os.path.join(self.fileAbsPath, "blenderScriptLiver.py")} -- \
-            --func_mode "MeshClean" \
-            --patient_id "{currPatientID}" \
-            --option_path "{self.m_optionFullPath}" \
-            --stl_path "{stlPath}" \
-            --overlap_path "{overlapBlenderPath}" \
-            --out_path "{savePath}"'
+            --funcMode "MeshClean" \
+            --patientID "{currPatientID}" \
+            --optionFullPath "{self.m_optionFullPath}" \
+            --stlPath "{stlPath}" \
+            --overlapPath "{overlapBlenderPath}" \
+            --outputPath "{savePath}"'
 
             os.system(cmd)
             
@@ -1340,13 +1352,13 @@ class CTabStatePatient(tabState.CTabState):
             self.m_mediator.show_dialog(f"Mesh-Clean Done")
             
             openPath = os.path.join(
-                unzipPath, self.getui_patientID(), "02_SAVE", "02_BLENDER_SAVE", "Auto03_MeshClean", f"{self.getui_patientID()}.blend"
+                unzipPath, self.getui_edit_huid_path(), "02_SAVE", "02_BLENDER_SAVE", f"{self.getui_edit_huid_path()}_clean.blend"
             )
             
             # cmd = f'{dataInst.OptionInfo.BlenderExe} "{cleanupBlenderPath}"'
             # os.system(cmd)
             
-            cmd = f"{dataInst.OptionInfo.BlenderExe} --python {os.path.join(self.fileAbsPath, 'blenderScriptLiver.py')} -- --patient_id {currPatientID} --stl_path {stlPath} --option_path {self.m_optionFullPath} --open_path {openPath} --out_path {savePath} --func_mode OpenBlend"
+            cmd = f"{dataInst.OptionInfo.BlenderExe} --python {os.path.join(self.fileAbsPath, 'blenderScriptLiver.py')} -- --patientID {currPatientID} --stlPath {stlPath} --optionFullPath {self.m_optionFullPath} --openPath {openPath} --outputPath {openPath} --funcMode OpenBlend"
             os.system(cmd)
                 
             
@@ -1374,24 +1386,17 @@ class CTabStatePatient(tabState.CTabState):
             return
         self.m_optionFullPath = optionPath
         self._command_option_path()
+        
+    def _on_btn_input_zip_path(self) :
+        #self.m_btnCL.setEnabled(True)
+        self.m_reconReady = True
+        dataInst = self.get_data()
+        if dataInst.OptionInfo is None :
+            QMessageBox.information(self.m_mediator, "Alarm", "please setting option file")
+            return 
 
-    def _on_btn_input_zip_path(self):  # sally
-        inputPath = QFileDialog.getExistingDirectory(
-            self.get_main_widget(), "Select Zip Folder"
-        )
-        self.m_editInputPath.setText(inputPath)
-        self.m_editUnzipPath.setText("")
-        if inputPath == "":
-            return
-        root_path, huid = self._changed_input_path(inputPath)
-        self.m_editUnzipPath.setText(root_path)
-        option_path = self.m_optionFullPath
-        self._changed_unzip_path(option_path, root_path)
-        self.setui_reset_patientID([huid])
-        self.m_zipPathPatientID = huid  # sally: 이값을 저장해 놓았다가 _on_btn_unzip_path() 수행시 감지한 huid 와 이 값이 다르면 self.m_editInputPath 칸을 클리어한다.
-
-        self._out_temp_auto_setting(root_path)
-
+        inputPath = QFileDialog.getExistingDirectory(self.get_main_widget(), "Select Zip Folder")
+        self.command_input_zip_path(inputPath)
 
     def _on_btn_unzip_path(self):  # sally
         unzipPath = QFileDialog.getExistingDirectory(
@@ -1414,7 +1419,7 @@ class CTabStatePatient(tabState.CTabState):
 
         self.m_reconReady = True
         dataInst = self.get_data()
-        dataInst.PatientID = self.getui_patientID()
+        dataInst.PatientID = self.getui_edit_huid_path()
         dataInst.OutputPath = self.m_outputPath
         
         self.m_mediator.show_dialog("입력데이터 로딩 완료. Recon 버튼을 클릭하세요!")
@@ -1432,7 +1437,7 @@ class CTabStatePatient(tabState.CTabState):
         def _predict_navel_position(self) -> int:
             unzipPath = self.m_editUnzipPath.text()
             DicomPPPath = os.path.join(
-                unzipPath, self.getui_patientID(), "01_DICOM", "PP"
+                unzipPath, self.getui_edit_huid_path(), "01_DICOM", "PP"
             )
             try:
                 shape, spacing, origin, ct = predictNavel.ctLoader(DicomPPPath,returnImage=True)
@@ -1447,7 +1452,7 @@ class CTabStatePatient(tabState.CTabState):
 
             unzipPath = self.m_editUnzipPath.text()
             maskRoot = os.path.join(
-                unzipPath, self.getui_patientID(), "02_SAVE", "01_MASK"
+                unzipPath, self.getui_edit_huid_path(), "02_SAVE", "01_MASK"
             )
             HVPPath = os.path.join(maskRoot, "Mask_HVP")
             PPPath = os.path.join(maskRoot, "Mask_PP")
@@ -1497,7 +1502,7 @@ class CTabStatePatient(tabState.CTabState):
             if navelZID != -1:
                 unzipPath = self.m_editUnzipPath.text()
                 maskRoot = os.path.join(
-                    unzipPath, self.getui_patientID(), "02_SAVE", "01_MASK"
+                    unzipPath, self.getui_edit_huid_path(), "02_SAVE", "01_MASK"
                 )
                 PPPath = os.path.join(maskRoot, "Mask_PP")
                 APPath = os.path.join(maskRoot, "Mask_PP")
@@ -1535,9 +1540,9 @@ class CTabStatePatient(tabState.CTabState):
             
             unzipPath = self.m_editUnzipPath.text()
             blenderRoot = os.path.join(
-                unzipPath, self.getui_patientID(), "02_SAVE", "02_BLENDER_SAVE", "Auto01_Recon"
+                unzipPath, self.getui_edit_huid_path(), "02_SAVE", "02_BLENDER_SAVE", "Auto01_Recon"
             )
-            if os.path.exists(os.path.join(blenderRoot, f"{self.getui_patientID()}.blend")):
+            if os.path.exists(os.path.join(blenderRoot, f"{self.getui_edit_huid_path()}.blend")):
                 reply = QMessageBox.question(
                     self.m_mediator,
                     "Re Do Recon",           
@@ -1640,24 +1645,25 @@ class CTabStatePatient(tabState.CTabState):
             
             self.m_mediator.update_viewer()
             
-
-    def _command_centerline(self) :
+    def command_centerline(self) :
+        self._clear_centerline()
         dataInst = self.get_data()
-        self.m_mediator.remove_all_key()
+        if dataInst.Ready == False :
+            QMessageBox.information(self.m_mediator, "Alarm", "please setting option, outputPath, patientID")
+            return
 
-        patientID = self.getui_patientID()
-        outputPatientPath = os.path.join(self.OutputPath, patientID)
+        userData = dataInst.UserData
         
+        blenderFullPath = os.path.join(os.path.dirname(userData.OutputReconBlenderFullPath), f"{dataInst.PatientID}_clean.blend")
+
+        if os.path.exists(blenderFullPath) == False :
+            QMessageBox.information(self.m_mediator, "Alarm", f"not found {os.path.basename(blenderFullPath)}")
+            return
+
         cmd = commandLoadingPatient.CCommandLoadingPatient(self.m_mediator)
         cmd.InputData = dataInst
-        
-        unzipPath = self.m_editUnzipPath.text()
-        blenderRoot = os.path.join(
-            unzipPath, self.getui_patientID(), "02_SAVE", "02_BLENDER_SAVE", "Auto03_MeshClean"
-        )
-        cmd.PatientBlenderFullPath = os.path.join(blenderRoot, f"{self.getui_patientID()}.blend")
+        cmd.PatientBlenderFullPath = blenderFullPath
         cmd.process()
-        self.m_mediator.load_userdata()
 
         self.setui_clear_clinfo()
         iCnt = dataInst.get_skelinfo_count()
@@ -1669,17 +1675,10 @@ class CTabStatePatient(tabState.CTabState):
         self.setui_clinfo_inx(dataInst.CLInfoIndex)
         self._command_clinfo_inx()
 
-        fullPath = os.path.join(outputPatientPath, f"{data.CData.s_fileName}.json")
+        fullPath = os.path.join(dataInst.OutputPatientPath, f"{data.CData.s_fileName}.json")
         dataInst.save(fullPath)
 
-        #self._command_reset_clinfo_inx()
         #self.m_btnCL.setEnabled(False)
-
-    def _on_btn_integrity_mask(self):
-        if not self.m_reconReady: 
-            self.m_mediator.show_dialog("Path Info 정보를 먼저 입력하세요.")
-        else:
-            self._cliked_integrity_check()
 
     def _on_btn_recon(self):
         if not self.m_reconReady: 
@@ -1687,6 +1686,35 @@ class CTabStatePatient(tabState.CTabState):
         else:
             self._cliked_recon_get_sliceID()
         # self._clicked_recon_mask() #sally
+        
+    def _on_btn_individual_recon(self) :
+        if self.getui_edit_huid_path() == "" :
+            print("not selection patientID")
+            return
+        if self.getui_edit_outtemp_path() == "" :
+            print("not setting output path")
+            return 
+        
+        dataInst = self.get_data()
+        userdata = dataInst.UserData
+        if userdata is None :
+            print("not setting userdata")
+            return
+
+        if os.path.exists(userdata.OutputReconBlenderFullPath) == False :
+            QMessageBox.information(self.m_mediator, "Alarm", f"must be reconstructed")
+            return
+        
+        optioninfo = self.get_optioninfo()
+        phaseNameList = optioninfo.get_phase_list()
+        
+        dlg = dlgCommon.CDlgIndividualReconInfo(self.m_mediator, phaseNameList)
+        result = dlg.exec()
+
+        if result == QDialog.Accepted :
+            userdata.override_individual_recon(dlg.PhaseInfo)
+        else :
+            print("Cancel 클릭")
 
     def _on_btn_overlap(self):
         if not self.m_reconReady: 
@@ -1696,11 +1724,11 @@ class CTabStatePatient(tabState.CTabState):
         #self._clicked_overlap()
         
     def _on_btn_centerline(self):
-        print("centerline")
         
-        patientID = self.getui_patientID()
+        patientID = self.getui_edit_huid_path()
         outputPatientPath = os.path.join(self.OutputPath, patientID)
         if os.path.exists(outputPatientPath) == False :
+            print(outputPatientPath)
             print("not found output recon patient path")
             return 
 
@@ -1710,7 +1738,7 @@ class CTabStatePatient(tabState.CTabState):
         if dataInst.Ready == False :
             print("not setting option or patientID")
             return
-        self._command_centerline()
+        self.command_centerline()
 
     def _on_btn_clean(self):
         if not self.m_reconReady: 
@@ -1736,7 +1764,7 @@ class CTabStatePatient(tabState.CTabState):
 
     def _on_cb_patientID_changed(self, index):
         #self.m_btnCL.setEnabled(True)
-        patientID = self.getui_patientID()
+        patientID = self.getui_edit_huid_path()
         if patientID == "":
             print("not select patientID")
             return
@@ -1749,7 +1777,186 @@ class CTabStatePatient(tabState.CTabState):
     @OutputPath.setter
     def OutputPath(self, outputPath: str):
         self.m_outputPath = outputPath
+        
+    # protected 
+    def _clear_optioninfo(self) :
+        dataInst = self.get_data()
+        self.m_mediator.remove_all_key()
+        dataInst.clear_optioninfo()
+    def _clear_patient(self) :
+        dataInst = self.get_data()
+        self.m_mediator.remove_all_key()
+        dataInst.clear_patient()
+    def _clear_centerline(self) :
+        dataInst = self.get_data()
+        self.m_mediator.remove_all_key()
+        dataInst.clear_centerline()
 
+
+    # slot
+    def slot_drop_option_path(self, optionFullPath : str) :
+        self.setui_edit_option_path("")
+
+        if os.path.exists(optionFullPath) == False :
+            return
+        if optionFullPath.lower().endswith(".json") == False :
+            return
+        
+        #self.m_btnCL.setEnabled(True)
+        self.command_option_path(optionFullPath)
+    def slot_drop_input_zip_path(self, inputZipFolderPath : str) :
+        self.m_reconReady = True
+        inputZipFolderPath = os.path.normpath(inputZipFolderPath)
+        if os.path.exists(inputZipFolderPath) == False :
+            return
+        if os.path.isdir(inputZipFolderPath) == False :
+            return
+        
+        #self.m_btnCL.setEnabled(True)
+        dataInst = self.get_data()
+        if dataInst.OptionInfo is None :
+            QMessageBox.information(self.m_mediator, "Alarm", "please setting option file")
+            return 
+
+        self.command_input_zip_path(inputZipFolderPath)
+        
+    def command_refresh_optioninfo(self) :
+        dataInst = self.get_data()
+        dataRootPath = self.getui_edit_unzip_path()
+        patientID = self.getui_edit_huid_path()
+        outputPath = dataInst.OutputPath
+
+        optioninfo = dataInst.OptionInfo
+        optioninfo.DataRootPath = dataRootPath
+
+        # 지정된 folder에서 mask list를 얻어옴 
+
+        phaseMaskList = []
+
+        unzipPath = dataRootPath
+        maskRoot = os.path.join(unzipPath, patientID, "02_SAVE", "01_MASK")
+        apPath = os.path.join(maskRoot, "AP")
+        ppPath = os.path.join(maskRoot, "PP")
+        hvpPath = os.path.join(maskRoot, "HVP")        
+        mrPath = os.path.join(maskRoot, "MR")
+        list_ap = os.listdir(apPath)
+        list_ap = [f.split('.')[0] for f in list_ap]
+        list_pp = os.listdir(ppPath)
+        list_pp = [f.split('.')[0] for f in list_pp]
+        list_hvp = os.listdir(hvpPath)
+        list_hvp = [f.split('.')[0] for f in list_hvp]
+        list_mr = os.listdir(mrPath)
+        list_mr = [f.split('.')[0] for f in list_mr]
+        phaseMaskList.append({'phase':'AP', 'files': list_ap})
+        phaseMaskList.append({'phase':'PP', 'files': list_pp})
+        phaseMaskList.append({'phase':'HVP', 'files': list_hvp})
+        phaseMaskList.append({'phase':'MR', 'files': list_mr})
+
+        '''
+        key : maskName
+        value : phase
+        '''
+        dicMaskPhase = {}
+        '''
+        key : phase
+        value : kidneyName
+        '''
+        dicKidneyPhase = {}
+        tumorToken = 'Tumor_'
+        kidneyToken = 'Kidney_'
+        tumorPhase = ""
+        # tumor phase 감지 
+        # phase별 kidney name 감지 
+        for maskinfo in phaseMaskList :
+            phase = maskinfo['phase']
+            listMask = maskinfo['files']
+            for maskName in listMask :
+                dicMaskPhase[maskName] = phase
+                # tumor phase 감지 
+                if tumorToken in maskName :
+                    tumorPhase = phase
+                if kidneyToken in maskName :
+                    dicKidneyPhase[phase] = maskName
+
+        # optioninfo mask의 phase refresh
+        iCnt = optioninfo.get_recon_count()
+        for reconInx in range(0, iCnt) :
+            listCnt = optioninfo.get_recon_list_count(reconInx)
+            for listInx in range(0, listCnt) :
+                maskName, _, _, _ = optioninfo.get_recon_list(reconInx, listInx)
+                phase = ""
+                if maskName in dicMaskPhase :
+                    phase = dicMaskPhase[maskName]
+                if tumorToken in maskName :
+                    phase = tumorPhase
+                if maskName == "Kidney" :
+                    phase = tumorPhase
+                optioninfo.set_recon_phase(maskName, phase)
+
+        # kidney registration refresh 
+        targetKidney = ""
+        listSrcKidney = []
+
+        for key, value in dicKidneyPhase.items() :
+            if key == tumorPhase :
+                targetKidney = value
+            else :
+                listSrcKidney.append(value)
+
+        optioninfo.clear_registrationinfo()
+        if targetKidney != "" :
+            for srcKidney in listSrcKidney :
+                optioninfo.add_registrationinfo(targetKidney, srcKidney, 0)
+
+        self.command_post_refresh_optioninfo()
+    def command_post_refresh_optioninfo(self) :
+        dataInst = self.get_data()
+        optioninfo = dataInst.OptionInfo
+
+        # ResamplingToPhase 
+        iCnt = optioninfo.get_resampling_phase_count()
+        for inx in range(0, iCnt) :
+            _, outMaskName, phase = optioninfo.get_resampling_phase(inx)
+            optioninfo.set_recon_phase(outMaskName, phase)
+        # ResamplingToMinSpacing 
+        iCnt = optioninfo.get_resampling_minspacing_count()
+        for inx in range(0, iCnt) :
+            inMaskName, outMaskName = optioninfo.get_resampling_minspacing(inx)
+            inPhase = optioninfo.find_phase_of_mask(inMaskName)
+            optioninfo.set_recon_phase(outMaskName, inPhase)
+        # Stricture
+        iCnt = optioninfo.get_stricture_count()
+        for inx in range(0, iCnt) :
+            inMaskName, outMaskName = optioninfo.get_stricture(inx)
+            inPhase = optioninfo.find_phase_of_mask(inMaskName)
+            optioninfo.set_recon_phase(outMaskName, inPhase)
+        # Diaphragm
+        skinPhase = optioninfo.find_phase_of_mask("Skin")
+        optioninfo.set_recon_phase("Diaphragm", skinPhase)
+
+        optioninfo.process_phase_alignment()
+        
+    def _get_rootpath_huid(self, inputPath : str) -> tuple :
+        '''
+        ret 
+            - (rootpath, huid)
+            - rootpath : zip이 있는 path에서 dataRootPath가 생성 됨
+            - huid : dataRootPath안에 huid 폴더가 생성 (기존 PatientID)
+        '''
+        rootpath = ''
+        huid = ''
+        mkInputFold = makeInputFolder.CMakeInputFolder()
+        mkInputFold.ZipPath = inputPath
+        mkInputFold.FolderMode = mkInputFold.eMode_Kidney 
+        result = mkInputFold.process()
+        if result == True :
+            rootpath = mkInputFold.get_data_root_path()
+            huid = mkInputFold.PatientID
+            print(f"Making Input Folder Done. RootPath={rootpath}")
+            
+        return (rootpath, huid)
+    
+        
     # private
 
 

@@ -531,18 +531,7 @@ QPushButton {
         if retList is not None :
             for obj in retList :
                 obj.Color = color
-
-    def load_userdata(self) :
-        # projectType에 따라 userData를 로딩해야 한다. 
-        self.Data.remove_all_userdata()
-        projectType = self.ProjectType
-        projectInfo = self.s_projectTypeInfo[projectType]
-        if projectInfo["UserDataKey"] == "" :
-            return
-        
-        userData = projectInfo["UserDataInst"](self.Data, self)
-        userData.load_patient()
-        self.Data.add_userdata(projectInfo["UserDataKey"], userData)
+                
     def add_skeleton_obj(self, groupID : int) :
         dataInst = self.m_data
 
@@ -842,15 +831,6 @@ QPushButton {
     @property
     def Data(self) -> data.CData :
         return self.m_data
-    @property
-    def ReconUserData(self) -> userData.CUserData :
-        '''
-        warning : recon 용도외에 절대 사용하지 말 것 data에 있는 userData가 진짜임 
-        '''
-        projectType = self.ProjectType
-        userData = CTestApp.s_projectTypeInfo[projectType]["UserDataInst"](self.Data, self)
-        return userData
-
 
     # protected
     def _init_layout_main_ui(self) :
@@ -937,6 +917,7 @@ QPushButton {
         self.get_tab_state(self.m_tabIndex).process()
     def _on_cb_projectType_changed(self, index) :
         self.m_projectType = self._getui_project_type()
+        self.Data.UserData = CTestApp.s_projectTypeInfo[self.m_projectType]["UserDataInst"](self.Data, self)
         self._init_tab()
 
 

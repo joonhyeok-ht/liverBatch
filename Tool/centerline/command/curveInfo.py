@@ -212,6 +212,57 @@ class CCLCurve :
         # 시작점은 0, 이후 누적합
         accumulated = np.concatenate([[0], np.cumsum(segmentLen)])
         return accumulated
+    @staticmethod
+    def get_BNT(points : np.ndarray, N0 : np.ndarray, B0 : np.ndarray, T0 : np.ndarray) :
+        '''
+        ret : (Binormal, Normal, Tangent)
+        '''
+        tangents = np.zeros_like(points)
+        tangents[1:-1] = points[2:] - points[:-2]
+        tangents[0] = points[1] - points[0]
+        tangents[-1] = points[-1] - points[-2]
+        tangents = tangents / np.linalg.norm(tangents, axis=1)[:, None]
+
+        ptCnt = len(points)
+        N, B, T = CCLCurve.rotate_frame_to_tangent(tangents[0], N0, B0, T0)
+
+        npTangent = [T]
+        npNormal = [N]
+        npBinormal = [B]
+
+        # PTF 업데이트
+        for i in range(1, ptCnt) :
+            T_next = tangents[i]
+            axis = np.cross(T, T_next)
+            if np.linalg.norm(axis) < 1e-8 :
+                # 평행 → 프레임 그대로 유지
+                npTangent.append(T_next)
+                npNormal.append(N)
+                npBinormal.append(B)
+            else:
+                axis /= np.linalg.norm(axis)
+                angle = np.arccos(np.clip(np.dot(T, T_next), -1, 1))
+
+                # Rodrigues 회전
+                K = np.array([
+                    [0, -axis[2], axis[1]],
+                    [axis[2], 0, -axis[0]],
+                    [-axis[1], axis[0], 0]
+                ])
+                R = np.eye(3) + np.sin(angle) * K + (1 - np.cos(angle)) * (K @ K)
+
+                N = R @ N
+                B = R @ B
+                T = T_next
+
+                npTangent.append(T)
+                npNormal.append(N)
+                npBinormal.append(B)
+
+        npTangent = np.array(npTangent)
+        npNormal = np.array(npNormal)
+        npBinormal = np.array(npBinormal)
+        return (npBinormal, npNormal, npTangent)
         
     
     def __init__(self) :
@@ -232,54 +283,7 @@ class CCLCurve :
         T0 : shape (3, ), default : None
         '''
         self.m_point = points
-        ptCnt = len(points)
-
-        # Tangents
-        tangents = np.zeros_like(points)
-        tangents[1:-1] = points[2:] - points[:-2]
-        tangents[0] = points[1] - points[0]
-        tangents[-1] = points[-1] - points[-2]
-        tangents = tangents / np.linalg.norm(tangents, axis=1)[:, None]
-
-        N, B, T = CCLCurve.rotate_frame_to_tangent(tangents[0], N0, B0, T0)
-
-        self.m_tangent = [T]
-        self.m_normal = [N]
-        self.m_binormal = [B]
-
-        # PTF 업데이트
-        for i in range(1, ptCnt) :
-            T_next = tangents[i]
-            axis = np.cross(T, T_next)
-            if np.linalg.norm(axis) < 1e-8 :
-                # 평행 → 프레임 그대로 유지
-                self.m_tangent.append(T_next)
-                self.m_normal.append(N)
-                self.m_binormal.append(B)
-            else:
-                axis /= np.linalg.norm(axis)
-                angle = np.arccos(np.clip(np.dot(T, T_next), -1, 1))
-
-                # Rodrigues 회전
-                K = np.array([
-                    [0, -axis[2], axis[1]],
-                    [axis[2], 0, -axis[0]],
-                    [-axis[1], axis[0], 0]
-                ])
-                R = np.eye(3) + np.sin(angle) * K + (1 - np.cos(angle)) * (K @ K)
-
-                N = R @ N
-                B = R @ B
-                T = T_next
-
-                self.m_tangent.append(T)
-                self.m_normal.append(N)
-                self.m_binormal.append(B)
-
-        self.m_tangent = np.array(self.m_tangent)
-        self.m_normal = np.array(self.m_normal)
-        self.m_binormal = np.array(self.m_binormal)
-    
+        self.m_binormal, self.m_normal, self.m_tangent = CCLCurve.get_BNT(points, N0, B0, T0)
     def get_transform(self, clPtInx : int) -> np.ndarray :
         mat = algLinearMath.CScoMath.rot_mat3_from_axis(
             self.Binormal[clPtInx].reshape(-1, 3),
@@ -290,7 +294,6 @@ class CCLCurve :
         transMat = algLinearMath.CScoMath.translation_mat4(self.m_point[clPtInx].reshape(-1, 3))
         return algLinearMath.CScoMath.mul_mat4_mat4(transMat, rotMat)
     
-
 
     # property
     @property

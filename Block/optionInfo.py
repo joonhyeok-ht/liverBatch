@@ -17,7 +17,7 @@ import json
 
 
 class COptionInfo() :
-    s_version = "Common Pipeline v2.0"
+    s_version = "Common Pipeline v2.1"
 
 
     def __init__(self, jsonPath : str) -> None :
@@ -39,6 +39,7 @@ class COptionInfo() :
         self.m_recon = None
 
         self.m_meshBoolean = None
+        self.m_meshDecimation = None
         self.m_meshHealing = None
 
         self.m_blender = None
@@ -101,6 +102,10 @@ class COptionInfo() :
             self.m_meshBoolean = self.m_jsonData["MeshBoolean"]
         else :
             print("optionInfo warning : not found MeshBoolean")
+        if "MeshDecimation" in self.m_jsonData :
+            self.m_meshDecimation = self.m_jsonData["MeshDecimation"]
+        else :
+            print("optionInfo warning : not found MeshDecimation")
         if "MeshHealing" in self.m_jsonData :
             self.m_meshHealing = self.m_jsonData["MeshHealing"]
         else :
@@ -120,7 +125,7 @@ class COptionInfo() :
         else :
             print("optionInfo warning : not found TargetTerritoryList")
         
-        self._process_phase_alignment()
+        self.process_phase_alignment()
 
         self.m_bReady = True
     def clear(self) :
@@ -140,6 +145,7 @@ class COptionInfo() :
         self.m_recon = None
 
         self.m_meshBoolean = None
+        self.m_meshDecimation = None
         self.m_meshHealing = None
 
         self.m_blender = None
@@ -182,6 +188,21 @@ class COptionInfo() :
         srcMaskName = self.m_regInfo[inx]["Src"]
         rigidAABB = self.m_regInfo[inx]["RigidAABB"]
         return (targetMaskName, srcMaskName, rigidAABB)
+    def add_registrationinfo(self, target : str, src : str, rigidAABB : int) :
+        if self.m_regInfo is None :
+            self.m_jsonData["RegistrationInfo"] = []
+            
+        self.m_regInfo = self.m_jsonData["RegistrationInfo"]
+        tmp = {}
+        tmp["Target"] = target
+        tmp["Src"] = src
+        tmp["RigidAABB"] = rigidAABB
+        self.m_regInfo.append(tmp)
+    def clear_registrationinfo(self) :
+        if self.m_regInfo is None :
+            self.m_jsonData["RegistrationInfo"] = []
+            self.m_regInfo = self.m_jsonData["RegistrationInfo"]
+        self.m_regInfo.clear()
     
     def get_resampling_minspacing_count(self) -> int :
         if self.m_resamplingToMinSpacing is None : 
@@ -285,6 +306,14 @@ class COptionInfo() :
         phase = self.m_recon[reconInx]["List"][listInx][2]
         triCnt = self.m_recon[reconInx]["List"][listInx][3]
         return (maskName, blenderName, phase, triCnt)
+    def set_recon_phase(self, maskName : str, phase : str) :
+        retInx = self.find_recon_index_of_maskname(maskName)
+        if retInx is None :
+            return
+
+        reconInx = retInx[0]
+        listInx = retInx[1]
+        self.m_recon[reconInx]["List"][listInx][2] = phase
     
     def get_mesh_boolean_count(self) -> int :
         if self.m_meshBoolean is None :
@@ -303,15 +332,36 @@ class COptionInfo() :
         blenderName1 = self.m_meshBoolean[inx][2]
         outBlenderName2 = self.m_meshBoolean[inx][3]
         return (oper, blenderName0, blenderName1, outBlenderName2)
+    def get_mesh_decimation_count(self) -> int :
+        if self.m_meshDecimation is None :
+            return 0
+        return len(self.m_meshDecimation)
+    def get_mesh_decimation(self, inx : int) -> tuple :
+        '''
+        ret : (blenderName, triCnt)
+               default : None
+        '''
+        if inx >= self.get_mesh_decimation_count() :
+            return None
+        
+        blenderName = self.m_meshDecimation[inx][0]
+        triCnt = self.m_meshDecimation[inx][1]
+        return (blenderName, triCnt)
     def get_mesh_healing_count(self) -> int :
         if self.m_meshHealing is None :
             return 0
         return len(self.m_meshHealing)
-    def get_mesh_healing(self, inx : int) -> str :
+    def get_mesh_healing(self, inx : int) -> tuple :
+        '''
+        ret : (blenderName, fillHole : int (0 or 1))
+               default : None
+        '''
         if inx >= self.get_mesh_healing_count() :
-            return ""
+            return None
         
-        return self.m_meshHealing[inx]
+        blenderName = self.m_meshHealing[inx][0]
+        fillHole = self.m_meshHealing[inx][1]
+        return (blenderName, fillHole)
     
     def get_centerline_count(self) -> int :
         if self.m_centerline is None :
@@ -364,7 +414,8 @@ class COptionInfo() :
             iListCnt = self.get_recon_list_count(reconInx) 
             for listInx in range(0, iListCnt) :
                 _maskName, _blenderName, _phase, _triCnt = self.get_recon_list(reconInx, listInx)
-                if _maskName == maskName :
+                #if _maskName == maskName :
+                if _maskName in maskName and _phase != "":
                     return _phase
         return ""
     def find_rigid_aabb_of_mask(self, maskName : str) -> int :
@@ -387,7 +438,7 @@ class COptionInfo() :
             if regPhase == phase :
                 return rigidAABB
         return 0
-    def find_centerline_index_of_blendername(self, blenderName) -> int :
+    def find_centerline_index_of_blendername(self, blenderName : str) -> int :
         if self.m_centerline is None :
             return -1
         
@@ -397,7 +448,7 @@ class COptionInfo() :
             for listInx in range(0, iListCnt) :
                 _blenderName, _jsonName = self.get_centerline_list(clInx, listInx)
                 if _blenderName == blenderName :
-                    return listInx
+                    return clInx
         
         return -1
     def find_tricnt_of_blendername(self, blenderName : str) -> int :
@@ -418,17 +469,52 @@ class COptionInfo() :
         dic = self.m_centerline[clInx]
         listName = dic["List"]
         listName.append([blenderName, jsonName])
+    def find_recon_index_of_maskname(self, maskName : str) -> tuple :
+        '''
+        ret : (reconInx, listInx)
+              None : 해당 maskName이 존재하지 않음 
+        '''
+        if self.m_recon is None :
+            return None
+        iReconCnt = self.get_recon_count()
+        for reconInx in range(0, iReconCnt) :
+            iListCnt = self.get_recon_list_count(reconInx)
+            for listInx in range(0, iListCnt) :
+                _maskName, _, _, _ = self.get_recon_list(reconInx, listInx)
+                if _maskName == maskName :
+                    return (reconInx, listInx)
+        return None
+    def find_recon_parameter_of_blendername(self, blenderName : str) -> tuple : 
+        '''
+        ret : (contour, gaussian, algorithm, resampling, listReconParam, triCnt)
+        '''
+        if self.m_recon is None :
+            return None
+        iReconCnt = self.get_recon_count()
+        for reconInx in range(0, iReconCnt) :
+            iListCnt = self.get_recon_list_count(reconInx)
+            for listInx in range(0, iListCnt) :
+                _, _blenderName, _, triCnt = self.get_recon_list(reconInx, listInx)
+                if blenderName == _blenderName :
+                    contour, gaussian, algorithm, resampling = self.get_recon_info(reconInx)
+                    listReconParam = self.m_recon[reconInx]["param"]
+                    return (contour, gaussian, algorithm, resampling, listReconParam, triCnt)
+        return None
     
     def get_phase_mask_list(self, phase : str) -> list :
         if phase in self.m_dicPhaseInfo :
             return self.m_dicPhaseInfo[phase]
         return None
     def get_phase_list(self) -> list :
-        return list(self.m_dicPhaseInfo.keys())
+        listPhase = list(self.m_dicPhaseInfo.keys())
+        listPhase = [phase for phase in listPhase if phase != ""]
+        return listPhase
 
 
     # protected 
-    def _process_phase_alignment(self) :
+    def process_phase_alignment(self) :
+        self.m_dicPhaseInfo.clear()
+
         iReconCnt = self.get_recon_count()
         for reconInx in range(0, iReconCnt) :
             iListCnt = self.get_recon_list_count(reconInx)
@@ -438,8 +524,6 @@ class COptionInfo() :
                 if phase not in self.m_dicPhaseInfo :
                     self.m_dicPhaseInfo[phase] = []
                 self.m_dicPhaseInfo[phase].append(maskName)
-
-
     @property
     def Ready(self) -> bool :
         return self.m_bReady
@@ -449,6 +533,9 @@ class COptionInfo() :
     @property
     def DataRootPath(self) -> str :
         return self.m_dataRootPath
+    @DataRootPath.setter
+    def DataRootPath(self, dataRootPath : str) :
+        self.m_dataRootPath = dataRootPath
     @property
     def CL(self) -> str :
         return self.m_cl
