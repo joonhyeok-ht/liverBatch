@@ -29,6 +29,7 @@ import Block.reconstruction as reconstruction
 import Block.meshHealing as meshHealing
 import Block.meshBoolean as meshBoolean
 import Block.meshDecimation as meshDecimation
+import Block.nonRigidRegistration as nonRigidRegistration
 import command.commandRecon as commandRecon
 import glob
 
@@ -57,6 +58,7 @@ class CSubReconLiver(commandRecon.CCommandRecon) :
         self.m_maskCpyPath = ""
         self.m_resultPath = ""
         self.m_organList = ["Gallbladder", "Pancreas", "Spleen", "Stomach", "Liver"]
+        self.m_registrationMethod = "rigid"
         
         try:
         # PyInstaller로 패키징된 실행 파일의 경우
@@ -138,7 +140,7 @@ class CSubReconLiver(commandRecon.CCommandRecon) :
             fileLoadPhaseInfoBlock.InputPath = self.InputData.OutputPatientPath
             fileLoadPhaseInfoBlock.InputFileName = commandRecon.CCommandReconInterface.s_phaseInfoFileName
             phase = fileLoadPhaseInfoBlock.process()
-            if not self.update_progress_value(17, "Resampling..."):
+            if not self.update_progress_value(17):
                 return False
 
         else :
@@ -169,9 +171,9 @@ class CSubReconLiver(commandRecon.CCommandRecon) :
             fileSavePhaseInfoBlock.OutputSavePath = self.InputData.OutputPatientPath
             fileSavePhaseInfoBlock.OutputFileName = commandRecon.CCommandReconInterface.s_phaseInfoFileName
             fileSavePhaseInfoBlock.process()
-            if not self.update_progress_value(2, "Resampling..."):
+            if not self.update_progress_value(2):
                 return False
-
+            
         resamplingToPhaseBlock = resamplingB.CResamplingToPhase()
         resamplingToPhaseBlock.InputOptionInfo = self.InputData.OptionInfo
         resamplingToPhaseBlock.InputMaskPath = maskCpyPath # self.CopiedMaskPath
@@ -182,10 +184,8 @@ class CSubReconLiver(commandRecon.CCommandRecon) :
             s
         )
         resamplingToPhaseBlock.is_interrupted = self.is_interrupted
-        
         resamplingToPhaseBlock.process()
         self.ProgressValue += int(2 / self.TotalPatientCnt)
-
         resamplingToMinSpacingBlock = resamplingB.CResamplingToMinSpacing()
         resamplingToMinSpacingBlock.InputMaskPath = maskCpyPath # self.CopiedMaskPath
         resamplingToMinSpacingBlock.InputOptionInfo = self.InputData.OptionInfo
@@ -210,6 +210,16 @@ class CSubReconLiver(commandRecon.CCommandRecon) :
         removeStrictureBlock.is_interrupted = self.is_interrupted
         removeStrictureBlock.process()
         self.ProgressValue += int(26 / self.TotalPatientCnt)
+        
+
+        if self.m_registrationMethod == "non-rigid":
+            print("!!!!!!!!!!!!!!!!!non-rigid!!!!!!!!!", file=sys.__stdout__, flush=True)
+            # nonRigidregistrationBlock = nonRigidRegistration.CNonRigidRegistration()
+            # nonRigidregistrationBlock.InputOptionInfo = self.m_optionInfo
+            # nonRigidregistrationBlock.InputPhase = phase
+            # nonRigidregistrationBlock.OutputPath = maskCpyPath
+            # nonRigidregistrationBlock.InputDicomPath = self.DicomPath
+            # nonRigidregistrationBlock.process()
         
         reconstructionBlock = reconstruction.CReconstruction()
         reconstructionBlock.InputOptionInfo = self.InputData.OptionInfo
@@ -379,8 +389,6 @@ class CSubReconLiver(commandRecon.CCommandRecon) :
     @InputSliceID.setter
     def InputSliceID(self, inputSliceID : int) :
         self.m_inputSliceID = inputSliceID
-        
-    
 
 if __name__ == '__main__' :
     pass

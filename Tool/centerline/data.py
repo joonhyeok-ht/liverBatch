@@ -419,6 +419,8 @@ class CData :
         return len(self.m_listSkelInfo)
     def get_skelinfo(self, inx : int) -> CSkelInfo :
         return self.m_listSkelInfo[inx]
+    def remove_skelinfo(self, inx : int):
+        self.m_listSkelInfo.pop(inx)
     def get_skeleton(self, inx : int) -> algSkeletonGraph.CSkeleton :
         skelinfo = self.get_skelinfo(inx)
         if skelinfo is None :

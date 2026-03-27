@@ -154,7 +154,7 @@ class CSubStateRemodelingRemodeling(subStateRemodeling.CSubStateRemodeling) :
 
     def changed_cutting_mesh(self, prevNode : remodelingNode.CRemodelingNode, nowNode : remodelingNode.CRemodelingNode) :
         self.__refresh_toggle_component(nowNode)
-    def btn_select_minor(self, depth):
+    def btn_select_minor(self, order):
         cuttedNode = self.m_mediator.getui_lv_cuttednode_selected_node()
         
         portalSegmentSet = set()
@@ -170,11 +170,11 @@ class CSubStateRemodelingRemodeling(subStateRemodeling.CSubStateRemodeling) :
         self.copy_skeleton_cl_label(skeletonEn, skeleton)
         
         if "Portal" in cuttedNode.Name:
-            self.m_comDrag._select_minor_vessel(skeletonEn, depth, portalSegmentSet)
+            self.m_comDrag._select_minor_vessel(skeletonEn, order, portalSegmentSet)
         elif "Vein" in cuttedNode.Name:
-            self.m_comDrag._select_minor_vessel(skeletonEn, depth, veinSegmentSet)
+            self.m_comDrag._select_minor_vessel(skeletonEn, order, veinSegmentSet)
         else:
-            self.m_comDrag._select_minor_vessel(skeletonEn, depth, [])
+            self.m_comDrag._select_minor_vessel(skeletonEn, order, [])
             
     def btn_minor_score(self):
         cuttedNode = self.m_mediator.getui_lv_cuttednode_selected_node()
@@ -214,6 +214,23 @@ class CSubStateRemodelingRemodeling(subStateRemodeling.CSubStateRemodeling) :
         retListRootCL = cuttedNode.SkeletonEn.find_root_cl(retListCLID)
         if len(retListRootCL) != 1 :
             QMessageBox.information(self.App, "Alarm", f"Must be 1")
+            print("!!!!!!!!!!!!!!!!!!!!", file=sys.__stdout__, flush=True)
+            print(len(retListRootCL), file=sys.__stdout__, flush=True)
+            for cl in retListRootCL:
+                print(cl.ID, file=sys.__stdout__, flush=True)    
+            
+            # name = f"skel_{self.m_nameID}"
+            # skelNode = remodelingNode.CSkelNode()
+            # skelNode.Name = name
+            # skelNode.RemodelingNode = cuttedNode
+            # skelNode.add_clid_list(retListRootCL)
+            # self.m_mediator.setui_lv_subnode_add_node(skelNode)
+            # inx = self.m_mediator.getui_lv_subnode_find_index(skelNode)
+            # if inx > -1 :
+            #     self.m_mediator.setui_lv_subnode_selection_inx(inx)
+
+            # self.m_nameID += 1
+                
             return
         
         name = f"skel_{self.m_nameID}"

@@ -202,47 +202,103 @@ class CBlenderScriptLiver :
             if "Camera" in obj.name or "Light" in obj.name or "Cube" in obj.name :
                 bpy.data.objects.remove(obj, do_unlink=True)
                 
-    def _import_stl(self, path : str) -> bool : 
+    # def _import_stl(self, path : str) -> bool : 
         
-        if not os.path.exists(path) :
+    #     if not os.path.exists(path) :
+    #         print(f"Not found stl path({path}). Return.")
+    #         return False
+    #     listStlName = os.listdir(path)
+    #     if len(listStlName) == 0 :
+    #         print("Not found stl files. Return.")
+    #         return False
+        
+    #     for stlName in listStlName :
+    #         if stlName == ".DS_Store" : 
+    #             continue
+            
+    #         stlNameExceptExt = stlName.split('.')[0]
+            
+    #         if stlNameExceptExt in self.m_optionInfo.NotImport :
+    #             print(f"{stlNameExceptExt} Not Imported.")
+    #             continue
+            
+    #         ext = stlName.split('.')[-1]
+    #         if ext != "stl" :
+    #              continue
+    #         stlFullPath = os.path.join(path, stlName)
+    #         if os.path.isdir(stlFullPath) == True :
+    #             continue
+
+    #         self.m_listStlName.append(stlNameExceptExt)
+            
+    #         if stlNameExceptExt in bpy.data.objects:
+    #             obj = bpy.data.objects[stlNameExceptExt]
+    #             bpy.data.objects.remove(obj, do_unlink=True)
+    #             print(f"[REMOVE] existing object: {stlNameExceptExt}")
+            
+    #         if (4,1,0) < bpy.app.version : 
+    #             bpy.ops.wm.stl_import(filepath=f"{stlFullPath}")
+    #         else :
+    #             bpy.ops.import_mesh.stl(filepath=f"{stlFullPath}")
+
+    #         print(f"imported {stlFullPath}")
+            
+    def _import_stl(self, path: str) -> bool:
+        if not os.path.exists(path):
             print(f"Not found stl path({path}). Return.")
             return False
+
         listStlName = os.listdir(path)
-        if len(listStlName) == 0 :
+        if len(listStlName) == 0:
             print("Not found stl files. Return.")
             return False
-        
-        for stlName in listStlName :
-            if stlName == ".DS_Store" : 
+
+        target_col = bpy.data.collections.get("Collection")
+        if target_col is None:
+            print("Collection not found.")
+            return False
+
+        for stlName in listStlName:
+            if stlName == ".DS_Store":
                 continue
-            
-            stlNameExceptExt = stlName.split('.')[0]
-            
-            if stlNameExceptExt in self.m_optionInfo.NotImport :
+
+            stlNameExceptExt = os.path.splitext(stlName)[0]
+
+            if stlNameExceptExt in self.m_optionInfo.NotImport:
                 print(f"{stlNameExceptExt} Not Imported.")
                 continue
-            
-            ext = stlName.split('.')[-1]
-            if ext != "stl" :
-                 continue
+
+            ext = os.path.splitext(stlName)[1].lower()
+            if ext != ".stl":
+                continue
+
             stlFullPath = os.path.join(path, stlName)
-            if os.path.isdir(stlFullPath) == True :
+            if os.path.isdir(stlFullPath):
                 continue
 
             self.m_listStlName.append(stlNameExceptExt)
-            
+
             if stlNameExceptExt in bpy.data.objects:
                 obj = bpy.data.objects[stlNameExceptExt]
                 bpy.data.objects.remove(obj, do_unlink=True)
                 print(f"[REMOVE] existing object: {stlNameExceptExt}")
-            
-            if (4,1,0) < bpy.app.version : 
-                bpy.ops.wm.stl_import(filepath=f"{stlFullPath}")
-            else :
-                bpy.ops.import_mesh.stl(filepath=f"{stlFullPath}")
+
+            before = set(bpy.data.objects)
+
+            if bpy.app.version > (4, 1, 0):
+                bpy.ops.wm.stl_import(filepath=stlFullPath)
+            else:
+                bpy.ops.import_mesh.stl(filepath=stlFullPath)
+
+            new_objs = set(bpy.data.objects) - before
+
+            for obj in new_objs:
+                for col in list(obj.users_collection):
+                    col.objects.unlink(obj)
+                target_col.objects.link(obj)
 
             print(f"imported {stlFullPath}")
-        
+
         return True
     def _import_other_blend_objs(self, blenderPath : str) -> bool :
         ## 현재 .blend 에 다른 .blend의 오브젝트를 import한다. 중복되는 object는 삭제 후 다른 .blend의 object로 대체함.
@@ -764,10 +820,7 @@ class CBlenderScriptLiverImportSaveForRemodeling(CBlenderScriptLiver) :
         #     return False
         if self.m_optionInfo.process(self.m_optionFullPath) == False :
             return False   
-        self._delete_all_object()
-        self._delete_etc_objects()
-
-        self._get_meshclean_stl(self.m_meshcleanPath)
+        bpy.ops.wm.open_mainfile(filepath=self.m_meshcleanPath) 
         
         if self._import_stl(self.m_stlPath) == False :
             print("failed import stl")
@@ -1000,7 +1053,7 @@ if __name__=='__main__' :
                 optionPath = find_param(scriptArgs, "--optionFullPath")
                 stlPath = find_param(scriptArgs, "--stlPath")
                 outputPath = find_param(scriptArgs, "--outputPath")
-                meshCleanPath = find_param(scriptArgs, "--meshclean_path")
+                meshCleanPath = find_param(scriptArgs, "--meshCleanPath")
                 inst = CBlenderScriptLiverImportSaveForRemodeling(patientID, optionPath, stlPath, outputPath, meshCleanPath)
                 inst.process() 
             elif funcMode == "OpenBlend" :

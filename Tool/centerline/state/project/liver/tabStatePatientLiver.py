@@ -18,7 +18,8 @@ from PySide6.QtWidgets import (
     QTableView,
     QCheckBox,
     QHBoxLayout,
-    QAbstractItemView
+    QAbstractItemView,
+    QRadioButton
 )
 from PySide6.QtGui import QStandardItemModel, QStandardItem, QPixmap
 import command.commandExtractionCL as commandExtractionCL
@@ -500,6 +501,18 @@ class CTabStatePatient(tabState.CTabState):
         label.setStyleSheet("QLabel { margin-top: 1px; margin-bottom: 1px; }")
         label.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
         tabLayout.addWidget(label)
+        
+        label = QLabel("Registration Method :")
+        self.m_rbNonrigid = QRadioButton("non-rigid")
+        self.m_rbRigid = QRadioButton("rigid")
+        self.m_rbNonrigid.toggled.connect(self._on_rb_nonrigid)
+        self.m_rbRigid.toggled.connect(self._on_rb_rigid)
+        self.m_rbNonrigid.setChecked(True)
+        radio_layout = QHBoxLayout()
+        radio_layout.addWidget(label)
+        radio_layout.addWidget(self.m_rbNonrigid)
+        radio_layout.addWidget(self.m_rbRigid)
+        tabLayout.addLayout(radio_layout)
 
         layout, btnList = self.m_mediator.create_layout_btn_array(
             CTabStatePatient.s_listStepName
@@ -579,10 +592,10 @@ class CTabStatePatient(tabState.CTabState):
         tabLayout.addWidget(btn)
 
         # sally
-        btn = QPushButton("Do Blender")
-        btn.setStyleSheet(self.get_btn_stylesheet())
-        btn.clicked.connect(self._on_btn_do_blender)
-        tabLayout.addWidget(btn)
+        # btn = QPushButton("Do Blender")
+        # btn.setStyleSheet(self.get_btn_stylesheet())
+        # btn.clicked.connect(self._on_btn_do_blender)
+        # tabLayout.addWidget(btn)
         
 
         # btn = QPushButton("Extract Centerline")
@@ -1161,7 +1174,7 @@ class CTabStatePatient(tabState.CTabState):
         unzipPath = self.m_editUnzipPath.text()
         
         BlenderPath = os.path.join(
-            unzipPath, self.getui_edit_huid_path(), "02_SAVE", "02_BLENDER_SAVE", "Auto01_Recon", f"{self.getui_edit_huid_path()}.blend"
+            unzipPath, self.getui_edit_huid_path(), "02_SAVE", "02_BLENDER_SAVE", f"{self.getui_edit_huid_path()}_recon.blend"
         )
         cmd = f'{dataInst.OptionInfo.BlenderExe} "{BlenderPath}"'
         os.system(cmd)
@@ -1197,6 +1210,9 @@ class CTabStatePatient(tabState.CTabState):
             
             dataInst = self.get_data()
             userdata = dataInst.UserData
+            if self.m_rbNonrigid.isChecked():
+                userdata.m_registrationMethod = "non-rigid"
+                
             if userdata is not None :
                 userdata.override_recon(inputSliceID)
             else :
@@ -1540,9 +1556,9 @@ class CTabStatePatient(tabState.CTabState):
             
             unzipPath = self.m_editUnzipPath.text()
             blenderRoot = os.path.join(
-                unzipPath, self.getui_edit_huid_path(), "02_SAVE", "02_BLENDER_SAVE", "Auto01_Recon"
+                unzipPath, self.getui_edit_huid_path(), "02_SAVE", "02_BLENDER_SAVE"
             )
-            if os.path.exists(os.path.join(blenderRoot, f"{self.getui_edit_huid_path()}.blend")):
+            if os.path.exists(os.path.join(blenderRoot, f"{self.getui_edit_huid_path()}_recon.blend")):
                 reply = QMessageBox.question(
                     self.m_mediator,
                     "Re Do Recon",           
@@ -1715,6 +1731,12 @@ class CTabStatePatient(tabState.CTabState):
             userdata.override_individual_recon(dlg.PhaseInfo)
         else :
             print("Cancel 클릭")
+    def _on_rb_nonrigid(self) :
+        if self.m_bReady == False :
+            return
+    def _on_rb_rigid(self) :
+        if self.m_bReady == False :
+            return
 
     def _on_btn_overlap(self):
         if not self.m_reconReady: 

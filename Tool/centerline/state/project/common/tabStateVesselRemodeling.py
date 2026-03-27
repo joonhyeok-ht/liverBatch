@@ -456,18 +456,18 @@ class CTabStateVesselRemodeling(tabState.CTabState) :
         leftLayout.addLayout(layout)
         leftLayout.addStretch()
         
-        labelDepth = QLabel("Max Depth")
+        labelDepth = QLabel("Order")
         labelDepth.setStyleSheet("QLabel { margin-top: 1px; margin-bottom: 1px; }")
         labelDepth.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
-        self.m_minorVelsselMaxDepth = QSpinBox()
-        self.m_minorVelsselMaxDepth.setRange(0, 99)
-        self.m_minorVelsselMaxDepth.setSingleStep(1)
-        self.m_minorVelsselMaxDepth.setValue(1)
+        self.m_majorVesselOrder = QSpinBox()
+        self.m_majorVesselOrder.setRange(0, 99)
+        self.m_majorVesselOrder.setSingleStep(1)
+        self.m_majorVesselOrder.setValue(1)
         
         rightLayout.addWidget(labelDepth)
-        rightLayout.addWidget(self.m_minorVelsselMaxDepth)
+        rightLayout.addWidget(self.m_majorVesselOrder)
         
-        btn = QPushButton("Select Minor")
+        btn = QPushButton("Select Major")
         btn.setStyleSheet(self.get_btn_stylesheet())
         btn.clicked.connect(self._on_btn_minor_selection)
         rightLayout.addWidget(btn) 
@@ -921,15 +921,15 @@ class CTabStateVesselRemodeling(tabState.CTabState) :
         optionFullPath = os.path.join(os.path.dirname(os.path.dirname(self.m_mediator.FilePath)), "option.json")
         
         meshcleanPath = os.path.join(
-            dataInst.OptionInfo.DataRootPath, currPatientID, "02_SAVE", "02_BLENDER_SAVE",  "Auto03_MeshClean", f"{currPatientID}.blend"
+            dataInst.OptionInfo.DataRootPath, currPatientID, "02_SAVE", "02_BLENDER_SAVE",  f"{currPatientID}_clean.blend"
         )
         cmd = f"{dataInst.OptionInfo.BlenderExe} -b --python {os.path.join(parentDirPath, 'liver', 'blenderScriptLiver.py')} -- \
-        --func_mode RemodelingImportSave \
-        --patient_id {currPatientID} \
-        --option_path {optionFullPath} \
-        --stl_path {stlOutPath} \
-        --out_path {outputFolder} \
-        --meshclean_path {meshcleanPath}"
+        --funcMode RemodelingImportSave \
+        --patientID {currPatientID} \
+        --optionFullPath {optionFullPath} \
+        --stlPath {stlOutPath} \
+        --outputPath {outputFolder} \
+        --meshCleanPath {meshcleanPath}"
         
         os.system(cmd)
         # self.m_mediator.show_dialog(f"Save Blender Done")
@@ -942,7 +942,7 @@ class CTabStateVesselRemodeling(tabState.CTabState) :
             outputFolder, f"{currPatientID}.blend"
         )
         
-        cmd = f"{dataInst.OptionInfo.BlenderExe} --python {os.path.join(parentDirPath, 'liver', 'blenderScriptLiver.py')} -- --patient_id {currPatientID} --stl_path '' --option_path {optionFullPath} --open_path {openPath} --out_path {outputFolder} --func_mode OpenBlend"
+        cmd = f"{dataInst.OptionInfo.BlenderExe} --python {os.path.join(parentDirPath, 'liver', 'blenderScriptLiver.py')} -- --patientID {currPatientID} --stlPath '' --optionFullPath {optionFullPath} --outputPath {openPath} --funcMode OpenBlend"
         os.system(cmd)
         
     def command_add_skelinfo(self) :
@@ -1617,7 +1617,7 @@ class CTabStateVesselRemodeling(tabState.CTabState) :
         if dataInst.Ready == False :
             return
         
-        self._get_substate(self.m_state).btn_select_minor(self.m_minorVelsselMaxDepth.value())
+        self._get_substate(self.m_state).btn_select_minor(self.m_majorVesselOrder.value())
         self.m_mediator.update_viewer()
     def _on_btn_check_minor_score(self):
         dataInst = self.get_data()

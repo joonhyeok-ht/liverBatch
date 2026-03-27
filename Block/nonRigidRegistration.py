@@ -1,5 +1,5 @@
-import sys
 import os
+import sys
 import numpy as np
 
 fileAbsPath = os.path.abspath(os.path.dirname(__file__))
@@ -459,7 +459,7 @@ class CNonRigidRegistration(multiProcessTask.CMultiProcessTask):
         super().__init__()
         # input your code
         self.m_inputOptionInfo = None
-        self.m_inputNiftiContainer = None
+        self.m_inputPhase = None
         self.m_outputListWarpedNifti = None
         self.m_outputPath = ""
         self.m_inputDicomePath = ""
@@ -468,7 +468,7 @@ class CNonRigidRegistration(multiProcessTask.CMultiProcessTask):
     def clear(self):
         # input your code
         self.m_inputOptionInfo = None
-        self.m_inputNiftiContainer = None
+        self.m_inputPhase = None
         if self.m_outputListWarpedNifti is not None:
             self.m_outputListWarpedNifti.clear()
             self.m_outputListWarpedNifti = None
@@ -479,38 +479,38 @@ class CNonRigidRegistration(multiProcessTask.CMultiProcessTask):
         if self.InputOptionInfo is None:
             print("nonrigid reg : not setting input optionInfo")
             return
-        if self.InputNiftiContainer is None:
+        if self.InputPhase is None:
             print("nonrigid reg : not setting input nifti container")
             return
 
         phaseToID = dict()
         listParam = []
 
-        iRegInfoCnt = self.InputOptionInfo.get_reginfo_count()
-        iNiftiInfoCnt = self.InputNiftiContainer.get_nifti_info_count()
+        iRegInfoCnt = self.InputOptionInfo.get_recon_count()
+        iNiftiInfoCnt = self.InputPhase.get_nifti_info_count()
 
         TargetPhase = None
 
         for inx in range(0, iRegInfoCnt):
             regInfo = self.InputOptionInfo.get_reginfo(inx)
             fixedTargetName = regInfo.Target
-            targetNiftiInfo = self.InputNiftiContainer.find_nifti_info_list_by_name(
+            targetNiftiInfo = self.InputPhase.find_nifti_info_list_by_name(
                 fixedTargetName
             )
             TargetPhase = targetNiftiInfo[0].MaskInfo.Phase
 
             src = regInfo.Src
-            srcNiftiInfo = self.InputNiftiContainer.find_nifti_info_list_by_name(src)
+            srcNiftiInfo = self.InputPhase.find_nifti_info_list_by_name(src)
             srcPhase = srcNiftiInfo[0].MaskInfo.Phase
             
             if srcPhase == "MR":
                 continue
             
-            targetPhaseInfo = self.InputNiftiContainer.find_phase_info(
+            targetPhaseInfo = self.InputPhase.find_phase_info(
                             TargetPhase
                         )
             
-            srcPhaseInfo = self.InputNiftiContainer.find_phase_info(
+            srcPhaseInfo = self.InputPhase.find_phase_info(
                             srcPhase
                         )
             
@@ -536,11 +536,11 @@ class CNonRigidRegistration(multiProcessTask.CMultiProcessTask):
             sitk.WriteImage(targetDicomImageSitk, targetDicomNiftiPath)
 
         for inx in range(0, iNiftiInfoCnt):
-            niftiInfo = self.InputNiftiContainer.get_nifti_info(inx)
+            niftiInfo = self.InputPhase.get_nifti_info(inx)
             if not niftiInfo.Valid:
                 continue
 
-            phaseInfo = self.InputNiftiContainer.find_phase_info(
+            phaseInfo = self.InputPhase.find_phase_info(
                 niftiInfo.MaskInfo.Phase
             )
             srcPhase = phaseInfo.Phase
@@ -551,7 +551,7 @@ class CNonRigidRegistration(multiProcessTask.CMultiProcessTask):
             if srcPhase == "MR":
                 continue
 
-            sourceDeformedDicomNiftiPath = (
+            sourceResampledDicomNiftiPath = (
                 str(self.OutputPath) + "/DICOM_" + srcPhase + ".nii.gz"
             )
 
@@ -572,7 +572,7 @@ class CNonRigidRegistration(multiProcessTask.CMultiProcessTask):
                 ],
             )
 
-            if os.path.exists(sourceDeformedDicomNiftiPath):
+            if os.path.exists(sourceResampledDicomNiftiPath):
                 pass
             else:
                 srcDcmPath = os.path.join(self.InputDicomPath, srcPhase)
@@ -589,29 +589,20 @@ class CNonRigidRegistration(multiProcessTask.CMultiProcessTask):
                     dicomTargetImage.GetPixelID(),
                 )
 
-                # source_np = sitk.GetArrayFromImage(sourceDicomImage)
-                # source_norm = normalize_mr(source_np)
-                # src_matched = match_histograms(source_norm, target_norm)
-                # source_sitk = sitk.GetImageFromArray(src_matched)
-                # source_sitk.CopyInformation(sourceDicomImage)
+                sitk.WriteImage(sourceDicomImage, sourceResampledDicomNiftiPath)
 
-                # fixedSrcDicomImage = preprocess_image(sourceDicomImage, fixedTargetDicomImage)
-                # sitk.WriteImage(fixedSrcDicomImage, sourceDeformedDicomNiftiPath)
-                # sitk.WriteImage(source_sitk, sourceDeformedDicomNiftiPath)
-                sitk.WriteImage(sourceDicomImage, sourceDeformedDicomNiftiPath)
-
-                for i, phaseInfo in enumerate(self.InputNiftiContainer.m_listPhaseInfo):
+                for i, phaseInfo in enumerate(self.InputPhase.m_listPhaseInfo):
                     if phaseInfo.Phase == srcPhase:
-                        self.InputNiftiContainer.m_listPhaseInfo[i].m_origin = (
+                        self.InputPhase.m_listPhaseInfo[i].m_origin = (
                             targetOrigin
                         )
-                        self.InputNiftiContainer.m_listPhaseInfo[i].m_spacing = (
+                        self.InputPhase.m_listPhaseInfo[i].m_spacing = (
                             targetSpacing
                         )
-                        self.InputNiftiContainer.m_listPhaseInfo[i].m_direction = (
+                        self.InputPhase.m_listPhaseInfo[i].m_direction = (
                             targetDirection
                         )
-                        self.InputNiftiContainer.m_listPhaseInfo[i].m_size = targetSize
+                        self.InputPhase.m_listPhaseInfo[i].m_size = targetSize
 
             sitkSrc = scoUtil.CScoUtilSimpleITK.load_image(niftiInfo.FullPath, None)
             sitkSrc = sitk.Resample(
@@ -654,7 +645,7 @@ class CNonRigidRegistration(multiProcessTask.CMultiProcessTask):
                 listParam.append(
                     [
                         targetDicomNiftiPath,
-                        sourceDeformedDicomNiftiPath,
+                        sourceResampledDicomNiftiPath,
                         resampledSrcMaskPath,
                     ]
                 )
@@ -805,12 +796,12 @@ class CNonRigidRegistration(multiProcessTask.CMultiProcessTask):
         self.m_inputOptionInfo = inputOptionInfo
 
     @property
-    def InputNiftiContainer(self) -> niftiContainer.CNiftiContainer:
-        return self.m_inputNiftiContainer
+    def InputPhase(self) -> niftiContainer.CPhase:
+        return self.m_inputPhase
 
-    @InputNiftiContainer.setter
-    def InputNiftiContainer(self, inputNiftiContainer: niftiContainer.CNiftiContainer):
-        self.m_inputNiftiContainer = inputNiftiContainer
+    @InputPhase.setter
+    def InputPhase(self, inputPhase: niftiContainer.CPhase):
+        self.m_inputPhase = inputPhase
 
     @property
     def OutputListOffset(self) -> list:

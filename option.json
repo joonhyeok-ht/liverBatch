@@ -14,8 +14,8 @@
     ],
 
     "ResamplingToPhase" : [
-	    ["Artery", "Artery_re", "PP"],
-        ["Vein", "Vein_re", "PP"]
+	    ["Artery_st", "Artery_re", "PP"],
+        ["Vein_st", "Vein_re", "PP"]
     ],
     "ResamplingToMinSpacing" : [
 	    ["Portal", "Portal_min"],

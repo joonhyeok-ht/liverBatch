@@ -80,7 +80,7 @@ class CResamplingToPhase(multiProcessTask.CMultiProcessTaskProgress) :
         iCnt = self.InputOptionInfo.get_resampling_phase_count()
         for inx in range(0, iCnt) :
             inMaskName, outMaskName, targetPhase = self.InputOptionInfo.get_resampling_phase(inx)
-            srcPhase = self.InputOptionInfo.find_phase_of_mask(inMaskName + "_st")
+            srcPhase = self.InputOptionInfo.find_phase_of_mask(inMaskName)
 
             inMaskFullPath = os.path.join(self.InputMaskPath, f"{inMaskName}.nii.gz")
             outMaskFullPath = os.path.join(self.OutputMaskPath, f"{outMaskName}.nii.gz")
@@ -179,6 +179,7 @@ def _resampling_to_min_spacing_task_worker(param: tuple):
         npImg, origin, spacing, direction, size = algImage.CAlgImage.get_np_from_sitk(sitkImg, np.uint8)
 
         algImage.CAlgImage.save_nifti_from_np(outMaskFullPath, npImg, origin, spacing, direction, (2, 1, 0))
+        print(f"pre resampled mask: {inMaskFullPath}", file=sys.__stdout__, flush=True)
         print(f"completed resampling to min spacing {os.path.basename(outMaskFullPath)}", file=sys.__stdout__, flush=True)
 
 

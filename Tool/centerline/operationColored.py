@@ -47,7 +47,7 @@ class COperationSelectionCL(operation.COperationSelectionCL) :
                 # sally
                 cl = skeleton.get_centerline(id)
                 ##_color != self.m_mediator.m_
-                if not np.array_equal(_color, dataInst.SelectionCLColor) :
+                if not np.array_equal(_color, dataInst.s_selectionCLColor) :
                     if cl.Name != '':
                         color = self.m_mediator.get_cl_color(cl.Name)
                     else :
@@ -95,7 +95,7 @@ class COperationDragSelectionCL(operation.COperationDragSelectionCL) :
                 # sally
                 cl = skeleton.get_centerline(id)
                 ##_color != self.m_mediator.m_
-                if not np.array_equal(_color, dataInst.SelectionCLColor) :
+                if not np.array_equal(_color, dataInst.s_selectionCLColor) :
                     if cl.Name != '':
                         color = self.m_mediator.get_cl_color(cl.Name)
                     else :

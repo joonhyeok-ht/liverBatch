@@ -411,7 +411,7 @@ class CTabStateReg(tabState.CTabState) :
                 return
             color = None
             if inx == clinfoInx :
-                color = dataInst.SelectionCLColor
+                color = dataInst.s_selectionCLColor
             else :
                 color = dataInst.CLColor
             clObj = dataInst.find_obj_by_key(clKey)
@@ -442,7 +442,7 @@ class CTabStateReg(tabState.CTabState) :
         color = None 
         selectionInx = self.getui_vessel_list_selection_index()
         if clinfoInx == selectionInx :
-            color = dataInst.SelectionCLColor
+            color = dataInst.s_selectionCLColor
         else :
             color = dataInst.CLColor
 

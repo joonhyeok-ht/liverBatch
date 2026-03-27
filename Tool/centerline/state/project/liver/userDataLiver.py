@@ -62,6 +62,7 @@ class CUserDataLiver(userData.CUserData) :
         self.m_localCleanBlenderFullPath = ""
         self.m_outputReconBlenderFullPath = ""
         self.m_outputCleanBlenderFullPath = ""
+        self.m_registrationMethod = ""
         
         try:
             # PyInstaller로 패키징된 실행 파일의 경우
@@ -90,6 +91,7 @@ class CUserDataLiver(userData.CUserData) :
         self.m_localCleanBlenderFullPath = ""
         self.m_outputReconBlenderFullPath = ""
         self.m_outputCleanBlenderFullPath = ""
+        self.m_registrationMethod = ""
 
         self.m_makeInputFolder.clear()
 
@@ -149,12 +151,6 @@ class CUserDataLiver(userData.CUserData) :
 
     # override
     def override_recon(self, inputSliceID) :
-        print("!!!!!!!!!!!!!override_recon start", file=sys.__stdout__, flush=True)
-        # 기존에 존재할 경우 blender 로딩만 수행 
-        if os.path.exists(self.m_outputReconBlenderFullPath) == True :
-            userData.CUserData.blender_process_load(self.Data.OptionInfo.BlenderExe, self.m_outputReconBlenderFullPath)
-            return
-        
         datainst = self.Data
         optioninfo = datainst.OptionInfo
         
@@ -171,6 +167,8 @@ class CUserDataLiver(userData.CUserData) :
 
         # recon 수행 
         reconInst = reconLiver.CSubReconLiver()
+        if self.m_registrationMethod == "non-rigid":
+            reconInst.m_registrationMethod = self.m_registrationMethod
         reconInst.InputSliceID = inputSliceID
         reconInst.m_folderInfo = folderInfo
         reconInst.IntermediateDataPath = datainst.OutputPatientPath
@@ -307,10 +305,6 @@ class CUserDataLiver(userData.CUserData) :
     def override_load_centerline(self) :
         pass
     def override_individual_recon(self, phaseinfo : dict) :
-        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!", file=sys.__stdout__, flush=True)
-        print(phaseinfo, file=sys.__stdout__, flush=True)
-        
-        
         datainst = self.Data
         optioninfo = datainst.OptionInfo
         folderinfo = self.MakeInputFolder
