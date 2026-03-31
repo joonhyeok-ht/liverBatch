@@ -49,7 +49,43 @@ class COptionInfo() :
 
         self.m_dicPhaseInfo = {}
 
+        self.reload()
 
+    def clear(self) :
+        self.m_bReady = False
+
+        self.m_version = None
+        self.m_dataRootPath = ""
+        self.m_cl = ""
+
+        self.m_regInfo = None
+
+        self.m_resamplingToMinSpacing = None
+        self.m_resamplingToPhase = None
+
+        self.m_stricture = None
+
+        self.m_recon = None
+
+        self.m_meshBoolean = None
+        self.m_meshDecimation = None
+        self.m_meshHealing = None
+
+        self.m_blender = None
+
+        self.m_centerline = None
+        self.m_targetTerritoryList = None
+
+        self.m_dicPhaseInfo.clear()
+
+        self.m_jsonPath = ""
+        self.m_jsonData = None
+
+    def reload(self) :
+        jsonPath = self.m_jsonPath
+        self.clear()
+        self.m_jsonPath = jsonPath
+        
         with open(self.m_jsonPath, 'r', encoding="utf-8") as fp :
             self.m_jsonData = json.load(fp)
         if self.m_jsonData is None or len(self.m_jsonData) == 0 :
@@ -128,36 +164,11 @@ class COptionInfo() :
         self.process_phase_alignment()
 
         self.m_bReady = True
-    def clear(self) :
-        self.m_bReady = False
 
-        self.m_version = None
-        self.m_dataRootPath = ""
-        self.m_cl = ""
-
-        self.m_regInfo = None
-
-        self.m_resamplingToMinSpacing = None
-        self.m_resamplingToPhase = None
-
-        self.m_stricture = None
-
-        self.m_recon = None
-
-        self.m_meshBoolean = None
-        self.m_meshDecimation = None
-        self.m_meshHealing = None
-
-        self.m_blender = None
-
-        self.m_centerline = None
-        self.m_targetTerritoryList = None
-
-        self.m_dicPhaseInfo.clear()
-
-        self.m_jsonPath = ""
-        self.m_jsonData = None
-
+    def save(self, fullPath : str) :
+        os.makedirs(os.path.dirname(fullPath), exist_ok=True)
+        with open(fullPath, "w", encoding="utf-8") as f :
+            json.dump(self.m_jsonData, f, indent=4, ensure_ascii=False)
 
     def get_version_release(self) -> str :
         if self.m_version is None :
@@ -235,6 +246,17 @@ class COptionInfo() :
         outMaskName = self.m_resamplingToPhase[inx][1]
         phase = self.m_resamplingToPhase[inx][2]
         return (inMaskName, outMaskName, phase)
+    def add_resampling_phase(self, inMaskName : str, outMaskName : str, phase : str) :
+        if self.m_resamplingToPhase is None :
+            self.m_jsonData["ResamplingToPhase"] = []
+            self.m_resamplingToPhase = self.m_jsonData["ResamplingToPhase"]
+        self.m_resamplingToPhase.append([inMaskName, outMaskName, phase])
+    def clear_resampling_phase(self) :
+        if self.m_resamplingToPhase is None :
+            self.m_jsonData["ResamplingToPhase"] = []
+            self.m_resamplingToPhase = self.m_jsonData["ResamplingToPhase"]
+        self.m_resamplingToPhase.clear()
+
     
     def get_stricture_count(self) -> int :
         if self.m_stricture is None :
@@ -314,6 +336,14 @@ class COptionInfo() :
         reconInx = retInx[0]
         listInx = retInx[1]
         self.m_recon[reconInx]["List"][listInx][2] = phase
+    def set_recon_blendername(self, maskName : str, blendername : str) :
+        retInx = self.find_recon_index_of_maskname(maskName)
+        if retInx is None :
+            return
+
+        reconInx = retInx[0]
+        listInx = retInx[1]
+        self.m_recon[reconInx]["List"][listInx][1] = blendername
     
     def get_mesh_boolean_count(self) -> int :
         if self.m_meshBoolean is None :
@@ -414,8 +444,7 @@ class COptionInfo() :
             iListCnt = self.get_recon_list_count(reconInx) 
             for listInx in range(0, iListCnt) :
                 _maskName, _blenderName, _phase, _triCnt = self.get_recon_list(reconInx, listInx)
-                #if _maskName == maskName :
-                if _maskName in maskName and _phase != "":
+                if _maskName == maskName :
                     return _phase
         return ""
     def find_rigid_aabb_of_mask(self, maskName : str) -> int :
@@ -510,6 +539,15 @@ class COptionInfo() :
         listPhase = [phase for phase in listPhase if phase != ""]
         return listPhase
 
+    # user key-value 
+    def set_user_value(self, key : str, value) :
+        self.m_jsonData[key] = value
+    def get_user_value(self, key : str) :
+        if key in self.m_jsonData :
+            return self.m_jsonData[key]
+        else :
+            return None
+
 
     # protected 
     def process_phase_alignment(self) :
@@ -524,6 +562,8 @@ class COptionInfo() :
                 if phase not in self.m_dicPhaseInfo :
                     self.m_dicPhaseInfo[phase] = []
                 self.m_dicPhaseInfo[phase].append(maskName)
+
+
     @property
     def Ready(self) -> bool :
         return self.m_bReady

@@ -231,19 +231,38 @@ class CResampledFrameCL(curveInfo.CCLCurve) :
 
         self._find_resample_index()
 
+        # 개선이라고 생각했지만 잘 안된 것 
+        # self.m_resampledVertex = []
+        # self.m_resampledRadius = []
+        # self.m_resampledTangent = None
+        # self.m_resampledNormal = None
+        # self.m_resampledBinormal = None
+
+        # for resampledInx in self.m_resampleIndex :
+        #     self.m_resampledVertex.append(self.m_point[resampledInx])
+        #     self.m_resampledRadius.append(self.m_radius[resampledInx])
+        
+        # self.m_resampledVertex = np.array(self.m_resampledVertex)
+        # self.m_resampledRadius = np.array(self.m_resampledRadius)
+        # self.m_resampledBinormal, self.m_resampledNormal, self.m_resampledTangent = curveInfo.CCLCurve.get_BNT(self.m_resampledVertex, None, None, None)
+
+        # 
         self.m_resampledVertex = []
         self.m_resampledRadius = []
-        self.m_resampledTangent = None
-        self.m_resampledNormal = None
-        self.m_resampledBinormal = None
-        
+        self.m_resampledTangent = []
+        self.m_resampledNormal = []
+        self.m_resampledBinormal = []
         for resampledInx in self.m_resampleIndex :
             self.m_resampledVertex.append(self.m_point[resampledInx])
             self.m_resampledRadius.append(self.m_radius[resampledInx])
-
+            self.m_resampledTangent.append(self.m_tangent[resampledInx])
+            self.m_resampledNormal.append(self.m_normal[resampledInx])
+            self.m_resampledBinormal.append(self.m_binormal[resampledInx])
         self.m_resampledVertex = np.array(self.m_resampledVertex)
         self.m_resampledRadius = np.array(self.m_resampledRadius)
-        self.m_resampledBinormal, self.m_resampledNormal, self.m_resampledTangent = curveInfo.CCLCurve.get_BNT(self.m_resampledVertex, None, None, None)
+        self.m_resampledTangent = np.array(self.m_resampledTangent)
+        self.m_resampledNormal = np.array(self.m_resampledNormal)
+        self.m_resampledBinormal = np.array(self.m_resampledBinormal)
 
     def save_resampling_data(self, jsonFullPath : str) :
         if self.m_resampledRadius is None :
@@ -685,6 +704,13 @@ class CTreeVesselRemodeling :
                     mergedRadius = np.hstack((mergedRadius[outsideInx], mergedRadius[outsideInx : ]))
                     # mergedVertex = np.vstack((spherePos.reshape(-1, 3), mergedVertex[ : ]))
                     # mergedRadius = np.hstack((mergedRadius[outsideInx], mergedRadius[ : ]))
+            else :
+                spherePos = mergedVertex[0].reshape(-1, 3)
+                sphereRadius = mergedRadius[0]
+                outsideInx = CTreeVesselRemodeling.find_outside_inx_by_vertex(spherePos, sphereRadius, mergedVertex)
+                if outsideInx != -1 and outsideInx !=  mergedVertex.shape[0] - 1 :
+                    mergedVertex = np.vstack((spherePos.reshape(-1, 3), mergedVertex[outsideInx : ]))
+                    mergedRadius = np.hstack((mergedRadius[outsideInx], mergedRadius[outsideInx : ]))
 
             # radius margin 적용
             mergedRadius = np.maximum(mergedRadius + self.InputRadiusMargin, self.s_minRadius)

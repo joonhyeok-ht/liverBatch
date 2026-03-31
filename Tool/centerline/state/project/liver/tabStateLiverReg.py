@@ -371,7 +371,7 @@ class CTabStateReg(tabState.CTabState) :
         editCLObj = vtkObjInterface.CVTKObjInterface()
         editCLObj.KeyType = CTabStateReg.s_editCLType
         editCLObj.Key = key
-        editCLObj.Color = dataInst.CLColor
+        editCLObj.Color = dataInst.s_clColor
         editCLObj.Opacity = 1.0
         editCLObj.PolyData = editCLPolydata
         dataInst.add_vtk_obj(editCLObj)
@@ -413,7 +413,7 @@ class CTabStateReg(tabState.CTabState) :
             if inx == clinfoInx :
                 color = dataInst.s_selectionCLColor
             else :
-                color = dataInst.CLColor
+                color = dataInst.s_clColor
             clObj = dataInst.find_obj_by_key(clKey)
             clObj.Color = color
     def _command_refresh_cl(self, clinfoInx : int) :
@@ -444,7 +444,7 @@ class CTabStateReg(tabState.CTabState) :
         if clinfoInx == selectionInx :
             color = dataInst.s_selectionCLColor
         else :
-            color = dataInst.CLColor
+            color = dataInst.s_clColor
 
         editCLObj = dataInst.find_obj_by_key(clKey)
         editCLObj.Color = color

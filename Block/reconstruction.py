@@ -247,7 +247,6 @@ class CReconstruction(multiProcessTask.CMultiProcessTaskProgress) :
                 phaseInfo = self.InputPhase.find_phaseinfo(phase)
                 
                 if phaseInfo is None or phaseInfo.is_valid() == False :
-                    print(f"recon : not found phaseinfo {maskName}")
                     continue
                 if blenderName == "" :
                     #print(f"recon : skip {maskName}")

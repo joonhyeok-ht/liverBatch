@@ -214,8 +214,6 @@ class CSubStateRemodelingRemodeling(subStateRemodeling.CSubStateRemodeling) :
         retListRootCL = cuttedNode.SkeletonEn.find_root_cl(retListCLID)
         if len(retListRootCL) != 1 :
             QMessageBox.information(self.App, "Alarm", f"Must be 1")
-            print("!!!!!!!!!!!!!!!!!!!!", file=sys.__stdout__, flush=True)
-            print(len(retListRootCL), file=sys.__stdout__, flush=True)
             for cl in retListRootCL:
                 print(cl.ID, file=sys.__stdout__, flush=True)    
             

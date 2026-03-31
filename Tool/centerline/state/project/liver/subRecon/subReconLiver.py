@@ -34,8 +34,6 @@ import command.commandRecon as commandRecon
 import glob
 
 # from Algorithm.Recon import reconCC
-from liver.subUtils import createDiaphragm
-from liver.subUtils import clipUnderUmbilicusPolyLiver
 
 class CSubReconLiver(commandRecon.CCommandRecon) :
     def __init__(self) :

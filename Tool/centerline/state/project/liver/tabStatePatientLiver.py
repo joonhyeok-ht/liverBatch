@@ -60,7 +60,6 @@ import tabState as tabState
 
 # sally
 import liver.makeInputFolderLiver as makeInputFolder
-import subUtils.checkIntegrityStomach as checkIntegrity
 import subUtils.predictNavel as predictNavel
 import subUtils.generateSkinScreenshot as generateSkinScreenshot
 import subRecon.subReconLiver as reconLiver
@@ -895,7 +894,7 @@ class CTabStatePatient(tabState.CTabState):
         optionInfoInst = optionInfo.COptionInfo(optionFullPath)
         dataInst.OptionInfo = optionInfoInst
         
-        dataInst.CLColor = algLinearMath.CScoMath.to_vec3([0.3, 0.3, 0.0])
+        dataInst.s_clColor = algLinearMath.CScoMath.to_vec3([0.3, 0.3, 0.0])
         dataInst.RootCLColor = algLinearMath.CScoMath.to_vec3([1.0, 1.0, 0.0])
         dataInst.SelectionCLColor = algLinearMath.CScoMath.to_vec3([0.0, 1.0, 0.0])
         dataInst.CLSize = 0.4
@@ -1269,45 +1268,13 @@ class CTabStatePatient(tabState.CTabState):
         self.loading_dialog.show()
         
         def _clicked_overlap(self):
-            # Step1 : Auto01_Recon의 .blend의 obj들을 export.
             dataInst = self.get_data()
-            currPatientID = self.getui_edit_huid_path()
-            if currPatientID == "":
-                print(f"ERROR : CurrPatientID is empty.")
-                return
-            # stlPath = os.path.join(self.m_outputPath, currPatientID, "Result")
-            savePath = os.path.join(
-                self.m_dataRootPath, currPatientID, "02_SAVE", "02_BLENDER_SAVE"
-            )
-
-            outputPatientFullPath = os.path.join(dataInst.OutputPath, currPatientID)
-            exportStlPath = os.path.join(outputPatientFullPath, "ExportStl")
-            
-            if not os.path.exists(exportStlPath):
-                os.makedirs(exportStlPath)
-            
-            cmd = f"{dataInst.OptionInfo.BlenderExe} -b --python {os.path.join(self.fileAbsPath, 'blenderScriptLiver.py')} --\
-                --patientID {currPatientID} \
-                --funcMode Export \
-                --inputBlendPath {savePath}\
-                --exportPath {exportStlPath}"
-            os.system(cmd)
-
-            # Step2 : Overlap Detect 수행
-            # Step3 : Detecting결과를 다시 .blend 에 import
-            overlap = detectOverlap.CSubDetectOverlap()
-            outputPatientFullPath = os.path.join(dataInst.OutputPath, currPatientID)
-            overlap.StlPath = os.path.join(outputPatientFullPath, "ExportStl")
-            overlap.LogPath = outputPatientFullPath
-            overlap.process()
-
-            cmd = f"{dataInst.OptionInfo.BlenderExe} --python {os.path.join(self.fileAbsPath, 'blenderScriptLiver.py')} -- \
-            --funcMode ImportSave \
-            --patientID {currPatientID} \
-            --optionFullPath {self.m_optionFullPath} \
-            --stlPath {exportStlPath} \
-            --outputPath {savePath}/{currPatientID}_overlap.blend"
-            os.system(cmd)
+            userdata = dataInst.UserData
+            if userdata is not None :
+                userdata.override_overlap()
+            else :
+                QMessageBox.information(self.m_mediator, "Alarm", f"failed reconstruction : not setting userdata")
+            return
             
         def end_overlap(result):
             self.loading_dialog.close()
@@ -1322,62 +1289,34 @@ class CTabStatePatient(tabState.CTabState):
     def _cliked_clean_loading(self):
         self.loading_dialog = LoadingDialog(self.m_mediator)
         self.loading_dialog.show()
-        dataInst = self.get_data()
-        unzipPath = self.m_editUnzipPath.text()
         currPatientID = self.getui_edit_huid_path()
 
         if currPatientID == "":
             print(f"ERROR : CurrPatientID is empty.")
             return
-        stlPath = os.path.join(dataInst.OutputPath, currPatientID, "Result")
-        savePath = os.path.join(
-            self.m_dataRootPath, currPatientID, "02_SAVE", "02_BLENDER_SAVE"
-        )
+
         def _clicked_clean(self):
-            # currPatientID = self.getui_edit_huid_path()
-
-            # if currPatientID == "":
-            #     print(f"ERROR : CurrPatientID is empty.")
-            #     return
-            # stlPath = os.path.join(self.m_outputPath, currPatientID, "Result")
-            # savePath = os.path.join(
-            #     self.m_dataRootPath, currPatientID, "02_SAVE", "02_BLENDER_SAVE"
-            # )
-            
-            overlapBlenderPath = os.path.join(
-                unzipPath, self.getui_edit_huid_path(), "02_SAVE", "02_BLENDER_SAVE", f"{self.getui_edit_huid_path()}_overlap.blend"
-            )
-            
-            if os.path.exists(overlapBlenderPath) == False :
-                print(f"ERROR : Not Found {overlapBlenderPath}. return.")
-                self.m_mediator.show_dialog(f"Auto02_Overlap 폴더에 .blend 파일이 존재하지 않습니다.")
-                return
-
-            cmd = f'{dataInst.OptionInfo.BlenderExe} -b --python {os.path.join(self.fileAbsPath, "blenderScriptLiver.py")} -- \
-            --funcMode "MeshClean" \
-            --patientID "{currPatientID}" \
-            --optionFullPath "{self.m_optionFullPath}" \
-            --stlPath "{stlPath}" \
-            --overlapPath "{overlapBlenderPath}" \
-            --outputPath "{savePath}"'
-
-            os.system(cmd)
+            dataInst = self.get_data()
+            userdata = dataInst.UserData
+            if userdata is not None :
+                userdata.override_clean()
+            else :
+                QMessageBox.information(self.m_mediator, "Alarm", f"failed reconstruction : not setting userdata")
+            return
             
         def end_clean(result):
             self.loading_dialog.close()
             self.m_mediator.show_dialog(f"Mesh-Clean Done")
             
-            openPath = os.path.join(
-                unzipPath, self.getui_edit_huid_path(), "02_SAVE", "02_BLENDER_SAVE", f"{self.getui_edit_huid_path()}_clean.blend"
-            )
+            # openPath = os.path.join(
+            #     unzipPath, self.getui_edit_huid_path(), "02_SAVE", "02_BLENDER_SAVE", f"{self.getui_edit_huid_path()}_clean.blend"
+            # )
             
             # cmd = f'{dataInst.OptionInfo.BlenderExe} "{cleanupBlenderPath}"'
             # os.system(cmd)
             
-            cmd = f"{dataInst.OptionInfo.BlenderExe} --python {os.path.join(self.fileAbsPath, 'blenderScriptLiver.py')} -- --patientID {currPatientID} --stlPath {stlPath} --optionFullPath {self.m_optionFullPath} --openPath {openPath} --outputPath {openPath} --funcMode OpenBlend"
-            os.system(cmd)
-                
-            
+            # cmd = f"{dataInst.OptionInfo.BlenderExe} --python {os.path.join(self.fileAbsPath, 'blenderScriptLiver.py')} -- --patientID {currPatientID} --stlPath {stlPath} --optionFullPath {self.m_optionFullPath} --openPath {openPath} --outputPath {openPath} --funcMode OpenBlend"
+            # os.system(cmd)
             
         self.worker = LoadingWorkerThread(self)
         self.worker.loadedFunction = _clicked_clean

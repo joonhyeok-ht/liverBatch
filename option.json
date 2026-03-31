@@ -54,13 +54,20 @@
                 ["Artery", "", "AP", -1],
                 ["Vein", "", "HVP", -1],
                 ["Portal", "", "PP", -1],
-                ["MPV_AP_st", "MPV_AP", "AP", 30000],
+			    ["MPV_PP_min", "", "PP", -1],
+                ["MPV_AP_min", "", "AP", -1],
+                ["MPV_HVP_min", "", "HVP", -1],    
+                ["Artery_min", "", "AP", -1],
+                ["Vein_min", "", "HVP", -1],
+                ["Portal_min", "", "PP", -1],
+                ["MPV_AP_st", "MPV_AP", "AP", 10000],
                 ["Artery_st", "Artery", "AP", 20000],
                 ["MPV_PP_st", "MPV_PP", "PP", 10000],
                 ["Portal_st", "Portal", "PP", 60000],
                 ["MPV_HVP_st", "MPV_HVP", "HVP", 10000],
                 ["Vein_st", "Vein", "HVP", 60000],
-                ["Liver", "Liver", "HVP", 60000]
+                ["Liver", "Liver", "PP", 20000],
+                ["kidney_right", "kidney_right", "HVP", 20000]
 		    ]
 	    }
     ],
@@ -93,16 +100,17 @@
             "blenderName1" : 20
         },
         "Remesh" : {
-            "VoxelSize" : 1,
-            "RemeshList" : {
-                "blenderName0" : 4000,
-                "blenderName1" : 4000
-            }
+            "blenderName0" : [1, 4000],
+            "blenderName1" : [2, 20000]
         },
         "MeshCleanUp" : [
             "Portal",
             "Vein",
-            "Artery"
+            "Artery",
+            "Liver",
+            "Adrenal",
+            "Gallbladder",
+            "Duct"
         ],
         "SmartUV" : [
             "blenderName0",

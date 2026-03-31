@@ -472,10 +472,10 @@ class CTabStateVesselRemodeling(tabState.CTabState) :
         btn.clicked.connect(self._on_btn_minor_selection)
         rightLayout.addWidget(btn) 
         
-        btn = QPushButton("Check mScore")
-        btn.setStyleSheet(self.get_btn_stylesheet())
-        btn.clicked.connect(self._on_btn_check_minor_score)
-        rightLayout.addWidget(btn) 
+        # btn = QPushButton("Check mScore")
+        # btn.setStyleSheet(self.get_btn_stylesheet())
+        # btn.clicked.connect(self._on_btn_check_minor_score)
+        # rightLayout.addWidget(btn) 
         
         btn = QPushButton("Attach Centerline")
         btn.setStyleSheet(self.get_btn_stylesheet())
@@ -884,7 +884,6 @@ class CTabStateVesselRemodeling(tabState.CTabState) :
             mergedMesh = CTabStateVesselRemodeling.get_vtkmesh(meshlib)
 
         cmd = commandRemodeling.CCommandRemodelingAdd(self)
-        # cmd.InputAnchorNode = anchorNode
         cmd.InputAnchorNode = self.m_mainNode
         cmd.InputRemodelingMesh = mergedMesh
         bRet = cmd.process()
@@ -915,35 +914,40 @@ class CTabStateVesselRemodeling(tabState.CTabState) :
         dataInst = self.get_data()
         stlOutPath = dataInst.get_terri_out_path()
         currPatientID = dataInst.PatientID
+        userdata = dataInst.UserData
         
         #optionFullPath = ""
         
         optionFullPath = os.path.join(os.path.dirname(os.path.dirname(self.m_mediator.FilePath)), "option.json")
         
-        meshcleanPath = os.path.join(
-            dataInst.OptionInfo.DataRootPath, currPatientID, "02_SAVE", "02_BLENDER_SAVE",  f"{currPatientID}_clean.blend"
-        )
-        cmd = f"{dataInst.OptionInfo.BlenderExe} -b --python {os.path.join(parentDirPath, 'liver', 'blenderScriptLiver.py')} -- \
-        --funcMode RemodelingImportSave \
-        --patientID {currPatientID} \
-        --optionFullPath {optionFullPath} \
-        --stlPath {stlOutPath} \
-        --outputPath {outputFolder} \
-        --meshCleanPath {meshcleanPath}"
+        if userdata is not None :
+            userdata.remodeling_blender_save(outputFolder)
+        else :
+            QMessageBox.information(self.m_mediator, "Alarm", f"failed reconstruction : not setting userdata")
+        return
+
+    
+    
         
-        os.system(cmd)
-        # self.m_mediator.show_dialog(f"Save Blender Done")
-        # cmd = f'{dataInst.OptionInfo.BlenderExe} "{cleanupBlenderPath}"'
+        # meshcleanPath = os.path.join(
+        #     dataInst.OptionInfo.DataRootPath, currPatientID, "02_SAVE", "02_BLENDER_SAVE",  f"{currPatientID}_clean.blend"
+        # )
+        # cmd = f"{dataInst.OptionInfo.BlenderExe} -b --python {os.path.join(parentDirPath, 'liver', 'blenderScriptLiver.py')} -- \
+        # --funcMode RemodelingImportSave \
+        # --patientID {currPatientID} \
+        # --optionFullPath {optionFullPath} \
+        # --stlPath {stlOutPath} \
+        # --outputPath {outputFolder} \
+        # --meshCleanPath {meshcleanPath}"
+        
         # os.system(cmd)
         
+        # openPath = os.path.join(
+        #     outputFolder, f"{currPatientID}.blend"
+        # )
         
-        
-        openPath = os.path.join(
-            outputFolder, f"{currPatientID}.blend"
-        )
-        
-        cmd = f"{dataInst.OptionInfo.BlenderExe} --python {os.path.join(parentDirPath, 'liver', 'blenderScriptLiver.py')} -- --patientID {currPatientID} --stlPath '' --optionFullPath {optionFullPath} --outputPath {openPath} --funcMode OpenBlend"
-        os.system(cmd)
+        # cmd = f"{dataInst.OptionInfo.BlenderExe} --python {os.path.join(parentDirPath, 'liver', 'blenderScriptLiver.py')} -- --patientID {currPatientID} --stlPath '' --optionFullPath {optionFullPath} --outputPath {openPath} --funcMode OpenBlend"
+        # os.system(cmd)
         
     def command_add_skelinfo(self) :
         selectedNode = self.getui_lv_cuttednode_selected_node()

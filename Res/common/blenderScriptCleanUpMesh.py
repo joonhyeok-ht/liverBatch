@@ -1,8 +1,9 @@
+
+
 import array
 import bmesh
 import bpy
 import mathutils
-
 
 def log_mesh_errors(objname) :
     nm, nm_len = check_non_manifold_edge(objname)
@@ -46,6 +47,7 @@ def _sub_process_intersect_faces(objname, prev_numif : int) :
             return True
         else :
             return False
+    
 def process_intersect_faces(objname) -> bool: 
     ''' i_f select -> dissolve face
         make manifold-edge
@@ -146,11 +148,11 @@ def process_non_flat_faces(objname) -> bool:
         return False
     return True
 
-def process_triangulate_all(objname) -> bool: 
+def process_triangulate_all(objname) : 
     editmode_select_all(objname)
     editmode_triangulate_faces()
 
-def check_intersect_face(objname : str) -> int:
+def check_intersect_face(objname : str):
     obj = bpy.data.objects[objname]
     bpy.context.view_layer.objects.active = obj # active object
 
@@ -161,7 +163,7 @@ def check_intersect_face(objname : str) -> int:
     print("intersect face : " + str(len(faces_intersect)))
     return faces_intersect, len(faces_intersect)
 
-def check_non_flat_face(objname : str) -> int:
+def check_non_flat_face(objname : str) :
     bpy.ops.object.mode_set(mode='OBJECT')
     bpy.ops.object.select_all(action='DESELECT')
     obj = bpy.data.objects[objname]
@@ -185,7 +187,7 @@ def check_non_flat_face(objname : str) -> int:
     
     return faces_distort, len(faces_distort)
 
-def check_non_manifold_edge(objname : str) -> int :
+def check_non_manifold_edge(objname : str) :
     if bpy.context.mode == 'EDIT_MESH':
         bpy.ops.object.mode_set(mode='OBJECT')
     bpy.ops.object.mode_set(mode='OBJECT')
@@ -202,7 +204,7 @@ def check_non_manifold_edge(objname : str) -> int :
     print("non-manifold edge : " + str(len(edges_non_manifold)))
     return edges_non_manifold, len(edges_non_manifold)
 
-def check_zero_faces_and_zero_edges(objname : str) -> int :
+def check_zero_faces_and_zero_edges(objname : str) :
     bpy.ops.object.mode_set(mode='OBJECT')
     bpy.ops.object.select_all(action='DESELECT')
     obj = bpy.data.objects[objname]
@@ -445,7 +447,6 @@ def __make_normals_consistently_outwards():
     """have all normals face outwards"""
     bpy.ops.mesh.select_all(action='SELECT')
     bpy.ops.mesh.normals_make_consistent()
-
 
 def __select_non_manifold_verts(use_wire=False, 
                             use_boundary=False,

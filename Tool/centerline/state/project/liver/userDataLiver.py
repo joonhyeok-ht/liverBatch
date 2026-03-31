@@ -41,6 +41,8 @@ import userData as userData
 import command.commandRecon as commandRecon
 import commandReconCommon as commandReconCommon
 
+import liver.subDetectOverlap.subDetectOverlapLiver as detectOverlap
+
 class CUserDataLiver(userData.CUserData) :
     s_userDataKey = "Liver"
     s_intermediatePathAlias = "OutTemp"
@@ -54,12 +56,14 @@ class CUserDataLiver(userData.CUserData) :
         self.m_scriptPath = ""
         self.m_reconScriptFullPath = ""
         self.m_cleanScriptFullPath = ""
+        self.m_remodelingSaveScriptFullPath = ""
 
         self.m_movingBlenderPath = ""
         self.m_outputTempPath = ""
         self.m_outputTempPatientPath = ""
         self.m_localReconBlenderFullPath = ""
         self.m_localCleanBlenderFullPath = ""
+        self.m_outputOverlapBlenderFullPath = ""
         self.m_outputReconBlenderFullPath = ""
         self.m_outputCleanBlenderFullPath = ""
         self.m_registrationMethod = ""
@@ -83,12 +87,14 @@ class CUserDataLiver(userData.CUserData) :
         self.m_scriptPath = ""
         self.m_reconScriptFullPath = ""
         self.m_cleanScriptFullPath = ""
+        self.m_remodelingSaveScriptFullPath = ""
 
         self.m_movingBlenderPath = ""
         self.m_outputTempPath = ""
         self.m_outputTempPatientPath = ""
         self.m_localReconBlenderFullPath = ""
         self.m_localCleanBlenderFullPath = ""
+        self.m_outputOverlapBlenderFullPath = ""
         self.m_outputReconBlenderFullPath = ""
         self.m_outputCleanBlenderFullPath = ""
         self.m_registrationMethod = ""
@@ -117,25 +123,25 @@ class CUserDataLiver(userData.CUserData) :
 
         dataRootPath = self.MakeInputFolder.DataRootPath
         patientID = self.MakeInputFolder.PatientID
-        datainst = self.Data
+        dataInst = self.Data
 
         self.m_outputTempPath = ""
         self.m_outputTempPatientPath = ""
 
         if self.MakeInputFolder.Ready == True :
-            # datainst refresh 
+            # dataInst refresh 
             self.m_outputTempPath = os.path.join(os.path.dirname(dataRootPath), CUserDataLiver.s_intermediatePathAlias)
             self.m_outputTempPatientPath = os.path.join(self.m_outputTempPath, patientID)
             if os.path.exists(self.m_outputTempPath) == False :
                 os.makedirs(self.m_outputTempPath, exist_ok=True)
 
-            datainst.PatientID = patientID
-            datainst.OutputPath = self.m_outputTempPath
+            dataInst.PatientID = patientID
+            dataInst.OutputPath = self.m_outputTempPath
             self.MovingBlenderPath = self.MakeInputFolder.BlenderSavePath
             
         else :
-            datainst.PatientID = ""
-            datainst.OutputPath = ""
+            dataInst.PatientID = ""
+            dataInst.OutputPath = ""
             self.MovingBlenderPath = ""
             return
         
@@ -150,20 +156,48 @@ class CUserDataLiver(userData.CUserData) :
     
 
     # override
+    def override_changed_optioninfo(self) :
+        super().override_changed_optioninfo()
+
+        # input your code
+        if self.Data.OptionInfo is None :
+            optioninfoPath = ""
+        else :
+            optioninfoPath = self.Data.OptionInfoPath
+
+        self.m_resPath = os.path.join(optioninfoPath, "Res")
+        self.m_commonPath = os.path.join(self.m_resPath, "common")
+        self.m_scriptPath = os.path.join(self.m_resPath, "liver_batch")
+        self.m_reconScriptFullPath = os.path.join(self.m_scriptPath, "bspRecon.py")
+        self.m_individualReconScriptFullPath = os.path.join(self.m_scriptPath, "bspIndRecon.py")
+        self.m_cleanScriptFullPath = os.path.join(self.m_scriptPath, "bspClean.py")
+        self.m_remodelingSaveScriptFullPath = os.path.join(self.m_scriptPath, "bspRemodelingImport.py")
+        #self.m_cleanScriptFullPath = os.path.join(self.m_commonPath, "bsmClean.py")
+
+        self.MakeInputFolder.clear()
+
+        self.m_movingBlenderPath = ""
+        self.m_outputTempPath = ""
+        self.m_outputTempPatientPath = ""
+        self.m_localReconBlenderFullPath = ""
+        self.m_localCleanBlenderFullPath = ""
+        self.m_outputReconBlenderFullPath = ""
+        self.m_outputOverlapBlenderFullPath = ""
+        self.m_outputCleanBlenderFullPath = ""
     def override_recon(self, inputSliceID) :
-        datainst = self.Data
-        optioninfo = datainst.OptionInfo
+        dataInst = self.Data
+        optioninfo = dataInst.OptionInfo
         
         # print("get_phase_list()!", file=sys.__stdout__, flush=True)
         # print(optioninfo.get_phase_list(), file=sys.__stdout__, flush=True)
         folderInfo = self.MakeInputFolder
 
         # dataRoot의 Mask를 OutTemp로 복사
-        copiedMaskPath = os.path.join(datainst.OutputPatientPath, "Mask")
+        copiedMaskPath = os.path.join(dataInst.OutputPatientPath, "Mask")
         if os.path.exists(self.OutputReconBlenderFullPath) == False :
             folderInfo.copy_mask(copiedMaskPath)
-        reconStlPath = os.path.join(datainst.OutputPatientPath, "Result")
-        blendSavePath = datainst.OutputPatientPath
+        reconStlPath = os.path.join(dataInst.OutputPatientPath, "Result")
+        blendSavePath = dataInst.OutputPatientPath
 
         # recon 수행 
         reconInst = reconLiver.CSubReconLiver()
@@ -171,7 +205,7 @@ class CUserDataLiver(userData.CUserData) :
             reconInst.m_registrationMethod = self.m_registrationMethod
         reconInst.InputSliceID = inputSliceID
         reconInst.m_folderInfo = folderInfo
-        reconInst.IntermediateDataPath = datainst.OutputPatientPath
+        reconInst.IntermediateDataPath = dataInst.OutputPatientPath
         reconInst.InputData = self.Data
         success = self._generate_progress_window(reconInst)
         reconInst.clear()
@@ -179,47 +213,163 @@ class CUserDataLiver(userData.CUserData) :
             return
 
         # blender 수행 
-        blenderExe = optioninfo.BlenderExe
-        
-        self.m_reconScriptFullPath = os.path.join(self.fileAbsPath, 'blenderScriptLiver.py')
+        '''
+        param
+            - "InputPath"       : import 할 mesh file들이 있는 folder  
+            - "SaveFullPath"    : 저장 할 blend 파일명의 전체 경로
+        '''
+        dicParam = {
+            "InputPath" : reconStlPath,
+            "SaveFullPath" : self.m_localReconBlenderFullPath
+        }
+        optionFullPath = self._blender_script_param(dicParam)
         scriptFullPath = self.m_reconScriptFullPath
-        saveName = os.path.basename(self.m_localReconBlenderFullPath)
-        saveName = saveName.split('.')[0]
-        userData.CUserData.blender_process(blenderExe, scriptFullPath, datainst.PatientID, "Basic", optioninfo.m_jsonPath, reconStlPath, blendSavePath, saveName, False)
+
+        # blenderExe = optioninfo.BlenderExe
+        
+        #self.m_reconScriptFullPath = os.path.join(self.fileAbsPath, 'blenderScriptLiver.py')
+        # saveName = os.path.basename(self.m_localReconBlenderFullPath)
+        # saveName = saveName.split('.')[0]
+        #userData.CUserData.blender_process(blenderExe, scriptFullPath, dataInst.PatientID, "Basic", optioninfo.m_jsonPath, reconStlPath, blendSavePath, saveName, False)
+        #userData.CUserData.blender_process(blenderExe, scriptFullPath, dataInst.PatientID, "Basic", optioninfo.m_jsonPath, reconStlPath, blendSavePath, saveName, False)
+        self.blender_process(None, scriptFullPath, optionFullPath, False)
 
         # save blender folder로 move 
         if self.m_movingBlenderPath != "" :
             shutil.move(self.m_localReconBlenderFullPath, self.m_movingBlenderPath)
     def override_overlap(self):
-        pass
+        reconBlenderFullPath = self.m_outputReconBlenderFullPath
+        if os.path.exists(reconBlenderFullPath) == False :
+            print("not found blender file")
+            return
         
-    def override_clean(self, patientID : str, outputPath : str) :
-        blenderScritpFileName = "blenderScriptClean"
-        saveBlenderName = f"{patientID}"
+        datainst = self.Data
+        
+        # 원본 blender는 복사 후 rename 
+        shutil.copy2(reconBlenderFullPath, self.OutputOverlapBlenderFullPath)
+        overlapBlenderFullPath = self.OutputOverlapBlenderFullPath
 
-        outputPatientPath = os.path.join(outputPath, patientID)
-        saveBlenderFullPath = os.path.join(outputPatientPath, f"{saveBlenderName}.blend")
-        srcBlenderFullPath = os.path.join(outputPatientPath, f"{patientID}_recon.blend")
+        listBlenderName = ["Artery", "Vein", "Portal", "Duct"]
 
-        if os.path.exists(srcBlenderFullPath) == False :
-            print("not found recon blender file")
+        # blender 파일에서 listBlenderName 목록에 대해서만 clean 수행 
+        # param 설정 
+        '''
+        param
+            - "ListMeshName"    : clean-up 할 mesh name, None or 원소가 없다면 전체를 clean-up 한다.
+            - "SaveFullPath"    : 저장 할 blend 파일명의 전체 경로, None or "" 라면 덮어쓴다. 
+        '''
+        dicParam = {
+            "ListMeshName" : listBlenderName,
+            "SaveFullPath" : None
+        }
+        scriptFullPath = self.m_cleanScriptFullPath
+        optionFullPath = self._blender_script_param(dicParam)
+        self.blender_process(overlapBlenderFullPath, scriptFullPath, optionFullPath, True)
+
+        # export 
+        exportPath = os.path.join(datainst.OutputPatientPath, "Overlap")
+        self.blender_exporter(overlapBlenderFullPath, listBlenderName, exportPath)
+
+        # overlap
+        overlapinst = detectOverlap.CSubDetectOverlap()
+        overlapinst.StlPath = exportPath
+        overlapinst.LogPath = datainst.OutputPatientPath
+        overlapinst.process()
+
+        # import
+        '''
+        param
+            - "StlPath"         : stl 파일들이 저장되어 있는 folder path, 없다면 "" 또는 None을 입력 
+            - "ListStlFullPath  : stl파일들의 전체 경로를 저장한 list, 없다면 None을 입력 
+        
+        desc 
+            - 기존 내용에 추가적으로 stl 파일들을 import 한다. 
+        '''
+        dicParam = {
+            "StlPath" : exportPath,
+            "ListStlFullPath" : None
+        }
+        scriptPath = os.path.join(self.ResPath, "common")
+        scriptFullPath = os.path.join(scriptPath, "bsmImportStl.py")
+        optionFullPath = self._blender_script_param(dicParam)
+        self.blender_process(overlapBlenderFullPath, scriptFullPath, optionFullPath, False)
+
+        # clear 
+        if os.path.exists(exportPath) == True :
+            shutil.rmtree(exportPath)
+            
+            
+        
+    def override_clean(self) :
+        overlapBlenderFullPath = self.OutputOverlapBlenderFullPath
+        if os.path.exists(overlapBlenderFullPath) == False :
+            return
+        
+        datainst = self.Data
+
+        # 원본 blender는 복사 후 rename 
+        shutil.copy2(overlapBlenderFullPath, self.OutputCleanBlenderFullPath)
+        cleanBlenderFullPath = self.OutputCleanBlenderFullPath
+
+        # blender 파일에 대해 import 수행 
+        listStlPath = self._find_stl_path_from_out(datainst.OutputPatientPath)
+        if len(listStlPath) > 0 :
+            '''
+            param
+                - "StlPath"         : stl 파일들이 저장되어 있는 folder path, 없다면 "" 또는 None을 입력 
+                - "ListStlFullPath  : stl파일들의 전체 경로를 저장한 list, 없다면 None을 입력 
+            
+            desc 
+                - 기존 내용에 추가적으로 stl 파일들을 import 한다. 
+            '''
+            dicParam = {
+                "StlPath" : None,
+                "ListStlFullPath" : listStlPath
+            }
+            scriptPath = os.path.join(self.ResPath, "common")
+            scriptFullPath = os.path.join(scriptPath, "bsmImportStl.py")
+            optionFullPath = self._blender_script_param(dicParam)
+            self.blender_process(cleanBlenderFullPath, scriptFullPath, optionFullPath, True)
+
+        # blender 파일에 대해 clean 수행  
+        # param 설정 
+        '''
+        param
+            - "ListMeshName"    : clean-up 할 mesh name, None or 원소가 없다면 전체를 clean-up 한다.
+            - "SaveFullPath"    : 저장 할 blend 파일명의 전체 경로, None or "" 라면 덮어쓴다. 
+        '''
+        dicParam = {
+            "ListMeshName" : None,
+            "SaveFullPath" : None
+        }
+        scriptFullPath = self.m_cleanScriptFullPath
+        optionFullPath = self._blender_script_param(dicParam)
+        self.blender_process(cleanBlenderFullPath, scriptFullPath, optionFullPath, False)
+    
+    def remodeling_blender_save(self, outputFolderPath):
+        dataInst = self.Data
+        outputFullPath =  os.path.join(outputFolderPath, f"{dataInst.PatientID}.blend")
+        if os.path.exists(self.OutputCleanBlenderFullPath) == False :
             return
 
-        # 기존것은 지움
-        if os.path.exists(saveBlenderFullPath) == True :
-            os.remove(saveBlenderFullPath)
-        # 새롭게 생성 
-        shutil.copy(srcBlenderFullPath, saveBlenderFullPath)
-
-        cmd = commandRecon.CCommandReconDevelopClean(self.m_mediator)
-        cmd.InputData = self.Data
-        cmd.InputPatientID = patientID
-        cmd.InputBlenderScritpFileName = blenderScritpFileName
-        cmd.InputSaveBlenderName = saveBlenderName
-        cmd.OutputPath = outputPath
-        cmd.process()
-
-
+        # 원본 blender는 복사 후 rename 
+        shutil.copy2(self.OutputCleanBlenderFullPath, outputFullPath)
+        reconStlPath = dataInst.get_terri_out_path()
+        
+        '''
+        param
+            - "StlPath"    : remodeling된 stl 파일들이 저장되어 있는 folder path
+            - "SaveFullPath"    : 저장 할 blend 파일명의 전체 경로
+        '''
+        dicParam = {
+            "StlPath" : reconStlPath,
+            "SaveFullPath" : outputFullPath
+        }
+        scriptFullPath = self.m_remodelingSaveScriptFullPath
+        optionFullPath = self._blender_script_param(dicParam)
+        self.blender_process(outputFullPath, scriptFullPath, optionFullPath, False)
+    
+    
 
     # protected
     def _refresh_optioninfo(self) :
@@ -279,8 +429,8 @@ class CUserDataLiver(userData.CUserData) :
 
         self._post_refresh_optioninfo()
     def _post_refresh_optioninfo(self) :
-        datainst = self.Data
-        optioninfo = datainst.OptionInfo
+        dataInst = self.Data
+        optioninfo = dataInst.OptionInfo
         
         # ResamplingToPhase 
         iCnt = optioninfo.get_resampling_phase_count()
@@ -305,17 +455,17 @@ class CUserDataLiver(userData.CUserData) :
     def override_load_centerline(self) :
         pass
     def override_individual_recon(self, phaseinfo : dict) :
-        datainst = self.Data
-        optioninfo = datainst.OptionInfo
+        dataInst = self.Data
+        optioninfo = dataInst.OptionInfo
         folderinfo = self.MakeInputFolder
 
-        tmpMaskPath = os.path.join(datainst.OutputPatientPath, "tmpMask")
+        tmpMaskPath = os.path.join(dataInst.OutputPatientPath, "tmpMask")
         self._copy_phaseinfo(tmpMaskPath, phaseinfo)
 
         # targetMaskPath -> dataRoot Mask로 복사
         # dataRoot Mask -> OutTemp로 복사
         # optioninfo refresh
-        copiedMaskPath = os.path.join(datainst.OutputPatientPath, "IndividualMask")
+        copiedMaskPath = os.path.join(dataInst.OutputPatientPath, "IndividualMask")
         for phase, _ in phaseinfo.items() :
             targetMaskPath = os.path.join(tmpMaskPath, phase)
             folderinfo.copy_target_mask(targetMaskPath, phase, copiedMaskPath)
@@ -325,13 +475,13 @@ class CUserDataLiver(userData.CUserData) :
             shutil.rmtree(tmpMaskPath)
 
         self._refresh_optioninfo()
-        reconStlPath = os.path.join(datainst.OutputPatientPath, "IndividualResult")
+        reconStlPath = os.path.join(dataInst.OutputPatientPath, "IndividualResult")
 
 
         # recon 수행 
         reconInst = reconLiver.CSubReconLiver()
         reconInst.m_folderInfo = self.MakeInputFolder
-        reconInst.IntermediateDataPath = datainst.OutputPatientPath
+        reconInst.IntermediateDataPath = dataInst.OutputPatientPath
         reconInst.InputData = self.Data
         reconInst.m_resultPath = reconStlPath
         reconInst.m_maskCpyPath = copiedMaskPath
@@ -340,22 +490,17 @@ class CUserDataLiver(userData.CUserData) :
         if not success:
             return
 
-        # cmd = commandReconCommon.CCommandReconDevelopCommon(self.m_mediator)
-        # cmd.InputData = self.Data
-        # cmd.InputMaskPath = copiedMaskPath
-        # cmd.OutputPath = reconStlPath
-        # cmd.process()
-
-        # blender 수행 
-        blenderExe = optioninfo.BlenderExe
-        self.m_reconScriptFullPath = os.path.join(self.fileAbsPath, 'blenderScriptLiver.py')
-        scriptFullPath = self.m_reconScriptFullPath
-        saveName = os.path.basename(self.OutputReconBlenderFullPath)
-        saveName = saveName.split('.')[0]
-        
-        blendSavePath = os.path.join(self.m_movingBlenderPath, f"{saveName}.blend")
-        userData.CUserData.blender_process_load_script(blenderExe, self.OutputReconBlenderFullPath, scriptFullPath, datainst.PatientID, "ImportSave", optioninfo.m_jsonPath, reconStlPath, blendSavePath, saveName, False)
-        
+        '''
+        param
+            - "InputPath"       : import 할 mesh file들이 있는 folder  
+        '''
+        dicParam = {
+            "InputPath" : reconStlPath
+        }
+        scriptFullPath = self.m_individualReconScriptFullPath
+        optionFullPath = self._blender_script_param(dicParam)
+        self.blender_process(self.OutputReconBlenderFullPath, scriptFullPath, optionFullPath, False)
+ 
         # remove input, output folders
         if os.path.exists(copiedMaskPath) == True :
             shutil.rmtree(copiedMaskPath)
@@ -382,13 +527,14 @@ class CUserDataLiver(userData.CUserData) :
             self.m_outputReconBlenderFullPath = self.m_localReconBlenderFullPath
         else :
             self.m_outputReconBlenderFullPath = os.path.join(self.m_movingBlenderPath, f"{saveName}.blend")
+        
+        saveName = f"{patientID}_overlap"
+        dirPath = os.path.dirname(self.m_outputReconBlenderFullPath)
+        self.m_outputOverlapBlenderFullPath = os.path.join(dirPath, f"{saveName}.blend")
 
-        saveName = f"{patientID}"
-        self.m_localCleanBlenderFullPath = os.path.join(self.OutputTempPatientPath, f"{saveName}.blend")
-        if self.m_movingBlenderPath == "" :
-            self.m_outputCleanBlenderFullPath = self.m_localCleanBlenderFullPath
-        else :
-            self.m_outputCleanBlenderFullPath = os.path.join(self.m_movingBlenderPath, f"{saveName}.blend")
+        saveName = f"{patientID}_clean"
+        dirPath = os.path.dirname(self.m_outputReconBlenderFullPath)
+        self.m_outputCleanBlenderFullPath = os.path.join(dirPath, f"{saveName}.blend")
     @property
     def OutputTempPath(self) -> str :
         return self.m_outputTempPath
@@ -401,6 +547,9 @@ class CUserDataLiver(userData.CUserData) :
     @property
     def OutputCleanBlenderFullPath(self) -> str :
         return self.m_outputCleanBlenderFullPath
+    @property
+    def OutputOverlapBlenderFullPath(self) -> str :
+        return self.m_outputOverlapBlenderFullPath
     @property
     def MakeInputFolder(self) -> makeInputFolder.CMakeInputFolder :
         return self.m_makeInputFolder

@@ -159,8 +159,8 @@ class CTabStateSkelLabelingLiver(tabState.CTabState) :
         layout, self.m_editCLLength = self.m_mediator.create_layout_label_editbox("Centerline Length(mm)", True)
         tabLayout.addLayout(layout)
         
-        layout, self.m_separatedDepath = self.m_mediator.create_layout_label_editbox("Threshold Depth for Main", False)
-        tabLayout.addLayout(layout)
+        # layout, self.m_separatedDepath = self.m_mediator.create_layout_label_editbox("Threshold Depth for Main", False)
+        # tabLayout.addLayout(layout)
 
         line = QFrame()
         line.setFrameShape(QFrame.Shape.HLine)
@@ -182,10 +182,10 @@ class CTabStateSkelLabelingLiver(tabState.CTabState) :
         # btn.clicked.connect(self._on_btn_separate_main_extra)
         # tabLayout.addWidget(btn)
 
-        btn = QPushButton("Save Separation")
-        btn.setStyleSheet(self.get_btn_stylesheet())
-        btn.clicked.connect(self._on_btn_save_separation)
-        tabLayout.addWidget(btn)
+        # btn = QPushButton("Save Separation")
+        # btn.setStyleSheet(self.get_btn_stylesheet())
+        # btn.clicked.connect(self._on_btn_save_separation)
+        # tabLayout.addWidget(btn)
         
         btn = QPushButton("Save (Graphics)")
         btn.setStyleSheet(self.get_btn_stylesheet())
@@ -345,7 +345,7 @@ class CTabStateSkelLabelingLiver(tabState.CTabState) :
                     textObj.Text = "main"
                 
         ketList = dataInst.find_key_list_by_type_groupID(dataInst.s_skelTypeCenterline, clinfoInx)
-        self.m_opSelectionCL._color_setting(ketList, dataInst.s_rootCLColor, dataInst.CLColor)
+        self.m_opSelectionCL._color_setting(ketList, dataInst.s_rootCLColor, dataInst.s_clColor)
         self.m_mediator.update_viewer()
 
 
@@ -538,7 +538,7 @@ class CTabStateSkelLabelingLiver(tabState.CTabState) :
                     textObj.Text = ""
                     
             ketList = dataInst.find_key_list_by_type_groupID(dataInst.s_skelTypeCenterline, clinfoInx)
-            self.m_opSelectionCL._color_setting(ketList, dataInst.s_rootCLColor, dataInst.CLColor)
+            self.m_opSelectionCL._color_setting(ketList, dataInst.s_rootCLColor, dataInst.s_clColor)
         self.m_mediator.update_viewer()
 
     # private

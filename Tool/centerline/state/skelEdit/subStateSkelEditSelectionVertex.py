@@ -334,7 +334,7 @@ class CSubStateSkelEditSelectionVertex(subStateSkelEdit.CSubStateSkelEdit) :
         selectedCL = skeleton.get_centerline(selectedCLID)
         
         guideVertexKey = data.CData.make_key(CSubStateSkelEditSelectionVertex.s_guideVertexType, selectedGroupID, 0)
-        guideVertexObj = vtkObjGuideVertex.CVTKObjGuideVertex(selectedCL.get_vertex(self.m_selVertexID), dataInst.BrSize)
+        guideVertexObj = vtkObjGuideVertex.CVTKObjGuideVertex(selectedCL.get_vertex(self.m_selVertexID), dataInst.s_brSize)
         guideVertexObj.KeyType = CSubStateSkelEditSelectionVertex.s_guideVertexType
         guideVertexObj.Key = guideVertexKey
         guideVertexObj.Color = guideColor

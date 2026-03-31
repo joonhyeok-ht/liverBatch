@@ -166,7 +166,7 @@ class CSubStateSkelEditSelectionBr(subStateSkelEdit.CSubStateSkelEdit) :
             self.m_anchorX = clickX
             self.m_anchorY = clickY
             self.m_anchorPos = obj.Pos.copy()
-
+            
         self.App.update_viewer()
     def clicked_mouse_rb_shift(self, clickX, clickY) :
         pass
@@ -331,7 +331,7 @@ class CSubStateSkelEditSelectionBr(subStateSkelEdit.CSubStateSkelEdit) :
         br = skeleton.get_branch(selectedBrID)
 
         guideBrKey = data.CData.make_key(CSubStateSkelEditSelectionBr.s_guideBrType, clinfoInx, 0)
-        guideBrObj = vtkObjGuideBr.CVTKObjGuideBr(br, dataInst.BrSize)
+        guideBrObj = vtkObjGuideBr.CVTKObjGuideBr(br, dataInst.s_brSize)
         guideBrObj.KeyType = CSubStateSkelEditSelectionBr.s_guideBrType
         guideBrObj.Key = guideBrKey
         guideBrObj.Color = guideColor

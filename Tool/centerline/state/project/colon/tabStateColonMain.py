@@ -360,7 +360,7 @@ class CTabStateColonMain(tabState.CTabState) :
         
         optionFullPath = self.m_optionFullPath
         dataInst.load_optioninfo(optionFullPath)
-        dataInst.CLColor = algLinearMath.CScoMath.to_vec3([0.3, 0.3, 0.0])
+        dataInst.s_clColor = algLinearMath.CScoMath.to_vec3([0.3, 0.3, 0.0])
         dataInst.RootCLColor = algLinearMath.CScoMath.to_vec3([1.0, 1.0, 0.0])
         dataInst.SelectionCLColor = algLinearMath.CScoMath.to_vec3([0.0, 1.0, 0.0])
         dataInst.CLSize = 0.4
