@@ -426,7 +426,6 @@ class COperationDragSelectionCL(COperationSelection) :
             if clObj is not None :
                 clObj.Color = color
 
-
     @property
     def Skeleton(self) -> algSkeletonGraph.CSkeleton :
         return self.m_skeleton

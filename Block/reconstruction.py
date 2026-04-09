@@ -255,7 +255,7 @@ class CReconstruction(multiProcessTask.CMultiProcessTaskProgress) :
                 maskFullPath = os.path.join(self.InputMaskPath, f"{maskName}.nii.gz")
                 blenderFullPath = os.path.join(self.OutputPath, f"{blenderName}.stl")
                 if os.path.exists(maskFullPath) == False :
-                    print(f"recon : not found {maskName}")
+                    print(f"recon : not found {maskName}",file=sys.__stdout__, flush=True)
                     continue
 
                 listParam.append((contour, gaussian, algorithm, resampling, listReconParam, maskFullPath, blenderFullPath, phaseInfo, triCnt))
@@ -264,15 +264,17 @@ class CReconstruction(multiProcessTask.CMultiProcessTaskProgress) :
             print("passed recon")
             return
         
-        #super().process(self._task, listParam)
-        super().process(
-            _reconstruction_task_worker,
-            listParam,
-            progress_callback=getattr(self, "progress_callback", None),
-            is_interrupted=getattr(self, "is_interrupted", None),
-            status_prefix="Reconstruction...",
-            chunksize=1
-        )
+        for param in listParam:
+            _reconstruction_task_worker(param)
+        
+        # super().process(
+        #     _reconstruction_task_worker,
+        #     listParam,
+        #     progress_callback=getattr(self, "progress_callback", None),
+        #     is_interrupted=getattr(self, "is_interrupted", None),
+        #     status_prefix="Reconstruction...",
+        #     chunksize=1
+        # )
 
 
     # param (contour, gaussian, algorithm, resampling, listReconParam, maskFullPath, blenderFullPath, phaseInfo, triCnt)

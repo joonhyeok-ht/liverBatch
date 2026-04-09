@@ -26,7 +26,7 @@ class CMakeInputFolder :
     sZip_AP_Nifti = "AP.zip" #"2.zip"
     sZip_PP_Nifti = "PP.zip" #"3.zip"
     sZip_DP_Nifti = "DP.zip" #"4.zip"
-    sZip_HVP_Nifti = "HVP.zip" #"4.zip"
+    sZip_HVP_Nifti = "DP.zip" #"4.zip"
     sZip_MR_Nifti = "MR.zip" #"4.zip"
 
     def __init__(self) -> None:
@@ -150,7 +150,7 @@ class CMakeInputFolder :
         elif self.m_mode == self.eMode_Liver:
             hvp_nifti_zip_path = os.path.join(self.m_zipPath, self.sZip_HVP_Nifti)
             if os.path.exists(hvp_nifti_zip_path) : 
-                # unzip hvp.zip to out_root/02_SAVE/01_Mask/HVP
+                # unzip hvp.zip to out_root/02_SAVE/01_Mask/DP
                 dst_hvp_path = os.path.join(outfolder_root, "02_SAVE", "01_MASK", "Mask_HVP")
                 shutil.unpack_archive(hvp_nifti_zip_path, dst_hvp_path, "zip")
                 nifti_folders.append(dst_hvp_path)
@@ -220,7 +220,7 @@ class CMakeInputFolder :
         os.makedirs(self.m_dicomAPPath, exist_ok=True)
         self.m_dicomPPPath = os.path.join(out_root, "01_DICOM", "PP")
         os.makedirs(self.m_dicomPPPath, exist_ok=True)    
-        self.m_dicomHVPPath = os.path.join(out_root, "01_DICOM", "HVP")
+        self.m_dicomHVPPath = os.path.join(out_root, "01_DICOM", "DP")
         os.makedirs(self.m_dicomHVPPath, exist_ok=True)    
         self.m_dicomMRPath = os.path.join(out_root, "01_DICOM", "MR")
         os.makedirs(self.m_dicomMRPath, exist_ok=True)  

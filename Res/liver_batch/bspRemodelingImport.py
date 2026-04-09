@@ -104,25 +104,43 @@ class CBSPRemodelingImport(blenderOption.CBlenderScriptBase) :
                 bpy.data.objects.remove(obj, do_unlink=True)
                 
     # protected
-    def _import_stl(self) -> bool :
+    def _import_stl(self) -> bool:
         inputPath = self.OptionInfo.get_user_value("StlPath")
-        if inputPath is None or inputPath == "" :
+        if inputPath is None or inputPath == "":
             return False
-        if os.path.exists(inputPath) == False : 
+        if os.path.exists(inputPath) == False:
             return False
-                
+
         listStlName = os.listdir(inputPath)
-        if len(listStlName) == 0 :
+        if len(listStlName) == 0:
             print("not found stl files")
             return False
-        
-        for stlName in listStlName :
-            ext = stlName.split('.')[-1]
+
+        for stlName in listStlName:
+            ext = stlName.split('.')[-1].lower()
             if ext != "stl":
-                 continue
+                continue
+
             stlFullPath = os.path.join(inputPath, stlName)
+
+            # 🔥 object 이름 (확장자 제거)
+            objName = os.path.splitext(stlName)[0]
+
+            # 🔥 기존 object 삭제 (덮어쓰기)
+            if objName in bpy.data.objects:
+                obj = bpy.data.objects[objName]
+
+                # 선택 후 삭제
+                bpy.ops.object.select_all(action='DESELECT')
+                obj.select_set(True)
+                bpy.context.view_layer.objects.active = obj
+                bpy.ops.object.delete()
+
+            # 🔥 import
             blenderOption.CBlenderScriptUtil.import_stl(stlFullPath)
+
         return True
+    
     
 
 

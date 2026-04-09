@@ -1255,6 +1255,7 @@ class CCommandAutoRemoveCL(CCommandSkelEdit) :
         self.m_inputListCLID = []
         self.m_listCmd = []
         self.m_undoSkeleton = None
+        self.m_opDragSelectionCL = None
         self.m_clinfoInx = -1
     def clear(self) :
         # input your code
@@ -1263,6 +1264,7 @@ class CCommandAutoRemoveCL(CCommandSkelEdit) :
             cmd.clear()
         self.m_listCmd.clear()
         self.m_undoSkeleton = None
+        self.m_opDragSelectionCL = None
         self.m_clinfoInx = -1
         super().clear()
     # def process_undo(self) :
@@ -1370,6 +1372,7 @@ class CCommandAutoRemoveCL(CCommandSkelEdit) :
             self.InputData.remove_all_key_by_type_groupID(data.CData.s_skelTypeEndPoint, clinfoInx)
             self.InputData.remove_all_key_by_type_groupID(data.CData.s_skelTypeVertex, clinfoInx)
             self.InputData.m_listSkelInfo[clinfoInx].Skeleton = self.m_undoSkeleton
+            self.m_opDragSelectionCL.Skeleton = self.m_undoSkeleton
             self.m_mediator.add_skeleton_obj(clinfoInx)
             
             if state in [0, 1, 2]:

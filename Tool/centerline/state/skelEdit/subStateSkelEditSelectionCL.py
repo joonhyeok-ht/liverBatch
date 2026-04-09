@@ -216,12 +216,15 @@ class CSubStateSkelEditSelectionCL(subStateSkelEdit.CSubStateSkelEdit) :
 
     # protected
     def _remove_cl(self) :
+        #skeleton = self._get_skeleton()
         dataInst = self._get_data()
         if dataInst.Ready == False :
             return
         
         retList = self.m_opDragSelectionCL.get_all_selection_cl()
         clinfoInx = self.m_opDragSelectionCL.get_selection_groupID()
+        
+        self.m_opDragSelectionCL.process_reset()
         if retList is None :
             return
         
@@ -233,6 +236,7 @@ class CSubStateSkelEditSelectionCL(subStateSkelEdit.CSubStateSkelEdit) :
         cmd.InputData = dataInst
         #cmd.InputSkeleton = self._get_skeleton()
         cmd.InputSkeleton = dataInst.get_skeleton(clinfoInx)
+        cmd.m_opDragSelectionCL = self.m_opDragSelectionCL
         for clID in retList :
             cmd.add_clID(clID)
             
@@ -240,8 +244,6 @@ class CSubStateSkelEditSelectionCL(subStateSkelEdit.CSubStateSkelEdit) :
         cmdContainer.add_cmd(cmd)
         cmdContainer.process()
         self.App.add_cmd(cmdContainer)
-
-        #skeleton = self._get_skeleton()
         
         ## centerline 다시 빌드
         skeleton = dataInst.get_skeleton(clinfoInx)
@@ -255,9 +257,8 @@ class CSubStateSkelEditSelectionCL(subStateSkelEdit.CSubStateSkelEdit) :
         self._setui_rootid(rootID)
         self._setui_cl_count(clCount)
         self._setui_br_count(brCount)
-
-        self.m_opDragSelectionCL.process_reset()
         self.App.update_viewer()
+
 
     
     # private

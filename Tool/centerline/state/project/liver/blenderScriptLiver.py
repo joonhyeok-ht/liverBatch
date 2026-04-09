@@ -367,7 +367,7 @@ class CBlenderScriptLiver :
         self.m_listStlNameCleanUp.clear()
         for cleanupName in listCleanup :
             if cleanupName in bpy.data.objects :
-                if cleanupName == "Wall_Liver":
+                if cleanupName == "Abdominal_wall_liver":
                     continue
                 self.m_listStlNameCleanUp.append([cleanupName, 0])
                 print(f"CleanUp Name : {cleanupName}")
@@ -925,7 +925,7 @@ class CBlenderScriptLiverMeshClean(CBlenderScriptLiver) :
             if obj.name.startswith("Diaphragm"):
                 continue
             
-            if obj.name.startswith("Wall_Liver") or obj.name.startswith("Skin"):
+            if obj.name.startswith("Abdominal_wall_liver") or obj.name.startswith("Skin"):
                 inside = True
             else:
                 inside = False

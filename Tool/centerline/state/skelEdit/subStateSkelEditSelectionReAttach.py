@@ -470,6 +470,10 @@ class CSubStateSkelEditSelectionReAttach(subStateSkelEdit.CSubStateSkelEdit) :
         for clinfoInx in clinfoInxs:
             self.App.ref_key_type_groupID(data.CData.s_skelTypeCenterline, clinfoInx)
             self.App.ref_key_type_groupID(self.m_mediator.s_rootPointType, clinfoInx)
+            
+            dataInst = self.get_data()
+            skeleton = dataInst.get_skeleton(clinfoInx)
+            self.m_mediator.m_skeleton = skeleton
 
     def clicked_mouse_rb(self, clickX, clickY) :
         self.get_state().clicked_mouse_rb(clickX, clickY)

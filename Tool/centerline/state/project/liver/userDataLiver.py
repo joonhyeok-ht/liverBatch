@@ -117,13 +117,14 @@ class CUserDataLiver(userData.CUserData) :
         
 
     def set_patient_zippath(self, zipPath : str) :
+        dataInst = self.Data
         self.MakeInputFolder.clear()
         self.MakeInputFolder.ZipPath = zipPath
+        self.MakeInputFolder.OptionInfo = dataInst.OptionInfo
         self.MakeInputFolder.process()
 
         dataRootPath = self.MakeInputFolder.DataRootPath
         patientID = self.MakeInputFolder.PatientID
-        dataInst = self.Data
 
         self.m_outputTempPath = ""
         self.m_outputTempPatientPath = ""
@@ -199,10 +200,19 @@ class CUserDataLiver(userData.CUserData) :
         reconStlPath = os.path.join(dataInst.OutputPatientPath, "Result")
         blendSavePath = dataInst.OutputPatientPath
 
+        if self.m_registrationMethod == "rigid":
+            self.reset_warped_mask_name()
+            self._refresh_optioninfo()
+        else:
+            dicom_zip_path = os.path.join(self.MakeInputFolder.m_zipPath, self.MakeInputFolder.sZip_Dicom)
+            if not os.path.exists(dicom_zip_path):
+                QMessageBox.information(self.m_mediator, "Alarm", "Need Diccom to non-rigid registration")
+                return
+            
+
         # recon 수행 
         reconInst = reconLiver.CSubReconLiver()
-        if self.m_registrationMethod == "non-rigid":
-            reconInst.m_registrationMethod = self.m_registrationMethod
+        reconInst.m_registrationMethod = self.m_registrationMethod
         reconInst.InputSliceID = inputSliceID
         reconInst.m_folderInfo = folderInfo
         reconInst.IntermediateDataPath = dataInst.OutputPatientPath
@@ -235,8 +245,15 @@ class CUserDataLiver(userData.CUserData) :
         self.blender_process(None, scriptFullPath, optionFullPath, False)
 
         # save blender folder로 move 
-        if self.m_movingBlenderPath != "" :
-            shutil.move(self.m_localReconBlenderFullPath, self.m_movingBlenderPath)
+        if self.m_movingBlenderPath:
+            src = self.m_localReconBlenderFullPath
+            dst_dir = self.m_movingBlenderPath
+            os.makedirs(dst_dir, exist_ok=True)
+            dst = os.path.join(dst_dir, os.path.basename(src))
+            try:
+                os.replace(src, dst)
+            except OSError:
+                shutil.move(src, dst)
     def override_overlap(self):
         reconBlenderFullPath = self.m_outputReconBlenderFullPath
         if os.path.exists(reconBlenderFullPath) == False :
@@ -477,9 +494,18 @@ class CUserDataLiver(userData.CUserData) :
         self._refresh_optioninfo()
         reconStlPath = os.path.join(dataInst.OutputPatientPath, "IndividualResult")
 
+        if self.m_registrationMethod == "rigid":
+            self.reset_warped_mask_name()
+            self._refresh_optioninfo()
+        else:
+            dicom_zip_path = os.path.join(self.MakeInputFolder.m_zipPath, self.MakeInputFolder.sZip_Dicom)
+            if not os.path.exists(dicom_zip_path):
+                QMessageBox.information(self.m_mediator, "Alarm", "Need Diccom to non-rigid registration")
+                return
 
         # recon 수행 
         reconInst = reconLiver.CSubReconLiver()
+        reconInst.m_registrationMethod = self.m_registrationMethod
         reconInst.m_folderInfo = self.MakeInputFolder
         reconInst.IntermediateDataPath = dataInst.OutputPatientPath
         reconInst.InputData = self.Data
@@ -535,6 +561,17 @@ class CUserDataLiver(userData.CUserData) :
         saveName = f"{patientID}_clean"
         dirPath = os.path.dirname(self.m_outputReconBlenderFullPath)
         self.m_outputCleanBlenderFullPath = os.path.join(dirPath, f"{saveName}.blend")
+    
+    def reset_warped_mask_name(self):
+        dataInst = self.Data
+        iReconCnt = dataInst.OptionInfo.get_recon_count()
+        for ri in range(iReconCnt):
+            iReconListCnt = dataInst.OptionInfo.get_recon_list_count(ri)
+            for rli in range(iReconListCnt):
+                maskName, blenderName, phase, triCnt = dataInst.OptionInfo.get_recon_list(ri, rli)
+                if "warped_resampled_" in maskName:
+                    dataInst.OptionInfo.set_recon_maskname(maskName, maskName.split("warped_resampled_")[1])
+        
     @property
     def OutputTempPath(self) -> str :
         return self.m_outputTempPath

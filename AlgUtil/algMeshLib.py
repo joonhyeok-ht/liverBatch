@@ -62,7 +62,7 @@ class CMeshLib :
 
         # 원래 삼각형 수 확인
         initial_triangles = mesh.topology.numValidFaces()
-        print(f"Initial triangle count: {initial_triangles}")
+        print(f"Initial triangle count: {initial_triangles}", file=sys.__stdout__, flush=True)
 
         # Repack mesh optimally.
         # It's not necessary but highly recommended to achieve the best performance in parallel processing

@@ -170,6 +170,7 @@ class CMakeInputFolder :
         self.m_listPhaseZipName = []
 
         self.m_bReady = False
+        self.m_optionInfo = None
     def clear(self) :
         self.m_zipPath = ""
 
@@ -188,6 +189,7 @@ class CMakeInputFolder :
         self.m_listPhaseZipName.clear()
 
         self.m_bReady = False
+        self.m_optionInfo = None
     def process(self) -> bool :
         self.Ready = False
 
@@ -242,6 +244,20 @@ class CMakeInputFolder :
             CFileOper.unzip_file(tmpTargetPath, zipFullPath)    # 임시로 zip을 푼다 
             CFileOper.copy_folder_ext(targetPath, tmpTargetPath, ("nii.gz"))    # 재귀적으로 돌면서 nifti 파일만 maskPath에 복사한다. 
             CFileOper.remove_folder(tmpTargetPath)              # 임시 폴더를 삭제한다. 
+            
+            # print("!!!!!!!!!!!!!!targetPath", file=sys.__stdout__, flush=True)
+            # print(targetPath, file=sys.__stdout__, flush=True)
+            
+            # for maskName in os.listdir(targetPath):
+            #     full_path = os.path.join(targetPath, maskName)
+
+            #     # 파일만 대상 (폴더 제외)
+            #     if os.path.isfile(full_path):
+            #         name_no_ext = os.path.splitext(maskName)[0]
+            #         self.OptionInfo.set_recon_phase(name_no_ext, phase)
+                    
+            #         print(name_no_ext, file=sys.__stdout__, flush=True)
+            #         print(phase, file=sys.__stdout__, flush=True)
             
         # make mask zip
         # zipFullPath = CFileOper.zip_folder(self.m_dataRootPath, self.m_maskPath)
@@ -343,6 +359,12 @@ class CMakeInputFolder :
     @property
     def BlenderSavePath(self) -> str :
         return self.m_blenderSavePath
+    @property
+    def OptionInfo(self):
+        return self.m_optionInfo
+    @OptionInfo.setter
+    def OptionInfo(self, optionInfo):
+        self.m_optionInfo = optionInfo
 
 
 if __name__ == "__main__" :

@@ -411,13 +411,21 @@ class CData :
         for key, obj in self.m_dicObj.items() :
             obj.clear()
         self.m_dicObj.clear()
-
+    def remove_all_key_by_type_groupID(self, type : str, groupID : int) -> list :
+        retList = []
+        previousKeys = list(self.m_dicObj.keys())
+        for key in previousKeys :
+            _type, _groupID, _id = CData.get_keyinfo(key)
+            if _type == type and _groupID == groupID :
+                self.remove_key(key)
         
     def add_skelinfo(self, skelinfo : CSkelInfo) :
         self.m_listSkelInfo.append(skelinfo)
     def get_skelinfo_count(self) -> int :
         return len(self.m_listSkelInfo)
     def get_skelinfo(self, inx : int) -> CSkelInfo :
+        if not self.m_listSkelInfo:
+            return None
         return self.m_listSkelInfo[inx]
     def remove_skelinfo(self, inx : int):
         self.m_listSkelInfo.pop(inx)

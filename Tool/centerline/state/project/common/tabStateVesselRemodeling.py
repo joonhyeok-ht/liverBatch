@@ -52,7 +52,7 @@ import remodeling.subStateRemodelingExtractionEnCL as subStateRemodelingExtracti
 import remodeling.subStateRemodelingRemodeling as subStateRemodelingRemodeling
 
 from collections import deque
-import trimesh
+# import trimesh
 import json
 from collections import Counter
 from collections import defaultdict
@@ -462,7 +462,7 @@ class CTabStateVesselRemodeling(tabState.CTabState) :
         self.m_majorVesselOrder = QSpinBox()
         self.m_majorVesselOrder.setRange(0, 99)
         self.m_majorVesselOrder.setSingleStep(1)
-        self.m_majorVesselOrder.setValue(1)
+        self.m_majorVesselOrder.setValue(2)
         
         rightLayout.addWidget(labelDepth)
         rightLayout.addWidget(self.m_majorVesselOrder)
@@ -596,39 +596,39 @@ class CTabStateVesselRemodeling(tabState.CTabState) :
         self.m_mediator.update_viewer()
         
 
-    def generate_lowpoly_sphere(self, center, radius=0.25, subdivisions=0):
-        """
-        Generate a low-poly sphere centered at 'center' with fixed radius.
-        subdivisions=0 → 최소 정점, 매우 가벼운 구
-        """
-        sphere = trimesh.creation.icosphere(subdivisions=subdivisions, radius=radius)
-        sphere.apply_translation(center)
-        return sphere
+    # def generate_lowpoly_sphere(self, center, radius=0.25, subdivisions=0):
+    #     """
+    #     Generate a low-poly sphere centered at 'center' with fixed radius.
+    #     subdivisions=0 → 최소 정점, 매우 가벼운 구
+    #     """
+    #     sphere = trimesh.creation.icosphere(subdivisions=subdivisions, radius=radius)
+    #     sphere.apply_translation(center)
+    #     return sphere
 
-    def json_to_optimized_sphere_stl(self, json_path, output_stl_path, fixed_radius=0.2, subdivisions=0):
-        with open(json_path, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-        #all_spheres = []
-        all_spheres = defaultdict(list)
+    # def json_to_optimized_sphere_stl(self, json_path, output_stl_path, fixed_radius=0.2, subdivisions=0):
+    #     with open(json_path, 'r', encoding='utf-8') as f:
+    #         data = json.load(f)
+    #     #all_spheres = []
+    #     all_spheres = defaultdict(list)
 
-        for cl in data["centerlineList"]:
-            vertices = np.array(cl["vertex"])
+    #     for cl in data["centerlineList"]:
+    #         vertices = np.array(cl["vertex"])
 
-            for v in vertices:
-                sphere = self.generate_lowpoly_sphere(center=v, radius=fixed_radius, subdivisions=subdivisions)
-                all_spheres[cl["name"]].append(sphere)
+    #         for v in vertices:
+    #             sphere = self.generate_lowpoly_sphere(center=v, radius=fixed_radius, subdivisions=subdivisions)
+    #             all_spheres[cl["name"]].append(sphere)
 
-        if len(all_spheres.keys()) == 0:
-            print("No spheres could be generated.")
-            return
+    #     if len(all_spheres.keys()) == 0:
+    #         print("No spheres could be generated.")
+    #         return
         
-        for clName in all_spheres.keys():
-            if 'S' not in clName:
-                continue
-            full_mesh = trimesh.util.concatenate(all_spheres[clName])
-            outputFullPath = os.path.join(output_stl_path, clName + ".stl")
-            full_mesh.export(outputFullPath)
-            print(f"✅ STL saved (low-poly spheres): {outputFullPath}")
+    #     for clName in all_spheres.keys():
+    #         if 'S' not in clName:
+    #             continue
+    #         full_mesh = trimesh.util.concatenate(all_spheres[clName])
+    #         outputFullPath = os.path.join(output_stl_path, clName + ".stl")
+    #         full_mesh.export(outputFullPath)
+    #         print(f"✅ STL saved (low-poly spheres): {outputFullPath}")
             
     def copy_skeleton_cl_label(self, skeletonEn, skeleton):
         
@@ -743,12 +743,12 @@ class CTabStateVesselRemodeling(tabState.CTabState) :
         Mainskeleton = dataInst.get_skeleton(self.get_clinfo_index())
         self.copy_skeleton_cl_label(skeleton, Mainskeleton)
         skeleton.save(clOutputFullPath, "Portal")
-        self.json_to_optimized_sphere_stl(
-            clOutputFullPath,
-            clOutPath,
-            fixed_radius=0.25,
-            subdivisions=0  # 가장 가벼운 구체
-        )
+        # self.json_to_optimized_sphere_stl(
+        #     clOutputFullPath,
+        #     clOutPath,
+        #     fixed_radius=0.25,
+        #     subdivisions=0  # 가장 가벼운 구체
+        # )
 
         if os.path.exists(vtpFullPath) :
             os.remove(vtpFullPath)
@@ -1585,10 +1585,10 @@ class CTabStateVesselRemodeling(tabState.CTabState) :
         skeleton = dataInst.get_skeleton(clinfoInx)
         if skeleton is None :
             return 
-        skelinfo = dataInst.get_skelinfo(clinfoInx)
-        if labelName == skelinfo.BlenderName :
-            QMessageBox.information(self.m_mediator, "Alarm", f"Invalid Node Name")
-            return
+        # skelinfo = dataInst.get_skelinfo(clinfoInx)
+        # if labelName == skelinfo.BlenderName :
+        #     QMessageBox.information(self.m_mediator, "Alarm", f"Invalid Node Name")
+        #     return
 
         
         selectedNode = self.getui_lv_cuttednode_selected_node()

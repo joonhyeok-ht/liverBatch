@@ -78,7 +78,7 @@ class CRemoveStricture(multiProcessTask.CMultiProcessTaskProgress) :
             listParam,
             progress_callback=getattr(self, "progress_callback", None),
             is_interrupted=getattr(self, "is_interrupted", None),
-            status_prefix="Remove Stricture...",
+            status_prefix="",
             chunksize=1
         )
     

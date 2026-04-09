@@ -70,6 +70,11 @@ class CTabStateSkelLabelingLiver(tabState.CTabState) :
 
     def process_init(self) :
         dataInst = self.get_data()
+        clinfoInx = self.get_clinfo_index()
+        self.m_skeleton = dataInst.get_skeleton(clinfoInx)
+        
+        self.m_subState.process_end()
+        self.m_subState.process_init()
         if dataInst.Ready == False :
             return
         
@@ -116,6 +121,7 @@ class CTabStateSkelLabelingLiver(tabState.CTabState) :
         self.m_mediator.remove_key_type(data.CData.s_territoryType)
         self.m_mediator.remove_key_type(data.CData.s_textType)
         self.m_mediator.update_viewer()
+        self.m_subState.process_end()
     def init_ui(self) :
         tabLayout = QVBoxLayout()
         self.Tab.setLayout(tabLayout)
@@ -125,15 +131,23 @@ class CTabStateSkelLabelingLiver(tabState.CTabState) :
         label.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
         tabLayout.addWidget(label)
 
-        self.m_checkCLHierarchy = QCheckBox("Selection Centerline Hierarchy ")
-        self.m_checkCLHierarchy.setChecked(False)
-        self.m_checkCLHierarchy.stateChanged.connect(self._on_check_cl_hierarchy)
-        tabLayout.addWidget(self.m_checkCLHierarchy)
+        # self.m_checkCLHierarchy = QCheckBox("Selection Centerline Hierarchy ")
+        # self.m_checkCLHierarchy.setChecked(False)
+        # self.m_checkCLHierarchy.stateChanged.connect(self._on_check_cl_hierarchy)
+        # tabLayout.addWidget(self.m_checkCLHierarchy)
 
-        self.m_checkCLAncestor = QCheckBox("Selection Centerline Ancestor ")
-        self.m_checkCLAncestor.setChecked(False)
-        self.m_checkCLAncestor.stateChanged.connect(self._on_check_cl_ancestor)
-        tabLayout.addWidget(self.m_checkCLAncestor)
+        # self.m_checkCLAncestor = QCheckBox("Selection Centerline Ancestor ")
+        # self.m_checkCLAncestor.setChecked(False)
+        # self.m_checkCLAncestor.stateChanged.connect(self._on_check_cl_ancestor)
+        # tabLayout.addWidget(self.m_checkCLAncestor)
+        layout, retList = self.m_mediator.create_layout_label_radio("SelectionMode", ["Single", "Descendant"])
+        self.m_rbSingle = retList[0]
+        self.m_rbDescendant = retList[1]
+        self.m_rbSingle.toggled.connect(self._on_rb_single)
+        self.m_rbDescendant.toggled.connect(self._on_rb_descendant)
+        self.m_rbSingle.setChecked(True)
+        tabLayout.addLayout(layout)
+        
         
         line = QFrame()
         line.setFrameShape(QFrame.Shape.HLine)
@@ -147,17 +161,17 @@ class CTabStateSkelLabelingLiver(tabState.CTabState) :
         tabLayout.addWidget(label)
 
         layout, self.m_editCLID = self.m_mediator.create_layout_label_editbox("Centerline ID", True)
-        tabLayout.addLayout(layout)
+        #tabLayout.addLayout(layout)
 
         layout, self.m_editCLName = self.m_mediator.create_layout_label_editbox("Centerline Label", False)
         self.m_editCLName.returnPressed.connect(self._on_btn_return_pressed_clname)
         tabLayout.addLayout(layout)
 
         layout, self.m_editCLPtCnt = self.m_mediator.create_layout_label_editbox("Centerline Point Count", True)
-        tabLayout.addLayout(layout)
+        #tabLayout.addLayout(layout)
 
         layout, self.m_editCLLength = self.m_mediator.create_layout_label_editbox("Centerline Length(mm)", True)
-        tabLayout.addLayout(layout)
+        #tabLayout.addLayout(layout)
         
         # layout, self.m_separatedDepath = self.m_mediator.create_layout_label_editbox("Threshold Depth for Main", False)
         # tabLayout.addLayout(layout)
@@ -206,43 +220,59 @@ class CTabStateSkelLabelingLiver(tabState.CTabState) :
         tabLayout.setAlignment(lastUI, Qt.AlignmentFlag.AlignTop)
 
 
+    # def clicked_mouse_rb(self, clickX, clickY) :
+    #     listExceptKeyType = [
+    #         # data.CData.s_territoryType,
+    #         data.CData.s_vesselType,
+    #         # data.CData.s_organType,
+    #         data.CData.s_textType,
+    #     ]
+    #     key = self.m_mediator.picking(clickX, clickY, listExceptKeyType)
+    #     if key == "" or data.CData.get_type_from_key(key) != data.CData.s_skelTypeCenterline :
+    #         key = ""
+    #     operation.COperationSelectionCL.clicked(self.m_opSelectionCL, key)
+    #     self._update_clinfo()
+    #     self.m_mediator.update_viewer()
+    # def clicked_mouse_rb_shift(self, clickX, clickY) :
+    #     listExceptKeyType = [
+    #         # data.CData.s_territoryType,
+    #         data.CData.s_vesselType,
+    #         # data.CData.s_organType,
+    #         data.CData.s_textType,
+    #     ]
+    #     key = self.m_mediator.picking(clickX, clickY, listExceptKeyType)
+    #     if key == "" or data.CData.get_type_from_key(key) != data.CData.s_skelTypeCenterline :
+    #         key = ""
+    #     operation.COperationSelectionCL.multi_clicked(self.m_opSelectionCL, key)
+    #     self._update_clinfo()
+    #     self.m_mediator.update_viewer()
+    # def key_press(self, keyCode : str) :
+    #     if keyCode == "Escape" :
+    #         if self.m_guideBoundKey != "" :
+    #             self.m_mediator.remove_key(self.m_guideBoundKey)
+    #             self.m_mediator.remove_key_type(data.CData.s_territoryType)
+    #             self.m_guideBoundKey = ""
+    #             self.m_mediator.update_viewer()
+    # def key_press_with_ctrl(self, keyCode : str) : 
+    #     if keyCode == "z" :
+    #         print("test")
+    #         #self._undo()
     def clicked_mouse_rb(self, clickX, clickY) :
-        listExceptKeyType = [
-            # data.CData.s_territoryType,
-            data.CData.s_vesselType,
-            # data.CData.s_organType,
-            data.CData.s_textType,
-        ]
-        key = self.m_mediator.picking(clickX, clickY, listExceptKeyType)
-        if key == "" or data.CData.get_type_from_key(key) != data.CData.s_skelTypeCenterline :
-            key = ""
-        operation.COperationSelectionCL.clicked(self.m_opSelectionCL, key)
-        self._update_clinfo()
-        self.m_mediator.update_viewer()
+        self.m_subState.clicked_mouse_rb(clickX, clickY)
     def clicked_mouse_rb_shift(self, clickX, clickY) :
-        listExceptKeyType = [
-            # data.CData.s_territoryType,
-            data.CData.s_vesselType,
-            # data.CData.s_organType,
-            data.CData.s_textType,
-        ]
-        key = self.m_mediator.picking(clickX, clickY, listExceptKeyType)
-        if key == "" or data.CData.get_type_from_key(key) != data.CData.s_skelTypeCenterline :
-            key = ""
-        operation.COperationSelectionCL.multi_clicked(self.m_opSelectionCL, key)
-        self._update_clinfo()
-        self.m_mediator.update_viewer()
+        self.m_subState.clicked_mouse_rb_shift(clickX, clickY)
+    def release_mouse_rb(self):
+        self.m_subState.release_mouse_rb()
+    def mouse_move(self, clickX, clickY) :
+        self.m_subState.mouse_move(clickX, clickY)
+    def mouse_move_rb(self, clickX, clickY):
+        self.m_subState.mouse_move_rb(clickX, clickY)
     def key_press(self, keyCode : str) :
-        if keyCode == "Escape" :
-            if self.m_guideBoundKey != "" :
-                self.m_mediator.remove_key(self.m_guideBoundKey)
-                self.m_mediator.remove_key_type(data.CData.s_territoryType)
-                self.m_guideBoundKey = ""
-                self.m_mediator.update_viewer()
+        self.m_subState.key_press(keyCode)
     def key_press_with_ctrl(self, keyCode : str) : 
-        if keyCode == "z" :
-            print("test")
-            #self._undo()
+        self.m_subState.key_press_with_ctrl(keyCode)
+
+    
 
 
     # protected   
@@ -257,7 +287,7 @@ class CTabStateSkelLabelingLiver(tabState.CTabState) :
         self.m_editCLName.setText("")
         self.m_editCLPtCnt.setText("0")
         self.m_editCLLength.setText("0")
-        self.m_separatedDepath.setText("0")
+        #self.m_separatedDepath.setText("0")
 
         opSelectionCL = self.m_opSelectionCL
         iCnt = opSelectionCL.get_selection_key_count()
@@ -278,24 +308,26 @@ class CTabStateSkelLabelingLiver(tabState.CTabState) :
         self.m_editCLLength.setText(f"{length}")
         
     def _update_clname(self, clName : str) :
-        dataInst = self.get_data()
-        opSelectionCL = self.m_opSelectionCL
-        iCnt = opSelectionCL.get_selection_key_count()
-        if iCnt == 0 :
-            return
-        skeleton = None
+        self.__update_clname_with_key(self.Skeleton, [], clName)
+        # dataInst = self.get_data()
+        # opSelectionCL = self.m_opSelectionCL
+        # iCnt = opSelectionCL.get_selection_key_count()
+        # if iCnt == 0 :
+        #     return
         
-        for selectionKey in opSelectionCL.m_listSelectionKey:
-            skeleton = dataInst.get_skeleton(data.CData.get_groupID_from_key(selectionKey))
-            if skeleton is None :
-                return
+        # skeleton = None
+        
+        # for selectionKey in opSelectionCL.m_listSelectionKey:
+        #     skeleton = dataInst.get_skeleton(data.CData.get_groupID_from_key(selectionKey))
+        #     if skeleton is None :
+        #         return
             
-            retListKey = []
-            retListKey += opSelectionCL.m_listSelectionKey
-            retListKey += opSelectionCL.m_listChildSelectionKey
-            retListKey += opSelectionCL.m_listParentSelectionKey
+        #     retListKey = []
+        #     retListKey += opSelectionCL.m_listSelectionKey
+        #     retListKey += opSelectionCL.m_listChildSelectionKey
+        #     retListKey += opSelectionCL.m_listParentSelectionKey
               
-            self.__update_clname_with_key(skeleton, retListKey, clName)
+        #     self.__update_clname_with_key(skeleton, retListKey, clName)
         self.m_mediator.update_viewer()
 
     # ui event
@@ -491,7 +523,58 @@ class CTabStateSkelLabelingLiver(tabState.CTabState) :
                     # self.m_mediator.show_dialog(f"Save Info Done! ({blenderName})" )
             else :
                 print(f"_on_btn_save_centerline_info_for_graphics() : skeleton is None!")
-            
+                
+            self._save_centerline_recontools(clinfoIndex)
+
+    def _save_centerline_recontools(self, clinfoIndex):
+        dataInst = self.get_data()
+        if dataInst.Ready == False : 
+            return
+        
+        skeleton = dataInst.get_skeleton(clinfoIndex)
+        if skeleton is None :
+            return
+        
+        self._update_skeleton(skeleton, clinfoIndex)
+
+        clOutPath = dataInst.get_cl_out_path()
+
+        skelinfo = dataInst.get_skelinfo(clinfoIndex)
+        blenderName = skelinfo.BlenderName
+        jsonName = skelinfo.JsonName
+        outputFullPath = os.path.join(clOutPath, f"{jsonName}.json")
+        skeleton.save(outputFullPath, blenderName)
+        
+    def _update_skeleton(self, skeleton, clinfoIndex) : 
+        self.__update_cl_radius(skeleton, clinfoIndex)
+        skeleton.rebuild_centerline_related_data()
+        
+    def __update_cl_radius(self, skeleton, clinfoIndex) :
+        dataInst = self.get_data()
+
+        vesselKey = data.CData.make_key(data.CData.s_vesselType, clinfoIndex, 0)
+        vesselObj = dataInst.find_obj_by_key(vesselKey)
+        if vesselObj is None :
+            return
+        vesselPolyData = vesselObj.PolyData
+        # anchorVertex = algVTK.CVTK.poly_data_get_vertex(vesselPolyData)
+        # tree = KDTree(anchorVertex)
+
+        distCalculator = vtk.vtkImplicitPolyDataDistance()
+        distCalculator.SetInput(vesselPolyData)
+
+        iCnt = skeleton.get_centerline_count()
+        for inx in range(0, iCnt) :
+            cl = skeleton.get_centerline(inx)
+            dist = np.zeros(len(cl.Vertex))
+            for ptInx, point in enumerate(cl.Vertex) :
+                radius = abs(distCalculator.EvaluateFunction(point))
+                # radius = distCalculator.EvaluateFunction(point)
+                dist[ptInx] = radius
+            # dist, self.m_npNNIndex = tree.query(cl.Vertex, k=1)
+            # print(f"dist : {dist}")
+            cl.Radius = dist
+            inx = 0
                     
     def _on_btn_save_separation(self) :
         dataInst = self.get_data()
@@ -544,31 +627,43 @@ class CTabStateSkelLabelingLiver(tabState.CTabState) :
     # private
     def __update_clname_with_key(self, skeleton : algSkeletonGraph.CSkeleton, listKey : list, clName : str) :
         dataInst = self.get_data()
+                
+        retList = self.m_subState.m_opDragSelectionCL.get_all_selection_cl()
+        groupID = self.m_subState.m_opDragSelectionCL.get_selection_groupID()
+                
+        for clID in retList:
+            cl = skeleton.get_centerline(clID)
+            cl.Name = clName
 
-        if self.m_separatedDepath.text() == "0":
-            for clKey in listKey :
-                keyType, groupID, id = data.CData.get_keyinfo(clKey)
-                cl = skeleton.get_centerline(id)
-                cl.Name = clName
+            textKey = data.CData.make_key(data.CData.s_textType, groupID, cl.ID)
+            textObj = dataInst.find_obj_by_key(textKey)
+            if textObj is not None :
+                textObj.Text = clName
 
-                textKey = data.CData.make_key(data.CData.s_textType, groupID, cl.ID)
-                textObj = dataInst.find_obj_by_key(textKey)
-                if textObj is not None :
-                    textObj.Text = clName
-        else:
-            if len(listKey) > 1:
-                keyType, groupID, id = data.CData.get_keyinfo(listKey[0])
-                #self._separate_leaf_with_bfs(skeleton, id, int(self.m_separatedDepath.text()), clName)
-                self._update_clname_with_bfs(skeleton, id, int(self.m_separatedDepath.text()), clName)
-            else:
-                keyType, groupID, id = data.CData.get_keyinfo(listKey[0])
-                cl = skeleton.get_centerline(id)
-                cl.Name = clName
+        # if self.m_separatedDepath.text() == "0":
+        #     for clKey in listKey :
+        #         keyType, groupID, id = data.CData.get_keyinfo(clKey)
+        #         cl = skeleton.get_centerline(id)
+        #         cl.Name = clName
 
-                textKey = data.CData.make_key(data.CData.s_textType, groupID, cl.ID)
-                textObj = dataInst.find_obj_by_key(textKey)
-                if textObj is not None :
-                    textObj.Text = clName
+        #         textKey = data.CData.make_key(data.CData.s_textType, groupID, cl.ID)
+        #         textObj = dataInst.find_obj_by_key(textKey)
+        #         if textObj is not None :
+        #             textObj.Text = clName
+        # else:
+        #     if len(listKey) > 1:
+        #         keyType, groupID, id = data.CData.get_keyinfo(listKey[0])
+        #         #self._separate_leaf_with_bfs(skeleton, id, int(self.m_separatedDepath.text()), clName)
+        #         self._update_clname_with_bfs(skeleton, id, int(self.m_separatedDepath.text()), clName)
+        #     else:
+        #         keyType, groupID, id = data.CData.get_keyinfo(listKey[0])
+        #         cl = skeleton.get_centerline(id)
+        #         cl.Name = clName
+
+        #         textKey = data.CData.make_key(data.CData.s_textType, groupID, cl.ID)
+        #         textObj = dataInst.find_obj_by_key(textKey)
+        #         if textObj is not None :
+        #             textObj.Text = clName
 
             
     def _update_clname_with_bfs(self, skeleton, clickRootID, maxDepth, clName):
@@ -630,6 +725,16 @@ class CTabStateSkelLabelingLiver(tabState.CTabState) :
                 else:
                     queue.append((CID, d+1, "main"))
         
+    def _on_rb_single(self) :
+        return
+    def _on_rb_descendant(self) :
+        return
+
+    
+    @property
+    def Skeleton(self) -> algSkeletonGraph.CSkeleton :
+        return self.m_skeleton
+
         
 
 if __name__ == '__main__' :

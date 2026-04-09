@@ -344,6 +344,14 @@ class COptionInfo() :
         reconInx = retInx[0]
         listInx = retInx[1]
         self.m_recon[reconInx]["List"][listInx][1] = blendername
+    def set_recon_maskname(self, maskName : str, newMaskName : str) :
+        retInx = self.find_recon_index_of_maskname(maskName)
+        if retInx is None :
+            return
+
+        reconInx = retInx[0]
+        listInx = retInx[1]
+        self.m_recon[reconInx]["List"][listInx][0] = newMaskName
     
     def get_mesh_boolean_count(self) -> int :
         if self.m_meshBoolean is None :
@@ -491,6 +499,17 @@ class COptionInfo() :
                 if blenderName == _blenderName :
                     return triCnt
         return -1
+    def is_recon_blender_name(self, blenderName : str):
+        if self.m_recon is None :
+            return -1
+        iReconCnt = self.get_recon_count()
+        for reconInx in range(0, iReconCnt) :
+            iListCnt = self.get_recon_list_count(reconInx)
+            for listInx in range(0, iListCnt) :
+                _, _blenderName, _, triCnt = self.get_recon_list(reconInx, listInx)
+                if blenderName == _blenderName :
+                    return True
+        return False
     def add_centerline_list_name(self, clInx : int, blenderName : str, jsonName : str) :
         if self.m_centerline is None :
             return 

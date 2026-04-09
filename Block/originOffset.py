@@ -40,7 +40,7 @@ class COriginOffset() :
             phaseinfo = self.InputPhase.get_phaseinfo(inx)
 
             phase = phaseinfo.Phase
-            if phaseinfo.is_valid() == False or self.InputOptionInfo.find_rigid_aabb_of_phase(phase) :
+            if phaseinfo.is_valid() == False or self.InputOptionInfo.find_rigid_aabb_of_phase(phase) : #phaseinfo.is_valid() == False or 
                 continue
 
             listPhaseInfo.append(phaseinfo)

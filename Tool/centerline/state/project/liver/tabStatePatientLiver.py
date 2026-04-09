@@ -745,7 +745,6 @@ class CTabStatePatient(tabState.CTabState):
         
     def setui_cellID(self, cellID : int) :
         self.m_editBoxCellID.setText(str(cellID))
-
     # ui 
     def setui_edit_input_path(self, inputPath : str) :
         self.m_editInputPath.setText(inputPath)
@@ -860,7 +859,6 @@ class CTabStatePatient(tabState.CTabState):
         folderInfo = userdata.MakeInputFolder
         if folderInfo.Ready == False :
             return
-        
         rootPath = folderInfo.DataRootPath
         huid = folderInfo.PatientID
         self.m_dataRootPath = rootPath
@@ -938,7 +936,7 @@ class CTabStatePatient(tabState.CTabState):
         list_mr = os.listdir(mrPath)
         phaseMaskList.append({'phase':'AP', 'files': list_ap})
         phaseMaskList.append({'phase':'PP', 'files': list_pp})
-        phaseMaskList.append({'phase':'HVP', 'files': list_hvp})
+        phaseMaskList.append({'phase':'DP', 'files': list_hvp})
         phaseMaskList.append({'phase':'MR', 'files': list_mr})
         print(f"PhaseMaskList : {phaseMaskList}", file=sys.__stdout__, flush=True)
         
@@ -1014,6 +1012,9 @@ class CTabStatePatient(tabState.CTabState):
         
         for clinfoinx in sorted(clinfoIndices, reverse=True):
             skelinfo = dataInst.get_skelinfo(clinfoinx)
+            if dataInst.OptionInfo.is_recon_blender_name(skelinfo.BlenderName):
+                QMessageBox.information(self.m_mediator, "Alarm", f"cannot remove centerline")
+                return
             if clinfoinx == dataInst.OptionInfo.find_centerline_index_of_blendername(skelinfo.BlenderName):
                 print(f"cannot remove {skelinfo.BlenderName}", file=sys.__stdout__, flush=True)
                 continue
@@ -1114,6 +1115,7 @@ class CTabStatePatient(tabState.CTabState):
         # 현재 option 파일의 dataRootPath를 변경해줘야 함.
         new_data_root_path = data_root_path.replace("\\", "\\\\").replace("/", "\\\\")
         jsonpath = option_path
+        
         if os.path.exists(jsonpath):
             # 임시 파일에 업데이트된 DataRootPath 포함해서 json내용 복사
             temp_path = os.path.join(os.path.dirname(jsonpath), "tmp.json")
@@ -1204,14 +1206,12 @@ class CTabStatePatient(tabState.CTabState):
         #     return
 
         if self.m_reconReady == True:
-
-            
-            
             dataInst = self.get_data()
             userdata = dataInst.UserData
             if self.m_rbNonrigid.isChecked():
                 userdata.m_registrationMethod = "non-rigid"
-                
+            else:
+                userdata.m_registrationMethod = "rigid"
             if userdata is not None :
                 userdata.override_recon(inputSliceID)
             else :
@@ -1409,9 +1409,9 @@ class CTabStatePatient(tabState.CTabState):
             maskRoot = os.path.join(
                 unzipPath, self.getui_edit_huid_path(), "02_SAVE", "01_MASK"
             )
-            HVPPath = os.path.join(maskRoot, "Mask_HVP")
-            PPPath = os.path.join(maskRoot, "Mask_PP")
-            APPath = os.path.join(maskRoot, "Mask_AP")
+            HVPPath = os.path.join(maskRoot, "DP")
+            PPPath = os.path.join(maskRoot, "PP")
+            APPath = os.path.join(maskRoot, "AP")
             
             def _generate_skin_png(self):
                 generateSkinScreenshot.generateSkinPng(os.path.join(HVPPath, "Skin.nii.gz"))
@@ -1459,35 +1459,38 @@ class CTabStatePatient(tabState.CTabState):
                 maskRoot = os.path.join(
                     unzipPath, self.getui_edit_huid_path(), "02_SAVE", "01_MASK"
                 )
-                PPPath = os.path.join(maskRoot, "Mask_PP")
-                APPath = os.path.join(maskRoot, "Mask_PP")
-                HVPPath = os.path.join(maskRoot, "Mask_PP")
-
-                if os.path.exists(os.path.join(PPPath, "Skin.nii.gz")) == True:
-                    skinImgPath = os.path.join(PPPath, "Skin.nii.gz")
-                    sitkImg = scoUtil.CScoUtilSimpleITK.load_image(skinImgPath, None)
-                    spacing_z = sitkImg.GetSpacing()[2]
-
-                    clipPosition = int((navelZID * spacing_z - 100)//spacing_z)
-                    self._clicked_recon_mask(clipPosition)
-                elif os.path.exists(os.path.join(APPath, "Skin.nii.gz")) == True:
-                    skinImgPath = os.path.join(APPath, "Skin.nii.gz")
-                    sitkImg = scoUtil.CScoUtilSimpleITK.load_image(skinImgPath, None)
-                    spacing_z = sitkImg.GetSpacing()[2]
-
-                    clipPosition = int((navelZID * spacing_z - 100)//spacing_z)
-                    self._clicked_recon_mask(clipPosition)
-                elif os.path.exists(os.path.join(HVPPath, "Skin.nii.gz")) == True:
-                    skinImgPath = os.path.join(HVPPath, "Skin.nii.gz")
-                    sitkImg = scoUtil.CScoUtilSimpleITK.load_image(skinImgPath, None)
-                    spacing_z = sitkImg.GetSpacing()[2]
-
-                    clipPosition = int((navelZID * spacing_z - 100)//spacing_z)
-                    self._clicked_recon_mask(clipPosition)
-                else:
-                    _manually_detect_navel()
-            else:
+                PPPath = os.path.join(maskRoot, "PP")
+                APPath = os.path.join(maskRoot, "AP")
+                HVPPath = os.path.join(maskRoot, "DP")
                 _manually_detect_navel()
+
+                # if os.path.exists(os.path.join(PPPath, "Skin.nii.gz")) == True:
+                #     skinImgPath = os.path.join(PPPath, "Skin.nii.gz")
+                #     sitkImg = scoUtil.CScoUtilSimpleITK.load_image(skinImgPath, None)
+                #     spacing_z = sitkImg.GetSpacing()[2]
+
+                #     clipPosition = int((navelZID * spacing_z - 100)//spacing_z)
+                #     self._clicked_recon_mask(clipPosition)
+                # elif os.path.exists(os.path.join(APPath, "Skin.nii.gz")) == True:
+                #     skinImgPath = os.path.join(APPath, "Skin.nii.gz")
+                #     sitkImg = scoUtil.CScoUtilSimpleITK.load_image(skinImgPath, None)
+                #     spacing_z = sitkImg.GetSpacing()[2]
+
+                #     clipPosition = int((navelZID * spacing_z - 100)//spacing_z)
+                #     self._clicked_recon_mask(clipPosition)
+                # elif os.path.exists(os.path.join(HVPPath, "Skin.nii.gz")) == True:
+                #     skinImgPath = os.path.join(HVPPath, "Skin.nii.gz")
+                #     sitkImg = scoUtil.CScoUtilSimpleITK.load_image(skinImgPath, None)
+                #     spacing_z = sitkImg.GetSpacing()[2]
+
+                #     clipPosition = int((navelZID * spacing_z - 100)//spacing_z)
+                #     self._clicked_recon_mask(clipPosition)
+                # else:
+                #     self._clicked_recon_mask(300) # 어차피 자를 필요 없음
+                    #_manually_detect_navel()
+            else:
+                self._clicked_recon_mask(300) # 어차피 자를 필요 없음
+                #_manually_detect_navel()
 
 
         def _check_blend_exist(navelZID):
@@ -1632,7 +1635,7 @@ class CTabStatePatient(tabState.CTabState):
 
         fullPath = os.path.join(dataInst.OutputPatientPath, f"{data.CData.s_fileName}.json")
         dataInst.save(fullPath)
-
+        self.m_mediator.update_viewer()
         #self.m_btnCL.setEnabled(False)
 
     def _on_btn_recon(self):
@@ -1655,7 +1658,11 @@ class CTabStatePatient(tabState.CTabState):
         if userdata is None :
             print("not setting userdata")
             return
-
+        
+        if self.m_rbNonrigid.isChecked():
+            userdata.m_registrationMethod = "non-rigid"
+        else:
+            userdata.m_registrationMethod = "rigid"
         if os.path.exists(userdata.OutputReconBlenderFullPath) == False :
             QMessageBox.information(self.m_mediator, "Alarm", f"must be reconstructed")
             return
@@ -1673,6 +1680,8 @@ class CTabStatePatient(tabState.CTabState):
     def _on_rb_nonrigid(self) :
         if self.m_bReady == False :
             return
+
+        
     def _on_rb_rigid(self) :
         if self.m_bReady == False :
             return
@@ -1798,7 +1807,7 @@ class CTabStatePatient(tabState.CTabState):
         maskRoot = os.path.join(unzipPath, patientID, "02_SAVE", "01_MASK")
         apPath = os.path.join(maskRoot, "AP")
         ppPath = os.path.join(maskRoot, "PP")
-        hvpPath = os.path.join(maskRoot, "HVP")        
+        hvpPath = os.path.join(maskRoot, "DP")        
         mrPath = os.path.join(maskRoot, "MR")
         list_ap = os.listdir(apPath)
         list_ap = [f.split('.')[0] for f in list_ap]
@@ -1810,7 +1819,7 @@ class CTabStatePatient(tabState.CTabState):
         list_mr = [f.split('.')[0] for f in list_mr]
         phaseMaskList.append({'phase':'AP', 'files': list_ap})
         phaseMaskList.append({'phase':'PP', 'files': list_pp})
-        phaseMaskList.append({'phase':'HVP', 'files': list_hvp})
+        phaseMaskList.append({'phase':'DP', 'files': list_hvp})
         phaseMaskList.append({'phase':'MR', 'files': list_mr})
 
         '''

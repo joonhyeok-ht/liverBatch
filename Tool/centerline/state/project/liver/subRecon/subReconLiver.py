@@ -24,15 +24,15 @@ import Block.niftiContainer as niftiContainer
 import Block.originOffset as originOffset
 import Block.removeStricture as removeStricture
 import Block.registration as registration
-import Block.resampling as resamplingB
+import Block.resampling as resampling
 import Block.reconstruction as reconstruction
 import Block.meshHealing as meshHealing
 import Block.meshBoolean as meshBoolean
 import Block.meshDecimation as meshDecimation
 import Block.nonRigidRegistration as nonRigidRegistration
 import command.commandRecon as commandRecon
+from subUtils import clipUnderUmbilicusPoly
 import glob
-
 # from Algorithm.Recon import reconCC
 
 class CSubReconLiver(commandRecon.CCommandRecon) :
@@ -128,16 +128,30 @@ class CSubReconLiver(commandRecon.CCommandRecon) :
         else:
             resultPath = self.m_resultPath
         
+        #self.OptionInfo.reload()
+
         self.InputMaskPath = maskCpyPath
         
         phase = None
         phaseInfoFullPath = os.path.join(self.m_intermediateDataPath, "phaseInfo.json")
         
+        # phase = self._create_phase()
+        # originOffsetBlock = originOffset.COriginOffset()
+        # originOffsetBlock.InputOptionInfo = self.InputData.OptionInfo
+        # originOffsetBlock.InputPhase = phase
+        # originOffsetBlock.process()
+        # print("originOffsetBlock offset !!!!!!!!!!!!", file=sys.__stdout__, flush=True)
+        # print(originOffsetBlock.OutputOriginOffset, file=sys.__stdout__, flush=True)
         if os.path.exists(phaseInfoFullPath) == True :
             fileLoadPhaseInfoBlock = niftiContainer.CFileLoadPhaseInfo()
             fileLoadPhaseInfoBlock.InputPath = self.InputData.OutputPatientPath
             fileLoadPhaseInfoBlock.InputFileName = commandRecon.CCommandReconInterface.s_phaseInfoFileName
             phase = fileLoadPhaseInfoBlock.process()
+            
+            originOffsetBlock = originOffset.COriginOffset()
+            originOffsetBlock.InputOptionInfo = self.InputData.OptionInfo
+            originOffsetBlock.InputPhase = phase
+            originOffsetBlock.process()
             if not self.update_progress_value(17):
                 return False
 
@@ -172,7 +186,7 @@ class CSubReconLiver(commandRecon.CCommandRecon) :
             if not self.update_progress_value(2):
                 return False
             
-        resamplingToPhaseBlock = resamplingB.CResamplingToPhase()
+        resamplingToPhaseBlock = resampling.CResamplingToPhase()
         resamplingToPhaseBlock.InputOptionInfo = self.InputData.OptionInfo
         resamplingToPhaseBlock.InputMaskPath = maskCpyPath # self.CopiedMaskPath
         resamplingToPhaseBlock.InputPhase = phase
@@ -184,7 +198,7 @@ class CSubReconLiver(commandRecon.CCommandRecon) :
         resamplingToPhaseBlock.is_interrupted = self.is_interrupted
         resamplingToPhaseBlock.process()
         self.ProgressValue += int(2 / self.TotalPatientCnt)
-        resamplingToMinSpacingBlock = resamplingB.CResamplingToMinSpacing()
+        resamplingToMinSpacingBlock = resampling.CResamplingToMinSpacing()
         resamplingToMinSpacingBlock.InputMaskPath = maskCpyPath # self.CopiedMaskPath
         resamplingToMinSpacingBlock.InputOptionInfo = self.InputData.OptionInfo
         resamplingToMinSpacingBlock.OutputMaskPath = maskCpyPath # self.CopiedMaskPath
@@ -209,16 +223,22 @@ class CSubReconLiver(commandRecon.CCommandRecon) :
         removeStrictureBlock.process()
         self.ProgressValue += int(26 / self.TotalPatientCnt)
         
-
         if self.m_registrationMethod == "non-rigid":
-            print("!!!!!!!!!!!!!!!!!non-rigid!!!!!!!!!", file=sys.__stdout__, flush=True)
-            # nonRigidregistrationBlock = nonRigidRegistration.CNonRigidRegistration()
-            # nonRigidregistrationBlock.InputOptionInfo = self.m_optionInfo
-            # nonRigidregistrationBlock.InputPhase = phase
-            # nonRigidregistrationBlock.OutputPath = maskCpyPath
-            # nonRigidregistrationBlock.InputDicomPath = self.DicomPath
-            # nonRigidregistrationBlock.process()
-        
+            dataRootPath = self.m_folderInfo.DataRootPath
+            inputDicomPath = os.path.join(dataRootPath, patientID, "01_DICOM")
+                
+            print("start non rigid registration", file=sys.__stdout__, flush=True)
+            nonRigidregistrationBlock = nonRigidRegistration.CNonRigidRegistration()
+            nonRigidregistrationBlock.InputOptionInfo = self.OptionInfo
+            nonRigidregistrationBlock.InputPhase = phase
+            nonRigidregistrationBlock.InputDicomPath = inputDicomPath
+            nonRigidregistrationBlock.OutputPath = maskCpyPath
+            nonRigidregistrationBlock.OriginOffsetBlock = originOffsetBlock
+            nonRigidregistrationBlock.process()
+
+            # self.InputData.OptionInfo
+            # self.reset_warped_mask_name()
+            
         reconstructionBlock = reconstruction.CReconstruction()
         reconstructionBlock.InputOptionInfo = self.InputData.OptionInfo
         reconstructionBlock.InputMaskPath = maskCpyPath # self.CopiedMaskPath
@@ -230,6 +250,16 @@ class CSubReconLiver(commandRecon.CCommandRecon) :
         )
         reconstructionBlock.is_interrupted = self.is_interrupted
         reconstructionBlock.process()
+        
+
+        clippingCls = clipUnderUmbilicusPoly.CClipUnderUmbilicusPoly()
+        clippingCls.InputStlPath = resultPath
+        clippingCls.InputOptionInfo = self.OptionInfo
+        clippingCls.InputMaskPath = maskCpyPath
+        clippingCls.InputPhase = phase
+        clippingCls.InputSliceID = self.InputSliceID
+        clippingCls.process()
+        
         self.ProgressValue += int(45 / self.TotalPatientCnt)
         meshHealingBlock = meshHealing.CMeshHealing()
         meshHealingBlock.InputPath = resultPath
@@ -263,7 +293,7 @@ class CSubReconLiver(commandRecon.CCommandRecon) :
         if self.is_interrupted():
             return False
         return True
-    
+
     def _update_organ_phase(self, niftiContainerBlock):
         iNiftiInfoCnt = niftiContainerBlock.get_nifti_info_count()
         for inx in range(0, iNiftiInfoCnt):
@@ -304,7 +334,7 @@ class CSubReconLiver(commandRecon.CCommandRecon) :
 
     # protected
     def _copy_mask(self, copiedMaskPath) :
-        dataRootPath = self.OptionInfo.DataRootPath
+        dataRootPath = self.m_folderInfo.DataRootPath
         patientID = self.InputData.PatientID
         patientPath = os.path.join(dataRootPath, patientID)
         maskPath = os.path.join("02_SAVE", "01_MASK")
@@ -312,7 +342,7 @@ class CSubReconLiver(commandRecon.CCommandRecon) :
         if os.path.exists(copiedMaskPath) == False :
             os.makedirs(copiedMaskPath, exist_ok=True)
 
-        for phase in ["AP", "PP", "HVP", "MR"] :
+        for phase in ["AP", "PP", "DP", "MR"] :
             maskFullPath = os.path.join(patientPath, maskPath, phase)
             if os.path.exists(maskFullPath) == False :
                 print(f"not found path : {maskFullPath}")
