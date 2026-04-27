@@ -201,16 +201,15 @@ class CTabStateSkelLabelingLiver(tabState.CTabState) :
         # btn.clicked.connect(self._on_btn_save_separation)
         # tabLayout.addWidget(btn)
         
-        btn = QPushButton("Save (Graphics)")
-        btn.setStyleSheet(self.get_btn_stylesheet())
-        btn.clicked.connect(self._on_btn_save_for_graphics)
-        tabLayout.addWidget(btn)
+        # btn = QPushButton("Save (Graphics)")
+        # btn.setStyleSheet(self.get_btn_stylesheet())
+        # btn.clicked.connect(self._on_btn_save_for_graphics)
+        # tabLayout.addWidget(btn)
         
         btn = QPushButton("Clear All Labeling")
         btn.setStyleSheet(self.get_btn_stylesheet())
         btn.clicked.connect(self._on_btn_clear)
         tabLayout.addWidget(btn)
-        
         line = QFrame()
         line.setFrameShape(QFrame.Shape.HLine)
         line.setFrameShadow(QFrame.Shadow.Sunken)
@@ -499,28 +498,19 @@ class CTabStateSkelLabelingLiver(tabState.CTabState) :
 
         clOutPath = dataInst.get_cl_out_path()
         clInPath = dataInst.get_cl_in_path()
-        #clInfo = dataInst.OptionInfo.get_centerlineinfo(dataInst.CLInfoIndex)
         
         for clinfoIndex in dataInst.m_clinfoIndexList:
             skelInfo = dataInst.get_skelinfo(clinfoIndex)
             blenderName = skelInfo.BlenderName # "Artery", "Bronchus", "Vein"
             outputFileName = skelInfo.JsonName
-            # clInfo = dataInst.OptionInfo.get_centerlineinfo(clinfoIndex)
-            # blenderName = clInfo.get_input_blender_name() # "Artery", "Bronchus", "Vein"
-            # outputFileName = clInfo.OutputName
             outputFullPath = os.path.join(clOutPath, f"Centerline_{outputFileName}.json")
 
             vessel_key = data.CData.make_key(dataInst.s_vesselType, clinfoIndex, 0) # CLInfoIndex는 tabStatePatientLung에서 셋팅됨       
-            vessel_obj = dataInst.find_obj_by_key(vessel_key)
-            # polydata = vessel_obj.PolyData
             skeleton = dataInst.get_skeleton(clinfoIndex)
-            # if polydata != None and skeleton != None :
             if skeleton != None :
                 editInst = commandExtractingCLLink.CCommandExtractingCLLink(blenderName, skeleton, clInPath, dataInst.PatientID)
                 if editInst.init(outputFullPath, commandExtractingCLLink.CCommandExtractingCLLink.MODE_VESSEL) :
                     self._generate_progress_window(editInst)
-                    # editInst.process()
-                    # self.m_mediator.show_dialog(f"Save Info Done! ({blenderName})" )
             else :
                 print(f"_on_btn_save_centerline_info_for_graphics() : skeleton is None!")
                 

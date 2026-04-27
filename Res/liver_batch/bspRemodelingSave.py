@@ -17,7 +17,7 @@ sys.path.append(resPath)
 import common.blenderOption as blenderOption
 
 
-class CBSPRemodelingImport(blenderOption.CBlenderScriptBase) :
+class CBSPRemodelingSave(blenderOption.CBlenderScriptBase) :
     '''
     param
         - "StlPath"    : remodeling된 stl 파일들이 저장되어 있는 folder path
@@ -35,7 +35,7 @@ class CBSPRemodelingImport(blenderOption.CBlenderScriptBase) :
             return False
         
         blenderOption.CBlenderScriptUtil._enable_add_on()
-        self.delete_overlap_sphere_objects()
+        # self.delete_overlap_sphere_objects()
         #blenderOption.CBlenderScriptUtil.delete_all_object()
         #blenderOption.CBlenderScriptUtil.delete_etc_objects()
 
@@ -43,13 +43,17 @@ class CBSPRemodelingImport(blenderOption.CBlenderScriptBase) :
             print("failed import stl")
             return False
         
+        iCnt = self.m_optionInfo.get_cleanup_meshname_count()
+        for inx in range(0, iCnt) :
+            meshname = self.m_optionInfo.get_cleanup_meshname(inx)
+            blenderOption.CBlenderScriptUtil.cleanup(meshname)
         
+        # self._init_cleanup(valid_clean_list)
+        # self._cleanup()
         blenderOption.CBlenderScriptUtil.triangulate_all_objects_no_ops()
         blenderOption.CBlenderScriptUtil._apply_all_transforms_and_shade_smooth()
         
         
-        # self._init_cleanup(valid_clean_list)
-        # self._cleanup()
         # self.triangulate_all_objects_no_ops()
         
         # all_objects = self._get_all_object_list()
@@ -125,19 +129,24 @@ class CBSPRemodelingImport(blenderOption.CBlenderScriptBase) :
 
             # 🔥 object 이름 (확장자 제거)
             objName = os.path.splitext(stlName)[0]
+            
+            if self.OptionInfo.get_user_value("OverWriteFlag") ==  "1":
+                # 🔥 기존 object 삭제 (덮어쓰기)
+                if objName in bpy.data.objects:
+                    obj = bpy.data.objects[objName]
 
-            # 🔥 기존 object 삭제 (덮어쓰기)
-            if objName in bpy.data.objects:
-                obj = bpy.data.objects[objName]
-
-                # 선택 후 삭제
-                bpy.ops.object.select_all(action='DESELECT')
-                obj.select_set(True)
-                bpy.context.view_layer.objects.active = obj
-                bpy.ops.object.delete()
-
-            # 🔥 import
-            blenderOption.CBlenderScriptUtil.import_stl(stlFullPath)
+                    # 선택 후 삭제
+                    bpy.ops.object.select_all(action='DESELECT')
+                    obj.select_set(True)
+                    bpy.context.view_layer.objects.active = obj
+                    bpy.ops.object.delete()
+                # 🔥 import
+                blenderOption.CBlenderScriptUtil.import_stl(stlFullPath)
+            else:
+                if objName in bpy.data.objects:
+                    continue
+                else:
+                    blenderOption.CBlenderScriptUtil.import_stl(stlFullPath)
 
         return True
     
@@ -174,6 +183,6 @@ if __name__=='__main__' :
             print("-" * 30)
             print(f"blender script : optionFullPath -> {optionFullPath}")
             print("-" * 30)
-            inst = CBSPRemodelingImport(optionFullPath)
+            inst = CBSPRemodelingSave(optionFullPath)
             inst.process()
 

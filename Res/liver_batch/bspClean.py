@@ -49,6 +49,8 @@ class CBSPClean(blenderOption.CBlenderScriptBase) :
         # # shade smooth and All Transforms 적용
         blenderOption.CBlenderScriptUtil.triangulate_all_objects_no_ops()
         blenderOption.CBlenderScriptUtil._apply_all_transforms_and_shade_smooth()
+        
+        self.flip_mesh_normals("Abdominal_wall_liver")
 
         # smartUV
         iCnt = self.m_optionInfo.get_smartuv_meshname_count()
@@ -66,6 +68,51 @@ class CBSPClean(blenderOption.CBlenderScriptBase) :
         # must be background mode 
         # bpy.ops.wm.quit_blender()
         return True 
+    
+    def flip_mesh_normals(self, obj_name: str) -> bool:
+        """
+        obj_name 이름을 가진 mesh object를 찾아
+        normal 방향을 반대로 뒤집는다.
+
+        return:
+            True  -> 성공
+            False -> 실패
+        """
+        if obj_name not in bpy.data.objects:
+            print(f"Object not found: {obj_name}")
+            return False
+
+        obj = bpy.data.objects[obj_name]
+
+        if obj.type != 'MESH':
+            print(f"Object is not a mesh: {obj_name} (type={obj.type})")
+            return False
+
+        # Object 모드로 전환
+        if bpy.context.object is not None and bpy.context.object.mode != 'OBJECT':
+            bpy.ops.object.mode_set(mode='OBJECT')
+
+        # 선택 초기화
+        bpy.ops.object.select_all(action='DESELECT')
+
+        # 대상 object 선택 및 활성화
+        obj.select_set(True)
+        bpy.context.view_layer.objects.active = obj
+
+        # Edit mode 진입
+        bpy.ops.object.mode_set(mode='EDIT')
+
+        # 전체 face 선택
+        bpy.ops.mesh.select_all(action='SELECT')
+
+        # normal 뒤집기
+        bpy.ops.mesh.flip_normals()
+
+        # Object mode 복귀
+        bpy.ops.object.mode_set(mode='OBJECT')
+
+        print(f"Flipped normals: {obj_name}")
+        return True                        
     
 
     # kidney,stomach 공통

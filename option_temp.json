@@ -19,10 +19,6 @@
     ],
 
     "Stricture" : [
-        ["MPV_CT_PP", "MPV_CT_PP_st"],
-        ["MPV_CT_AP", "MPV_CT_AP_st"],
-        ["MPV_CT_DP", "MPV_CT_DP_st"], 
-        ["MPV_MR_HBP", "MPV_MR_HBP_st"],
         ["Artery", "Artery_st"],
         ["Portal", "Portal_st"],
         ["Vein", "Vein_st"],
@@ -45,10 +41,6 @@
                 ["MPV_CT_AP", "", "AP", -1],
                 ["MPV_CT_DP", "", "DP", -1], 
                 ["MPV_MR_HBP", "", "MR", -1], 
-			    ["MPV_CT_PP_st", "MPV_CT_PP", "PP", 5000],
-                ["MPV_CT_AP_st", "MPV_CT_AP", "AP", 5000],
-                ["MPV_CT_DP_st", "MPV_CT_DP", "DP", 5000], 
-                ["MPV_MR_HBP_st", "MPV_MR_HBP", "MR", 5000], 
                 ["Artery", "", "AP", -1],
                 ["Vein", "", "DP", -1],
                 ["Portal", "", "PP", -1],
@@ -57,6 +49,7 @@
                 ["Vein_st", "Vein", "DP", 40000],
                 ["Portal_st", "Portal", "PP", 40000],
                 ["Duct_st", "Duct", "MR", 2500]
+                
 		    ]
 	    },
         {
@@ -74,7 +67,6 @@
                 ["Liver", "Liver", "PP", 20000],
                 ["Gallbladder", "Gallbladder", "PP", 1000],
                 ["Tumor", "Tumor", "PP", 1000],
-                ["Tumor_DP", "Tumor_DP", "DP", 1000],
                 ["Cyst", "Cyst", "PP", 1000]
 		    ]
 	    },
@@ -129,16 +121,13 @@
         },
         "MeshCleanUp" : [
             "Portal",
-            "Portal_m",
             "Vein",
-            "Vein_m",
             "Artery",
             "Liver",
             "Gallbladder",
             "Duct",
             "Rib",
             "Tumor",
-            "Tumor_DP",
             "Cyst"
         ],
         "SmartUV" : [
@@ -146,7 +135,6 @@
             "Gallbladder",
             "Liver",
             "Tumor",
-            "Tumor_DP",
             "Cyst"
         ]
     },

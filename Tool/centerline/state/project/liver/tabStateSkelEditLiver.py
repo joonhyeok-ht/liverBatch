@@ -6,7 +6,7 @@ import vtk
 import subprocess
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QHBoxLayout, QWidget, QPushButton, QLineEdit, QLabel, QSizePolicy, QListWidget, QFileDialog, QFrame, QCheckBox, QTabWidget, QComboBox
+from PySide6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QHBoxLayout, QWidget, QPushButton, QLineEdit, QLabel, QSizePolicy, QListWidget, QFileDialog, QFrame, QCheckBox, QTabWidget, QComboBox, QMessageBox, QDialog
 from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 
 fileAbsPath = os.path.abspath(os.path.dirname(__file__))
@@ -42,6 +42,9 @@ import skelEdit.subStateSkelEditSelectionBr as subStateSkelEditSelectionBr
 import skelEdit.subStateSkelEditSelectionVertex as subStateSkelEditSelectionVertex
 #import skelEdit.subStateSkelEditSelectionConnect as subStateSkelEditSelectionConnect
 import skelEdit.subStateSkelEditSelectionReAttach as subStateSkelEditSelectionReAttach
+
+import command.commandExtractingCLLink as commandExtractingCLLink
+import progressWindow as PW
 
 
 class CTabStateSkelEditLiver(tabState.CTabState) :
@@ -254,6 +257,11 @@ class CTabStateSkelEditLiver(tabState.CTabState) :
         btn.setStyleSheet(self.get_btn_stylesheet())
         btn.clicked.connect(self._on_btn_save_cl)
         tabLayout.addWidget(btn)
+        
+        btn = QPushButton("Save (Graphics)")
+        btn.setStyleSheet(self.get_btn_stylesheet())
+        btn.clicked.connect(self._on_btn_save_for_graphics)
+        tabLayout.addWidget(btn)
 
         # btn = QPushButton("Test Refined Centerline Point")
         # btn.setStyleSheet(self.get_btn_stylesheet())
@@ -315,7 +323,16 @@ class CTabStateSkelEditLiver(tabState.CTabState) :
     # protected 
     def _get_substate(self, inx : int) -> subStateSkelEdit.CSubStateSkelEdit :
         return self.m_listSubState[inx]  
+    def _generate_progress_window(self, instance):
+        dialog = PW.ProgressWindow(self.m_mediator, instance)
+        result = dialog.exec()
 
+        if result == QDialog.Accepted:
+            QMessageBox.information(self.m_mediator, "Done", "작업이 완료되었습니다!")
+            return True
+        elif result == QDialog.Rejected:
+            QMessageBox.warning(self.m_mediator, "Canceled", "작업이 취소되었습니다.")
+            return False
 
     # ui event
     def _on_tab_changed(self, index):
@@ -351,6 +368,79 @@ class CTabStateSkelEditLiver(tabState.CTabState) :
         self.m_mediator.update_viewer()
     def _on_btn_save_cl(self) :
         self._get_substate(self.m_state).save_cl()
+    def _on_btn_save_for_graphics(self) :
+        dataInst = self.get_data()
+
+        clOutPath = dataInst.get_cl_out_path()
+        clInPath = dataInst.get_cl_in_path()
+        
+        for clinfoIndex in dataInst.m_clinfoIndexList:
+            skelInfo = dataInst.get_skelinfo(clinfoIndex)
+            blenderName = skelInfo.BlenderName # "Artery", "Bronchus", "Vein"
+            outputFileName = skelInfo.JsonName
+            outputFullPath = os.path.join(clOutPath, f"Centerline_{outputFileName}.json")
+
+            vessel_key = data.CData.make_key(dataInst.s_vesselType, clinfoIndex, 0) # CLInfoIndex는 tabStatePatientLung에서 셋팅됨       
+            skeleton = dataInst.get_skeleton(clinfoIndex)
+            if skeleton != None :
+                editInst = commandExtractingCLLink.CCommandExtractingCLLink(blenderName, skeleton, clInPath, dataInst.PatientID)
+                if editInst.init(outputFullPath, commandExtractingCLLink.CCommandExtractingCLLink.MODE_VESSEL) :
+                    self._generate_progress_window(editInst)
+            else :
+                print(f"_on_btn_save_centerline_info_for_graphics() : skeleton is None!")
+                
+            self._save_centerline_recontools(clinfoIndex)
+            
+    def _save_centerline_recontools(self, clinfoIndex):
+        dataInst = self.get_data()
+        if dataInst.Ready == False : 
+            return
+        
+        skeleton = dataInst.get_skeleton(clinfoIndex)
+        if skeleton is None :
+            return
+        
+        self._update_skeleton(skeleton, clinfoIndex)
+
+        clOutPath = dataInst.get_cl_out_path()
+
+        skelinfo = dataInst.get_skelinfo(clinfoIndex)
+        blenderName = skelinfo.BlenderName
+        jsonName = skelinfo.JsonName
+        outputFullPath = os.path.join(clOutPath, f"{jsonName}.json")
+        skeleton.save(outputFullPath, blenderName)
+        
+    def _update_skeleton(self, skeleton, clinfoIndex) : 
+        self.__update_cl_radius(skeleton, clinfoIndex)
+        skeleton.rebuild_centerline_related_data()
+        
+    def __update_cl_radius(self, skeleton, clinfoIndex) :
+        dataInst = self.get_data()
+
+        vesselKey = data.CData.make_key(data.CData.s_vesselType, clinfoIndex, 0)
+        vesselObj = dataInst.find_obj_by_key(vesselKey)
+        if vesselObj is None :
+            return
+        vesselPolyData = vesselObj.PolyData
+        # anchorVertex = algVTK.CVTK.poly_data_get_vertex(vesselPolyData)
+        # tree = KDTree(anchorVertex)
+
+        distCalculator = vtk.vtkImplicitPolyDataDistance()
+        distCalculator.SetInput(vesselPolyData)
+
+        iCnt = skeleton.get_centerline_count()
+        for inx in range(0, iCnt) :
+            cl = skeleton.get_centerline(inx)
+            dist = np.zeros(len(cl.Vertex))
+            for ptInx, point in enumerate(cl.Vertex) :
+                radius = abs(distCalculator.EvaluateFunction(point))
+                # radius = distCalculator.EvaluateFunction(point)
+                dist[ptInx] = radius
+            # dist, self.m_npNNIndex = tree.query(cl.Vertex, k=1)
+            # print(f"dist : {dist}")
+            cl.Radius = dist
+            inx = 0
+
     def _on_btn_refine_cl_point(self) :
         self.m_mediator.remove_key_type("spline")
 

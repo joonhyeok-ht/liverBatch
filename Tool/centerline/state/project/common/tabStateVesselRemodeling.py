@@ -910,18 +910,11 @@ class CTabStateVesselRemodeling(tabState.CTabState) :
         algVTK.CVTK.save_poly_data_stl(saveFullPath, polydata)
 
         QMessageBox.information(self.m_mediator, "Alarm", f"completed saving {os.path.basename(saveFullPath)}")
-    def command_blender_save(self, outputFolder) :
+    def command_blender_save(self) :
         dataInst = self.get_data()
-        stlOutPath = dataInst.get_terri_out_path()
-        currPatientID = dataInst.PatientID
         userdata = dataInst.UserData
-        
-        #optionFullPath = ""
-        
-        optionFullPath = os.path.join(os.path.dirname(os.path.dirname(self.m_mediator.FilePath)), "option.json")
-        
         if userdata is not None :
-            userdata.remodeling_blender_save(outputFolder)
+            userdata.remodeling_blender_save()
         else :
             QMessageBox.information(self.m_mediator, "Alarm", f"failed reconstruction : not setting userdata")
         return
@@ -984,7 +977,7 @@ class CTabStateVesselRemodeling(tabState.CTabState) :
         skelinfo.SmoothingFactor = nowSkelinfo.SmoothingFactor
         skelinfo.BlenderName = nodeName
         skelinfo.JsonName = nodeName
-        skelinfo.Skeleton = None
+        #skelinfo.Skeleton = None
 
         clInPath = dataInst.get_cl_in_path()
         terriOutPath = dataInst.get_terri_out_path()
@@ -1660,11 +1653,11 @@ class CTabStateVesselRemodeling(tabState.CTabState) :
         dataInst = self.get_data()
         if dataInst.Ready == False :
             return
-        outputPath = QFileDialog.getExistingDirectory(self.get_main_widget(), "Selection Output Path")
-        if outputPath == "" :
-            return
+        # outputPath = QFileDialog.getExistingDirectory(self.get_main_widget(), "Selection Output Path")
+        # if outputPath == "" :
+        #     return
         
-        self.command_blender_save(outputPath)
+        self.command_blender_save()
         QMessageBox.information(self.m_mediator, "Alarm", "complete to save blender")
     def _on_rb_single(self) :
         dataInst = self.get_data()

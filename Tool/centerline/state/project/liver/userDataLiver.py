@@ -172,7 +172,7 @@ class CUserDataLiver(userData.CUserData) :
         self.m_reconScriptFullPath = os.path.join(self.m_scriptPath, "bspRecon.py")
         self.m_individualReconScriptFullPath = os.path.join(self.m_scriptPath, "bspIndRecon.py")
         self.m_cleanScriptFullPath = os.path.join(self.m_scriptPath, "bspClean.py")
-        self.m_remodelingSaveScriptFullPath = os.path.join(self.m_scriptPath, "bspRemodelingImport.py")
+        self.m_remodelingSaveScriptFullPath = os.path.join(self.m_scriptPath, "bspRemodelingSave.py")
         #self.m_cleanScriptFullPath = os.path.join(self.m_commonPath, "bsmClean.py")
 
         self.MakeInputFolder.clear()
@@ -328,25 +328,25 @@ class CUserDataLiver(userData.CUserData) :
         shutil.copy2(overlapBlenderFullPath, self.OutputCleanBlenderFullPath)
         cleanBlenderFullPath = self.OutputCleanBlenderFullPath
 
-        # blender 파일에 대해 import 수행 
-        listStlPath = self._find_stl_path_from_out(datainst.OutputPatientPath)
-        if len(listStlPath) > 0 :
-            '''
-            param
-                - "StlPath"         : stl 파일들이 저장되어 있는 folder path, 없다면 "" 또는 None을 입력 
-                - "ListStlFullPath  : stl파일들의 전체 경로를 저장한 list, 없다면 None을 입력 
+        # # blender 파일에 대해 import 수행 
+        # listStlPath = self._find_stl_path_from_out(datainst.OutputPatientPath)
+        # if len(listStlPath) > 0 :
+        #     '''
+        #     param
+        #         - "StlPath"         : stl 파일들이 저장되어 있는 folder path, 없다면 "" 또는 None을 입력 
+        #         - "ListStlFullPath  : stl파일들의 전체 경로를 저장한 list, 없다면 None을 입력 
             
-            desc 
-                - 기존 내용에 추가적으로 stl 파일들을 import 한다. 
-            '''
-            dicParam = {
-                "StlPath" : None,
-                "ListStlFullPath" : listStlPath
-            }
-            scriptPath = os.path.join(self.ResPath, "common")
-            scriptFullPath = os.path.join(scriptPath, "bsmImportStl.py")
-            optionFullPath = self._blender_script_param(dicParam)
-            self.blender_process(cleanBlenderFullPath, scriptFullPath, optionFullPath, True)
+        #     desc 
+        #         - 기존 내용에 추가적으로 stl 파일들을 import 한다. 
+        #     '''
+        #     dicParam = {
+        #         "StlPath" : None,
+        #         "ListStlFullPath" : listStlPath
+        #     }
+        #     scriptPath = os.path.join(self.ResPath, "common")
+        #     scriptFullPath = os.path.join(scriptPath, "bsmImportStl.py")
+        #     optionFullPath = self._blender_script_param(dicParam)
+        #     self.blender_process(cleanBlenderFullPath, scriptFullPath, optionFullPath, True)
 
         # blender 파일에 대해 clean 수행  
         # param 설정 
@@ -363,28 +363,67 @@ class CUserDataLiver(userData.CUserData) :
         optionFullPath = self._blender_script_param(dicParam)
         self.blender_process(cleanBlenderFullPath, scriptFullPath, optionFullPath, False)
     
-    def remodeling_blender_save(self, outputFolderPath):
+    def remodeling_blender_save(self):
         dataInst = self.Data
-        outputFullPath =  os.path.join(outputFolderPath, f"{dataInst.PatientID}.blend")
-        if os.path.exists(self.OutputCleanBlenderFullPath) == False :
-            return
-
-        # 원본 blender는 복사 후 rename 
-        shutil.copy2(self.OutputCleanBlenderFullPath, outputFullPath)
+        folderInfo = self.MakeInputFolder
+        patientID = folderInfo.PatientID
+        saveName = f"{patientID}_remodel"
+        dirPath = os.path.dirname(self.m_outputReconBlenderFullPath)
+        
+        remodelBlenderPath = os.path.join(dirPath, f"{saveName}.blend")
         reconStlPath = dataInst.get_terri_out_path()
         
         '''
         param
             - "StlPath"    : remodeling된 stl 파일들이 저장되어 있는 folder path
             - "SaveFullPath"    : 저장 할 blend 파일명의 전체 경로
+            - "OverWriteFlag" : 동일 이름 mesh가 있을 때 덮어 쓸지
         '''
-        dicParam = {
-            "StlPath" : reconStlPath,
-            "SaveFullPath" : outputFullPath
-        }
+        
+        if os.path.exists(remodelBlenderPath) == False :
+            if os.path.exists(self.OutputCleanBlenderFullPath) == False :
+                return
+
+            # 원본 blender는 복사 후 rename 
+            shutil.copy2(self.OutputCleanBlenderFullPath, remodelBlenderPath)
+            dicParam = {
+                "StlPath" : reconStlPath,
+                "SaveFullPath" : remodelBlenderPath,
+                "OverWriteFlag" : str(1)
+            }
+            
+        else:
+            dicParam = {
+                "StlPath" : reconStlPath,
+                "SaveFullPath" : remodelBlenderPath,
+                "OverWriteFlag" : str(0)
+            }
+
         scriptFullPath = self.m_remodelingSaveScriptFullPath
         optionFullPath = self._blender_script_param(dicParam)
-        self.blender_process(outputFullPath, scriptFullPath, optionFullPath, False)
+        self.blender_process(remodelBlenderPath, scriptFullPath, optionFullPath, False)
+        
+    def clean_remodel_blender(self):
+        folderInfo = self.MakeInputFolder
+        patientID = folderInfo.PatientID
+        saveName = f"{patientID}_remodel"
+        dirPath = os.path.dirname(self.m_outputReconBlenderFullPath)
+        
+        remodelBlenderPath = os.path.join(dirPath, f"{saveName}.blend")
+        cleanBlenderFullPath = remodelBlenderPath
+
+        '''
+        param
+            - "ListMeshName"    : clean-up 할 mesh name, None or 원소가 없다면 전체를 clean-up 한다.
+            - "SaveFullPath"    : 저장 할 blend 파일명의 전체 경로, None or "" 라면 덮어쓴다. 
+        '''
+        dicParam = {
+            "ListMeshName" : None,
+            "SaveFullPath" : None
+        }
+        scriptFullPath = self.m_cleanScriptFullPath
+        optionFullPath = self._blender_script_param(dicParam)
+        self.blender_process(cleanBlenderFullPath, scriptFullPath, optionFullPath, True)
     
     
 

@@ -68,8 +68,10 @@ class CClipUnderUmbilicusPoly() :
 
         if self.m_inputSliceID > 0:
             
-            reconInx, listInx = self.InputOptionInfo.find_recon_index_of_maskname(self.m_maskSkinName)
-            maskName, blenderName, phase, triCnt = self.InputOptionInfo.get_recon_list(reconInx, listInx)
+            ret = self.InputOptionInfo.find_recon_index_of_maskname(self.m_maskSkinName)
+            if ret == None:
+                return
+            maskName, blenderName, phase, triCnt = self.InputOptionInfo.get_recon_list(ret[0], ret[1])
             
             # listNiftiInfo = self.InputNiftiContainer.find_nifti_info_list_by_name(self.m_maskSkinName)
             # if listNiftiInfo is None :

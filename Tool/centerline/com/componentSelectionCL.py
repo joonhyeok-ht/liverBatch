@@ -1161,16 +1161,16 @@ class CComDragSkelCL(CComDrag) :
         return visited
         
     
-    def build_backbone_by_angle_based_depth(
+    def build_major_vessel(
         self,
         skeleton,
         segments,
         order: int = 0
     ):
         
-        AngleRadianThreshold = 0.5 # 28도
+        #AngleRadianThreshold = 0.5 # 28도
         RadiusRatioThreshold = 0.25
-        RelativaRadiusRatioThreshold = 0.16
+        #RelativaRadiusRatioThreshold = 0.16
         
         if skeleton == None:
             return
@@ -1218,45 +1218,6 @@ class CComDragSkelCL(CComDrag) :
                 else:
                     queue.append((CID, depth))
                         
-            # # angle 조건 우선
-            # sortedAngleCID = sorted(list(relativeRadiusAngle.keys()), key=lambda x : relativeRadiusAngle[x][1])
-            # sortedRadiusCID = sorted(list(relativeRadiusAngle.keys()), key=lambda x : relativeRadiusAngle[x][0])
-            
-            # if len(relativeRadiusAngle.keys()) >1:
-            #     #if abs(relativeRadiusAngle[sortedCID[0]][0]-relativeRadiusAngle[sortedCID[1]][0]) < RelativaRadiusRatioThreshold:
-            #     if relativeRadiusAngle[sortedAngleCID[0]][1] < AngleRadianThreshold:
-            #         if abs(relativeRadiusAngle[sortedAngleCID[0]][0]-relativeRadiusAngle[sortedAngleCID[1]][0]) < RelativaRadiusRatioThreshold:
-            #             queue.append((sortedAngleCID[0], depth))
-            #             for i in range(1, len(sortedAngleCID)):
-            #                 queue.append((sortedAngleCID[i], depth+1))
-            #         else:
-            #             queue.append((sortedRadiusCID[0], depth))
-            #             for i in range(1, len(sortedRadiusCID)):
-            #                 queue.append((sortedRadiusCID[i], depth+1))
-                        
-            #     else:
-            #         if abs(relativeRadiusAngle[sortedRadiusCID[1]][0]-relativeRadiusAngle[sortedRadiusCID[0]][0]) > RelativaRadiusRatioThreshold:
-            #             if relativeRadiusAngle[sortedRadiusCID[0]][0] < RelativaRadiusRatioThreshold:
-            #                 queue.append((sortedRadiusCID[0], depth))
-            #                 for i in range(1, len(sortedRadiusCID)):
-            #                     queue.append((sortedRadiusCID[i], depth+1))
-            #             else:
-            #                 for i in range(len(sortedAngleCID)):
-            #                     queue.append((sortedAngleCID[i], depth+1))
-            #         else:
-            #             for i in range(len(sortedRadiusCID)):
-            #                 queue.append((sortedRadiusCID[i], depth+1))
-            # else:
-            #     for CID in relativeRadiusAngle.keys():
-            #         # if relativeRadiusAngle[CID][0] < RadiusRatioThreshold:
-            #         #     queue.append((CID, depth))
-            #         if relativeRadiusAngle[CID][1] < AngleRadianThreshold:
-            #             queue.append((CID, depth))
-            #         else:
-            #             queue.append((CID, depth+1))
-        
-        
-        ##################### test 1
         outputClID = set()
         majorRatio = min(0.4 + 0.1*order, 1)
         
@@ -1330,7 +1291,7 @@ class CComDragSkelCL(CComDrag) :
     def _check_minor_score(self, skeleton):
         RadiusRatioThreshold = 0.25
         #     score = score + self._centerline_contrib(cl, 2.0)
-        
+        return
         
         if len(self.m_opDragToggleCL.m_listSelectionKey) != 1:
             return 0
@@ -1358,38 +1319,9 @@ class CComDragSkelCL(CComDrag) :
                 relativeRadiusAngle[CID] = ((1-childR/parentR), self.calculate_angle_radian_parent_child(cl, childCL))
                 relativeAngleRadius2[CID] = ((1-childR2/parentR2), self.calculate_angle_radian_parent_child(cl, childCL))
                 
-                # print(f"CID : {childCL.Vertex.shape[0]}")
-                
-                # if childCL.Vertex.shape[0] < 5 and (1-childR2/parentR2) < RadiusRatioThreshold:
-                    
-                #     print(f"!!!!!!!!{CID}", file=sys.__stdout__, flush=True)
-                #     if not childCL.is_leaf():
-                #         print(f"!!!!!222222222222222222222!!!{CID}", file=sys.__stdout__, flush=True)
-                        
-                # if childCL.Vertex.shape[0] < 5 and (1-childR2/parentR2) < RadiusRatioThreshold and not childCL.is_leaf():
-                #     print(f"!!!!!33333333333333333333333333333333333!!!{CID}", file=sys.__stdout__, flush=True)
-#            print(relativeRadiusAngle, file=sys.__stdout__, flush=True)
             print(relativeAngleRadius2, file=sys.__stdout__, flush=True)
             print(f"Radius: {parentR2}", file=sys.__stdout__, flush=True)
             print(f"min Radius: {np.min(parentR2)}", file=sys.__stdout__, flush=True)
-            
-            
-        #     parentCLID, listChildCLID = skeleton.get_conn_centerline_id(id)
-            
-        #     score = 0
-            
-        #     for clID_1 in listChildCLID:
-                
-        #         for clID_2 in listChildCLID:
-                    
-        #             if clID_1 == clID_2:
-        #                 continue
-        #             else:
-        #                 cl1 = skeleton.get_centerline(clID_1)
-        #                 cl2 = skeleton.get_centerline(clID_2)
-        #                 score = max(score, self.calculate_angle_radian(cl1, cl2))
-                    
-        # return score
             
             
     def _select_minor_vessel(self, skeleton, order, segmentSet = []):
@@ -1430,8 +1362,7 @@ class CComDragSkelCL(CComDrag) :
                     listcl.append(CID)
                     queue.append((CID, d+1))
         else:
-
-            listClID = self.build_backbone_by_angle_based_depth(skeleton, segmentSet, order)
+            listClID = self.build_major_vessel(skeleton, segmentSet, order)
                             
         listKey = []
         for clID in listClID:

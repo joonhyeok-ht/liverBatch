@@ -23,6 +23,8 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtGui import QStandardItemModel, QStandardItem, QPixmap
 import command.commandExtractionCL as commandExtractionCL
+from collections import Counter
+import copy
 
 fileAbsPath = os.path.abspath(os.path.dirname(__file__))
 fileAppPath = os.path.dirname(fileAbsPath)
@@ -38,6 +40,8 @@ import state.project.liver.userDataLiver as userDataLiver
 
 import AlgUtil.algVTK as algVTK
 import AlgUtil.algLinearMath as algLinearMath
+
+import operationColored as operation
 
 # import AlgUtil.algImage as algImage
 
@@ -393,6 +397,7 @@ class CTabStatePatient(tabState.CTabState):
         
         self.m_advancementRatio = "1.001"
         
+        self.m_opSelectionCL = operation.COperationSelectionCL(mediator)
         self.m_mapperHL = vtk.vtkPolyDataMapper()
         self.m_actorHL = vtk.vtkActor()
         self.m_actorHL.SetMapper(self.m_mapperHL)
@@ -420,7 +425,8 @@ class CTabStatePatient(tabState.CTabState):
         self.m_advancementRatio = ""
         
         self.m_actorHL = None
-        
+        self.m_opSelectionCL.clear()
+        self.m_opSelectionCL = None
         super().clear()
 
     def process_init(self):
@@ -584,11 +590,16 @@ class CTabStatePatient(tabState.CTabState):
         btn.clicked.connect(self._on_btn_delete_centerline)
         tabLayout.addWidget(btn)
 
-
         btn = QPushButton("Extraction Centerline")
         btn.setStyleSheet(self.get_btn_stylesheet())
         btn.clicked.connect(self._on_btn_extraction_centerline)
         tabLayout.addWidget(btn)
+        
+        btn = QPushButton("Import Remodeled")
+        btn.setStyleSheet(self.get_btn_stylesheet())
+        btn.clicked.connect(self._on_btn_import_remodeled)
+        tabLayout.addWidget(btn)
+        
 
         # sally
         # btn = QPushButton("Do Blender")
@@ -1102,12 +1113,89 @@ class CTabStatePatient(tabState.CTabState):
             print(f"not found skelinfo : {clOutputFullPath}")
             return 
         
+        preSkeleton = dataInst.get_skeleton(clinfoinx)
+        
         skeleton = algSkeletonGraph.CSkeleton()
         skeleton.load(clOutputFullPath)
         skelinfo.Skeleton = skeleton
         self.m_mediator.add_skeleton_obj(clinfoinx)
 
         self.m_mediator.ref_key_type_groupID(data.CData.s_skelTypeCenterline, clinfoinx)
+        
+        if preSkeleton != None:
+            self.copy_skeleton_cl_label(skeleton, preSkeleton)
+            
+        ketList = dataInst.find_key_list_by_type_groupID(dataInst.s_skelTypeCenterline, clinfoinx)
+        self.m_opSelectionCL._color_setting(ketList, dataInst.s_rootCLColor, dataInst.s_clColor)
+        
+        self.save_skeleton(preSkeleton) ## 작업중 꺼질 때 방지
+        self.m_mediator.update_viewer()
+        
+    def save_skeleton(self, skeleton) :
+        dataInst = self.get_data()
+        if dataInst.Ready == False : 
+            return
+        
+        clinfoInx = self.getui_clinfo_inx()
+        if skeleton is None :
+            return
+
+        clOutPath = dataInst.get_cl_out_path()
+
+        skelinfo = dataInst.get_skelinfo(clinfoInx)
+        blenderName = skelinfo.BlenderName
+        jsonName = skelinfo.JsonName
+        outputFullPath = os.path.join(clOutPath, f"{jsonName}.json")
+        skeleton.save(outputFullPath, blenderName)
+        
+    def copy_skeleton_cl_label(self, skeleton, preSkeleton):
+        clNearestCount = {i:[] for i in range(skeleton.get_centerline_count())}
+        
+        for i, v in enumerate(skeleton.m_listKDTreeAnchor):
+            mainCL = preSkeleton.find_nearest_centerline(v.reshape(1, 3))
+            clNearestCount[skeleton.m_listKDTreeAnchorID[i]].append(mainCL.Name)
+        
+        for ci in range(skeleton.get_centerline_count()):
+            enCL = skeleton.get_centerline(ci)
+            enCL.Name = Counter(clNearestCount[enCL.ID]).most_common(1)[0][0]
+        
+        
+    def _command_import_remodeling(self):
+        dataInst = self.get_data()
+        userdata = dataInst.UserData
+        userdata.clean_remodel_blender()
+        
+        self._clear_centerline()
+        dataInst = self.get_data()
+        if dataInst.Ready == False :
+            QMessageBox.information(self.m_mediator, "Alarm", "please setting option, outputPath, patientID")
+            return
+
+        userData = dataInst.UserData
+        
+        blenderFullPath = os.path.join(os.path.dirname(userData.OutputReconBlenderFullPath), f"{dataInst.PatientID}_remodel.blend")
+
+        if os.path.exists(blenderFullPath) == False :
+            QMessageBox.information(self.m_mediator, "Alarm", f"not found {os.path.basename(blenderFullPath)}")
+            return
+
+        cmd = commandLoadingPatient.CCommandLoadingPatient(self.m_mediator)
+        cmd.InputData = dataInst
+        cmd.PatientBlenderFullPath = blenderFullPath
+        cmd.process()
+
+        self.setui_clear_clinfo()
+        iCnt = dataInst.get_skelinfo_count()
+        for inx in range(0, iCnt) :
+            skelinfo = dataInst.get_skelinfo(inx)
+            self.setui_add_clinfo(inx, skelinfo)
+
+        dataInst.CLInfoIndex = 0
+        self.setui_clinfo_inx(dataInst.CLInfoIndex)
+        self._command_clinfo_inx()
+
+        fullPath = os.path.join(dataInst.OutputPatientPath, f"{data.CData.s_fileName}.json")
+        dataInst.save(fullPath)
         self.m_mediator.update_viewer()
 
 
@@ -1677,6 +1765,25 @@ class CTabStatePatient(tabState.CTabState):
             userdata.override_individual_recon(dlg.PhaseInfo)
         else :
             print("Cancel 클릭")
+            
+    def _on_btn_import_remodeled(self):
+        patientID = self.getui_edit_huid_path()
+        outputPatientPath = os.path.join(self.OutputPath, patientID)
+        if os.path.exists(outputPatientPath) == False :
+            print(outputPatientPath)
+            print("not found output recon patient path")
+            return 
+
+        dataInst = self.get_data()
+        #dataInst.load_patient(outputPatientPath)
+
+        if dataInst.Ready == False :
+            print("not setting option or patientID")
+            return
+        
+        self._command_import_remodeling()
+        return
+        
     def _on_rb_nonrigid(self) :
         if self.m_bReady == False :
             return

@@ -8,32 +8,17 @@
    "CL"  : "../app_cl/processCL.bat",
 
     "RegistrationInfo" : [
-        {"Target" : "MPV_PP", "Src" : "MPV_AP", "RigidAABB" : 0},
-        {"Target" : "MPV_PP", "Src" : "MPV_HVP", "RigidAABB" : 0},
-        {"Target" : "MPV_PP", "Src" : "MPV_MR", "RigidAABB" : 1}
+        {"Target" : "MPV_CT_PP", "Src" : "MPV_CT_AP", "RigidAABB" : 0},
+        {"Target" : "MPV_CT_PP", "Src" : "MPV_CT_DP", "RigidAABB" : 0},
+        {"Target" : "MPV_CT_PP", "Src" : "MPV_MR_HBP", "RigidAABB" : 1}
     ],
 
     "ResamplingToPhase" : [
-	    ["Artery", "Artery_re", "PP"],
-        ["Vein", "Vein_re", "PP"]
     ],
     "ResamplingToMinSpacing" : [
-	    ["Portal", "Portal_min"],
-        ["Artery", "Artery_min"],
-        ["Vein", "Vein_min"],
-        ["MPV_PP", "MPV_PP_min"],
-        ["MPV_AP", "MPV_AP_min"],
-        ["MPV_HVP", "MPV_HVP_min"]
-
     ],
 
     "Stricture" : [
-        ["Portal_min", "Portal_st"],
-        ["Artery_min", "Artery_st"],
-        ["Vein_min", "Vein_st"],
-        ["MPV_PP_min", "MPV_PP_st"],
-        ["MPV_AP_min", "MPV_AP_st"],
-        ["MPV_HVP_min", "MPV_HVP_st"]
     ],
 
     "Recon" : [
@@ -42,25 +27,18 @@
 		    "contour" : 10,
 		    "gaussian" : 0,
 		    "algorithm" : "Marching",
-		    "resampling factor" : 1,
+		    "resampling factor" : 2,
 		    "param" : [
 			    [80, 0.18, 0.0],
 			    [20, 0.14, 0.0]
 		    ],
 		    "List" : [
-			    ["MPV_PP", "", "PP", -1],
-                ["MPV_AP", "", "AP", -1],
-                ["MPV_HVP", "", "HVP", -1],    
-                ["Artery", "", "AP", -1],
-                ["Vein", "", "HVP", -1],
-                ["Portal", "", "PP", -1],
-                ["MPV_AP_st", "MPV_AP", "AP", 30000],
-                ["Artery_st", "Artery", "AP", 20000],
-                ["MPV_PP_st", "MPV_PP", "PP", 10000],
-                ["Portal_st", "Portal", "PP", 60000],
-                ["MPV_HVP_st", "MPV_HVP", "HVP", 10000],
-                ["Vein_st", "Vein", "HVP", 60000],
-                ["Liver", "Liver", "HVP", 60000]
+			    ["MPV_CT_PP", "", "PP", -1],
+                ["MPV_CT_AP", "", "AP", -1],
+                ["MPV_CT_DP", "", "DP", -1], 
+                ["Artery", "Artery", "AP", 20000],
+                ["Vein", "60000", "DP", 60000],
+                ["Portal", "60000", "PP", 60000]
 		    ]
 	    }
     ],
@@ -93,11 +71,8 @@
             "blenderName1" : 20
         },
         "Remesh" : {
-            "VoxelSize" : 1,
-            "RemeshList" : {
-                "blenderName0" : 4000,
-                "blenderName1" : 4000
-            }
+            "blenderName0" : [1, 4000],
+            "blenderName1" : [2, 20000]
         },
         "MeshCleanUp" : [
             "Portal",

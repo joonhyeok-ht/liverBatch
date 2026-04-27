@@ -1372,7 +1372,8 @@ class CCommandAutoRemoveCL(CCommandSkelEdit) :
             self.InputData.remove_all_key_by_type_groupID(data.CData.s_skelTypeEndPoint, clinfoInx)
             self.InputData.remove_all_key_by_type_groupID(data.CData.s_skelTypeVertex, clinfoInx)
             self.InputData.m_listSkelInfo[clinfoInx].Skeleton = self.m_undoSkeleton
-            self.m_opDragSelectionCL.Skeleton = self.m_undoSkeleton
+            if self.m_opDragSelectionCL:
+                self.m_opDragSelectionCL.Skeleton = self.m_undoSkeleton
             self.m_mediator.add_skeleton_obj(clinfoInx)
             
             if state in [0, 1, 2]:
