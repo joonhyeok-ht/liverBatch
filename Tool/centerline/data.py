@@ -144,6 +144,7 @@ class CData :
 
     s_vesselType = "vessel"
     s_organType = "organ"
+    s_tumorType = "tumor"
     s_territoryType = "territory"
     s_skelTypeCenterline = "centerline"
     s_skelTypeBranch = "branch"

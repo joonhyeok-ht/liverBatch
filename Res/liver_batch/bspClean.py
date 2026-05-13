@@ -37,6 +37,7 @@ class CBSPClean(blenderOption.CBlenderScriptBase) :
         if self.Ready == False :
             print("blender script Recon error : not found option")
             return False
+        blenderOption.CBlenderScriptUtil.make_all_objects_visible_and_object_mode()
         
         iCnt = self.m_optionInfo.get_cleanup_meshname_count()
         for inx in range(0, iCnt) :

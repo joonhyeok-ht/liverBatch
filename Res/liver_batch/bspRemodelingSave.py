@@ -33,6 +33,7 @@ class CBSPRemodelingSave(blenderOption.CBlenderScriptBase) :
         if self.Ready == False :
             print("blender script Recon error : not found option")
             return False
+        blenderOption.CBlenderScriptUtil.make_all_objects_visible_and_object_mode()
         
         blenderOption.CBlenderScriptUtil._enable_add_on()
         # self.delete_overlap_sphere_objects()
@@ -85,10 +86,10 @@ class CBSPRemodelingSave(blenderOption.CBlenderScriptBase) :
         #     blenderOption.CBlenderScriptUtil.remesh(meshname, voxel, triCnt)
         
         # samrtuv
-        # iCnt = self.m_optionInfo.get_smartuv_meshname_count()
-        # for inx in range(0, iCnt) :
-        #     meshname = self.m_optionInfo.get_smartuv_meshname(inx)
-        #     blenderOption.CBlenderScriptUtil.smartuv(meshname)    
+        iCnt = self.m_optionInfo.get_smartuv_meshname_count()
+        for inx in range(0, iCnt) :
+            meshname = self.m_optionInfo.get_smartuv_meshname(inx)
+            blenderOption.CBlenderScriptUtil.smartuv(meshname)    
 
         # save 
         outputFullPath = self.OptionInfo.get_user_value("SaveFullPath")

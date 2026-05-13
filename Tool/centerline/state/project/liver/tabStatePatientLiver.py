@@ -443,7 +443,7 @@ class CTabStatePatient(tabState.CTabState):
 
         self.setui_clinfo_inx(dataInst.CLInfoIndex)
         self._command_clinfo_inxs()
-        self.setui_check_sel_cell(False)
+        self.setui_check_sel_cell(True)
 
     def process(self):
         pass
@@ -1196,6 +1196,7 @@ class CTabStatePatient(tabState.CTabState):
 
         fullPath = os.path.join(dataInst.OutputPatientPath, f"{data.CData.s_fileName}.json")
         dataInst.save(fullPath)
+        self.m_mediator.remove_key_type(dataInst.s_skelTypeCenterline)
         self.m_mediator.update_viewer()
 
 
@@ -1662,6 +1663,7 @@ class CTabStatePatient(tabState.CTabState):
             self.m_mediator.ref_key_type_groupID(dataInst.s_skelTypeCenterline, clinfoInx)
         
         self.setui_check_sel_cell(False)
+        self.setui_check_sel_cell(True)
         self.m_mediator.update_viewer()
 
         
@@ -1770,7 +1772,6 @@ class CTabStatePatient(tabState.CTabState):
         patientID = self.getui_edit_huid_path()
         outputPatientPath = os.path.join(self.OutputPath, patientID)
         if os.path.exists(outputPatientPath) == False :
-            print(outputPatientPath)
             print("not found output recon patient path")
             return 
 

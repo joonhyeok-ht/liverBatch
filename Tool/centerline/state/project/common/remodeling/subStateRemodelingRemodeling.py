@@ -156,15 +156,18 @@ class CSubStateRemodelingRemodeling(subStateRemodeling.CSubStateRemodeling) :
         self.__refresh_toggle_component(nowNode)
     def btn_select_minor(self, order):
         cuttedNode = self.m_mediator.getui_lv_cuttednode_selected_node()
+        dataInst = self.m_mediator.get_data()
+        userdata = dataInst.UserData
         
         portalSegmentSet = set()
         for i in range(1, 9):
-            portalSegmentSet.add(str("S" + str(i)))
+            segment = str("S" + str(i))
+            if segment not in userdata.m_tumorSegSet:
+                portalSegmentSet.add(str("S" + str(i)))
             
         veinSegmentSet = set(["LHV", "MHV", "RHV", "IHV"])
         skeletonEn = cuttedNode.SkeletonEn
         
-        dataInst = self.m_mediator.get_data()
         skeleton = dataInst.get_skeleton(self.m_mediator.get_clinfo_index())
         
         self.copy_skeleton_cl_label(skeletonEn, skeleton)

@@ -148,6 +148,7 @@ class CCommandLoadingPatient(commandInterface.CCommand) :
         for inx in range(0, iCnt) :
             skelinfo = dataInst.get_skelinfo(inx)
             commandExportInst.add_blender_name(skelinfo.BlenderName)
+        commandExportInst.add_blender_name("Tumor")
         commandExportInst.process()
         commandExportInst.clear()
 
@@ -169,6 +170,7 @@ class CCommandLoadingPatient(commandInterface.CCommand) :
         iCnt = dataInst.get_skelinfo_count()
         for inx in range(0, iCnt) :
             self.m_mediator.add_vessel_obj(inx, 0)
+        self.m_mediator.add_tumor_obj(0, 0)
         self.m_mediator.add_organ_obj()
     def _add_skeleton_vtkobj(self) :
         dataInst = self.InputData

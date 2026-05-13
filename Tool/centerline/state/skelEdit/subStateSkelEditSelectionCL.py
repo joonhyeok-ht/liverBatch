@@ -81,7 +81,8 @@ class CSubStateSkelEditSelectionCL(subStateSkelEdit.CSubStateSkelEdit) :
             self.App.redo()
     def clicked_mouse_rb(self, clickX, clickY) :
         listExceptKeyType = [
-            data.CData.s_vesselType
+            data.CData.s_vesselType,
+            data.CData.s_tumorType
         ]
 
         if self.m_comDragSelCL is None :

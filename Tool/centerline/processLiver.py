@@ -109,7 +109,6 @@ class COutputRedirector :
     def flush(self):
         pass
 
-
 class CTestApp(QMainWindow) :
     # 일단 하드코딩 
     s_titleToken = "hu3D 제작도구 - "
@@ -119,7 +118,7 @@ class CTestApp(QMainWindow) :
                 {"TabName" : "Patient Info", "TabInst" : tabStatePatientLiver.CTabStatePatient},
                 {"TabName" : "Edit", "TabInst" : tabStateSkelEditLiver.CTabStateSkelEditLiver},
                 {"TabName" : "Labeling", "TabInst" : tabStateSkelLabelingLiver.CTabStateSkelLabelingLiver},
-                 {"TabName" : "VesselRemodeling", "TabInst" : tabStateVesselRemodeling.CTabStateVesselRemodeling}
+                {"TabName" : "VesselRemodeling", "TabInst" : tabStateVesselRemodeling.CTabStateVesselRemodeling}
                 # {"TabName" : "Territory", "TabInst" : tabStateTerritoryEnhanced.CTabStateTerritoryEnhanced},
                 #{"TabName" : "Registration Test", "TabInst" : tabStateLiverReg.CTabStateReg},
             ],
@@ -706,8 +705,32 @@ QPushButton {
         vesselObj.Opacity = 0.3
         vesselObj.PolyData = polydata
         dataInst.add_vtk_obj(vesselObj)
+    def add_tumor_obj(self, groupID : int, id : int) :
+        dataInst = self.m_data
+        clInPath = dataInst.get_cl_in_path()
+
+        self.remove_tumor_obj(groupID)
+
+        tumorFullPath = os.path.join(f"{clInPath}", f"Tumor.stl")
+        if os.path.exists(tumorFullPath) == False :
+            print(f"failed to extract tumor : {tumorFullPath}")
+            return
+        
+        polydata = algVTK.CVTK.load_poly_data_stl(tumorFullPath)
+        
+        keyType = data.CData.s_tumorType
+        key = dataInst.make_key(keyType, groupID, id)
+        tumorObj = vtkObjInterface.CVTKObjInterface()
+        tumorObj.KeyType = keyType
+        tumorObj.Key = key
+        tumorObj.Color = algLinearMath.CScoMath.to_vec3([1.0, 1.0, 0.0])
+        tumorObj.Opacity = 0.3
+        tumorObj.PolyData = polydata
+        dataInst.add_vtk_obj(tumorObj)
     def remove_vessel_obj(self, groupID : int) :
         self.remove_key_type_groupID(data.CData.s_vesselType, groupID)
+    def remove_tumor_obj(self, groupID : int) :
+        self.remove_key_type_groupID(data.CData.s_tumorType, groupID)
     def remove_skeleton_cl_obj(self, groupID : int) :
         self.remove_key_type_groupID(data.CData.s_skelTypeCenterline, groupID)
     def add_organ_obj(self) :

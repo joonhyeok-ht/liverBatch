@@ -140,6 +140,47 @@ class CBlenderScriptUtil :
         if mesh.uv_layers :
             mesh.calc_tangents()
     @staticmethod
+    def make_all_objects_visible_and_object_mode():
+        # 모든 collection 보이게
+        def enable_layer_collection(layer_collection):
+            layer_collection.exclude = False
+            layer_collection.hide_viewport = False
+            for child in layer_collection.children:
+                enable_layer_collection(child)
+
+        enable_layer_collection(bpy.context.view_layer.layer_collection)
+
+        # 모든 object 보이게 + 선택 해제
+        for obj in bpy.data.objects:
+            obj.hide_set(False)
+            obj.hide_viewport = False
+            obj.hide_render = False
+            obj.select_set(False)
+
+        # active object 찾기
+        active_obj = None
+        for obj in bpy.context.scene.objects:
+            if obj.visible_get():
+                active_obj = obj
+                break
+
+        if active_obj is None:
+            print("No visible object found.")
+            return False
+
+        active_obj.select_set(True)
+        bpy.context.view_layer.objects.active = active_obj
+
+        # object mode 전환
+        try:
+            if active_obj.mode != 'OBJECT':
+                bpy.ops.object.mode_set(mode='OBJECT')
+        except Exception as e:
+            print(f"mode_set failed: {e}")
+            return False
+
+        return True
+    @staticmethod
     def _apply_all_transforms_and_shade_smooth() :
         # Object Mode로 전환 (필수)
         if bpy.ops.object.mode_set.poll():

@@ -9,7 +9,7 @@ import math
 from scipy.spatial import KDTree
 
 from PySide6.QtCore import Qt, QEvent, QObject, QPoint
-from PySide6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QHBoxLayout, QWidget, QPushButton, QLineEdit, QLabel, QSizePolicy, QListWidget, QFileDialog, QFrame, QCheckBox, QTabWidget, QComboBox, QListWidgetItem, QMenu, QSpinBox, QMessageBox, QDoubleSpinBox
+from PySide6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QHBoxLayout, QWidget, QPushButton, QLineEdit, QLabel, QSizePolicy, QListWidget, QFileDialog, QFrame, QCheckBox, QTabWidget, QComboBox, QListWidgetItem, QMenu, QSpinBox, QMessageBox, QDoubleSpinBox, QAbstractItemView
 from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 
 fileAbsPath = os.path.abspath(os.path.dirname(__file__))
@@ -277,6 +277,7 @@ class CTabStateVesselRemodeling(tabState.CTabState) :
             self._get_substate(self.m_state).process_init()
         else :
             self.m_tabUI.setCurrentIndex(0)
+            self._get_substate(self.m_state).process_init()
 
         self.m_mediator.update_viewer()
     def process(self) :
@@ -365,6 +366,25 @@ class CTabStateVesselRemodeling(tabState.CTabState) :
         layout, self.m_editLabelName = self.m_mediator.create_layout_label_editbox("Label Name", False)
         self.m_editLabelName.returnPressed.connect(self._on_return_pressed_label_name)
         subTabLayout.addLayout(layout)
+        
+        label = QLabel("----- Label List -----")
+        label.setStyleSheet("QLabel { margin-top: 1px; margin-bottom: 1px; }")
+        label.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
+        subTabLayout.addWidget(label)
+        
+        listWidget = QListWidget()
+
+        listWidget.setSelectionMode(QAbstractItemView.ExtendedSelection)
+
+        for name in ["Portal", "Portal_m", "Vein", "Vein_m"]:
+            item = QListWidgetItem(name)
+            listWidget.addItem(item)
+
+        listWidget.itemClicked.connect(
+    lambda item: self.rename_node_name(item.text())
+)
+
+        subTabLayout.addWidget(listWidget)
 
         subTabLayout.addStretch()
         tabUI.addTab(tab, title)
@@ -518,7 +538,10 @@ class CTabStateVesselRemodeling(tabState.CTabState) :
 
         return tabUI
     
-
+    def rename_node_name(self, name):
+        self.m_editLabelName.setText(name)
+        self._on_return_pressed_label_name()
+    
     def get_node_name(self) -> str :
         nodeName = f"noname_{self.m_nodeNameID}"
         self.m_nodeNameID += 1
@@ -918,10 +941,6 @@ class CTabStateVesselRemodeling(tabState.CTabState) :
         else :
             QMessageBox.information(self.m_mediator, "Alarm", f"failed reconstruction : not setting userdata")
         return
-
-    
-    
-        
         # meshcleanPath = os.path.join(
         #     dataInst.OptionInfo.DataRootPath, currPatientID, "02_SAVE", "02_BLENDER_SAVE",  f"{currPatientID}_clean.blend"
         # )
@@ -1464,9 +1483,9 @@ class CTabStateVesselRemodeling(tabState.CTabState) :
     def setui_cellID(self, cellID : int) :
         self.m_editBoxCellID.setText(str(cellID))
     def setui_check_sel_cell(self, bCheck : bool) -> bool :
-        self.m_checkSelectionStartCell.blockSignals(True)
+        #self.m_checkSelectionStartCell.blockSignals(True)
         self.m_checkSelectionStartCell.setChecked(bCheck)
-        self.m_checkSelectionStartCell.blockSignals(False)
+        #self.m_checkSelectionStartCell.blockSignals(False)
     def setui_lv_subnode_add_node(self, node : remodelingNode.CSkelNode) :
         self.m_lvSubNode.blockSignals(True)
 

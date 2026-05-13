@@ -66,8 +66,11 @@ class CSubStateRemodelingExtractionEnCL(subStateRemodeling.CSubStateRemodeling) 
         super().clear()
 
     def process_init(self) :
-        self.m_mediator.setui_check_sel_cell(False)
-        self._set_selcellstate(0)
+        # self.m_mediator.setui_check_sel_cell(False)
+        # self._set_selcellstate(0)
+        
+        self._set_selcellstate(1)
+        self.m_mediator.setui_check_sel_cell(True)
     def process(self) :
         pass
     def process_end(self) :

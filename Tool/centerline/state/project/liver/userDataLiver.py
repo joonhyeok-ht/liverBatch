@@ -67,6 +67,7 @@ class CUserDataLiver(userData.CUserData) :
         self.m_outputReconBlenderFullPath = ""
         self.m_outputCleanBlenderFullPath = ""
         self.m_registrationMethod = ""
+        self.m_tumorSegSet = set()
         
         try:
             # PyInstaller로 패키징된 실행 파일의 경우
@@ -98,6 +99,7 @@ class CUserDataLiver(userData.CUserData) :
         self.m_outputReconBlenderFullPath = ""
         self.m_outputCleanBlenderFullPath = ""
         self.m_registrationMethod = ""
+        self.m_tumorSegSet = set()
 
         self.m_makeInputFolder.clear()
 

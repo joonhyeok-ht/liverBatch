@@ -6,7 +6,7 @@ import vtk
 import subprocess
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QHBoxLayout, QWidget, QPushButton, QLineEdit, QLabel, QSizePolicy, QListWidget, QFileDialog, QFrame, QCheckBox, QTabWidget, QComboBox
+from PySide6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QHBoxLayout, QWidget, QPushButton, QLineEdit, QLabel, QSizePolicy, QListWidget, QFileDialog, QFrame, QCheckBox, QTabWidget, QComboBox, QGridLayout
 from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 
 fileAbsPath = os.path.abspath(os.path.dirname(__file__))
@@ -49,9 +49,133 @@ import command.commandExtractingCLLink as commandExtractingCLLink
 import skelEdit.subStateSkelEditSelectionCL as subStateSkelEditSelectionCL
 import progressWindow as PW
 
+class SelectBox(QFrame):
+    def __init__(self, text, parent=None):
+        super().__init__(parent)
+
+        self.setFrameShape(QFrame.NoFrame)
+        self.text = text
+        self.selected = False
+
+        self.label = QLabel(text)
+        self.label.setAlignment(Qt.AlignCenter)
+        self.label.setStyleSheet("""
+            QLabel {
+                border: none;
+                background: transparent;
+                font-size: 14px;
+            }
+        """)
+
+        layout = QVBoxLayout()
+        layout.addWidget(self.label)
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        self.setLayout(layout)
+        self.setFixedSize(140, 80)
+
+        self.update_style()
+
+    def mousePressEvent(self, event):
+        parent = self.parent()
+
+        if parent:
+            parent.toggle_box(self)
+
+        super().mousePressEvent(event)
+
+    def set_selected(self, selected: bool):
+        self.selected = selected
+        self.update_style()
+
+    def update_style(self):
+        if self.selected:
+            self.setStyleSheet("""
+                SelectBox {
+                    border: 3px solid #0078D7;
+                    border-radius: 10px;
+                    background-color: #DDEEFF;
+                }
+            """)
+        else:
+            self.setStyleSheet("""
+                SelectBox {
+                    border: 3px solid #999999;
+                    border-radius: 10px;
+                    background-color: #F5F5F5;
+                }
+
+                SelectBox:hover {
+                    background-color: #EEEEEE;
+                }
+            """)
+
+
+class BoxSelectDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        self.setWindowTitle("Select Tumor Segment")
+        self.resize(650, 320)
+
+        self.box_names = [
+            "S1", "S2", "S3", "S4",
+            "S5", "S6", "S7", "S8"
+        ]
+        
+        self.boxes = []
+
+        main_layout = QVBoxLayout(self)
+        self.gridLayout = QGridLayout()
+
+        for i, name in enumerate(self.box_names):
+            box = SelectBox(name, self)
+
+            row = i // 4
+            col = i % 4
+            self.boxes.append(box)
+            self.gridLayout.addWidget(box, row, col)
+
+        btnLayout = QHBoxLayout()
+
+        self.btnOk = QPushButton("ok")
+        self.btnCancel = QPushButton("cancel")
+
+        self.btnOk.clicked.connect(self.on_ok_clicked)
+        self.btnCancel.clicked.connect(self.reject)
+
+        btnLayout.addStretch()
+        btnLayout.addWidget(self.btnOk)
+        btnLayout.addWidget(self.btnCancel)
+
+        main_layout.addLayout(self.gridLayout)
+        main_layout.addLayout(btnLayout)
+
+    def toggle_box(self, box):
+        box.set_selected(not box.selected)
+
+    def on_ok_clicked(self):
+        selected_names = self.get_selected_box_names()
+
+        if len(selected_names) == 0:
+            QMessageBox.warning(
+                self,
+                "알림",
+                "선택된 박스가 없습니다."
+            )
+            return
+
+        self.accept()
+
+    def get_selected_box_names(self):
+        return [
+            box.text
+            for box in self.boxes
+            if box.selected
+        ]
+
 class CTabStateSkelLabelingLiver(tabState.CTabState) :
     s_guideBoundType = "guideBound"
-
 
     def __init__(self, mediator):
         super().__init__(mediator)
@@ -111,6 +235,7 @@ class CTabStateSkelLabelingLiver(tabState.CTabState) :
         self.m_mediator.update_viewer()
     def process(self) :
         pass
+        
     def process_end(self) :
         opSelectionCL = self.m_opSelectionCL
         opSelectionCL.process_reset()
@@ -121,6 +246,7 @@ class CTabStateSkelLabelingLiver(tabState.CTabState) :
         self.m_mediator.remove_key_type(data.CData.s_territoryType)
         self.m_mediator.remove_key_type(data.CData.s_textType)
         self.m_mediator.update_viewer()
+        self.m_cbVisibleMesh.setChecked(False)
         self.m_subState.process_end()
     def init_ui(self) :
         tabLayout = QVBoxLayout()
@@ -210,11 +336,31 @@ class CTabStateSkelLabelingLiver(tabState.CTabState) :
         btn.setStyleSheet(self.get_btn_stylesheet())
         btn.clicked.connect(self._on_btn_clear)
         tabLayout.addWidget(btn)
+
         line = QFrame()
         line.setFrameShape(QFrame.Shape.HLine)
         line.setFrameShadow(QFrame.Shadow.Sunken)
         tabLayout.addWidget(line)
 
+        btn = QPushButton("Select Tumor Segment")
+        btn.setStyleSheet(self.get_btn_stylesheet())
+        btn.clicked.connect(self._on_btn_set_tumor_seg)
+        tabLayout.addWidget(btn)
+        
+        label = QLabel("-- Visible --")
+        label.setStyleSheet("QLabel { margin-top: 1px; margin-bottom: 1px; }")
+        label.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
+        tabLayout.addWidget(label)
+
+        layout, listCB = self.m_mediator.create_layout_checkbox_array(["Tumor"])
+        self.m_cbVisibleMesh = listCB[0]
+        self.m_cbVisibleMesh.setChecked(False)
+        self.m_cbVisibleMesh.stateChanged.connect(self._on_check_visible_tumor)
+        tabLayout.addLayout(layout)
+
+        # 마지막에 stretch 추가
+        tabLayout.addStretch()
+        
         lastUI = line
         tabLayout.setAlignment(lastUI, Qt.AlignmentFlag.AlignTop)
 
@@ -594,6 +740,22 @@ class CTabStateSkelLabelingLiver(tabState.CTabState) :
         algVTK.CVTK.save_poly_data_stl(savePath, polyData)
         print("whole vessel saved successfully.")
         
+    def _on_btn_set_tumor_seg(self):
+        self.show_boxes()
+    
+    def show_boxes(self):
+        dialog = BoxSelectDialog(self.m_mediator)
+        result = dialog.exec()
+        dataInst = self.get_data()
+        userdata = dataInst.UserData
+
+        if result == QDialog.Accepted:
+            selectedNames = dialog.get_selected_box_names()
+            for selectedSegment in selectedNames:
+                userdata.m_tumorSegSet.add(selectedSegment)
+                
+            QMessageBox.information(self.m_mediator, "Alarm", f"Selected Segments : {str(', ').join(selectedNames)}")
+        
     def _on_btn_clear(self):
         dataInst = self.get_data()
         clinfoInxs = self.get_clinfo_indices()
@@ -719,7 +881,19 @@ class CTabStateSkelLabelingLiver(tabState.CTabState) :
         return
     def _on_rb_descendant(self) :
         return
-
+    def getui_cb_visiblemesh_checked(self) -> bool :
+        return self.m_cbVisibleMesh.isChecked()
+    def _refresh_visible_vessel(self) :
+        clinfoInx = self.get_clinfo_index()
+        tumorKey = data.CData.make_key(data.CData.s_tumorType, 0, 0)
+        if self.getui_cb_visiblemesh_checked() == False :
+            self.m_mediator.unref_key(tumorKey)
+        else :
+            self.m_mediator.ref_key(tumorKey)
+        self.m_mediator.update_viewer()
+    def _on_check_visible_tumor(self):
+        self._refresh_visible_vessel()
+        return
     
     @property
     def Skeleton(self) -> algSkeletonGraph.CSkeleton :
