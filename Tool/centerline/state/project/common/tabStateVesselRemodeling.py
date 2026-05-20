@@ -376,7 +376,7 @@ class CTabStateVesselRemodeling(tabState.CTabState) :
 
         listWidget.setSelectionMode(QAbstractItemView.ExtendedSelection)
 
-        for name in ["Portal", "Portal_m", "Vein", "Vein_m"]:
+        for name in ["Artery", "Portal", "Portal_m", "Vein", "Vein_m", "Duct"]:
             item = QListWidgetItem(name)
             listWidget.addItem(item)
 

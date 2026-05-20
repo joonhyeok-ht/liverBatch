@@ -326,21 +326,12 @@ class CTabStateSkelLabelingLiver(tabState.CTabState) :
         # btn.setStyleSheet(self.get_btn_stylesheet())
         # btn.clicked.connect(self._on_btn_save_separation)
         # tabLayout.addWidget(btn)
-        
-        # btn = QPushButton("Save (Graphics)")
-        # btn.setStyleSheet(self.get_btn_stylesheet())
-        # btn.clicked.connect(self._on_btn_save_for_graphics)
-        # tabLayout.addWidget(btn)
-        
-        btn = QPushButton("Clear All Labeling")
-        btn.setStyleSheet(self.get_btn_stylesheet())
-        btn.clicked.connect(self._on_btn_clear)
-        tabLayout.addWidget(btn)
 
-        line = QFrame()
-        line.setFrameShape(QFrame.Shape.HLine)
-        line.setFrameShadow(QFrame.Shadow.Sunken)
-        tabLayout.addWidget(line)
+        
+        # btn = QPushButton("Clear All Labeling")
+        # btn.setStyleSheet(self.get_btn_stylesheet())
+        # btn.clicked.connect(self._on_btn_clear)
+        # tabLayout.addWidget(btn)
 
         btn = QPushButton("Select Tumor Segment")
         btn.setStyleSheet(self.get_btn_stylesheet())
@@ -357,6 +348,11 @@ class CTabStateSkelLabelingLiver(tabState.CTabState) :
         self.m_cbVisibleMesh.setChecked(False)
         self.m_cbVisibleMesh.stateChanged.connect(self._on_check_visible_tumor)
         tabLayout.addLayout(layout)
+        
+        btn = QPushButton("Save Centerline")
+        btn.setStyleSheet(self.get_btn_stylesheet())
+        btn.clicked.connect(self._on_btn_save_for_graphics)
+        tabLayout.addWidget(btn)
 
         # 마지막에 stretch 추가
         tabLayout.addStretch()
@@ -641,7 +637,8 @@ class CTabStateSkelLabelingLiver(tabState.CTabState) :
         self.m_mediator.update_viewer()
     def _on_btn_save_for_graphics(self) :
         dataInst = self.get_data()
-
+        userData = dataInst.UserData
+        
         clOutPath = dataInst.get_cl_out_path()
         clInPath = dataInst.get_cl_in_path()
         
@@ -655,6 +652,7 @@ class CTabStateSkelLabelingLiver(tabState.CTabState) :
             skeleton = dataInst.get_skeleton(clinfoIndex)
             if skeleton != None :
                 editInst = commandExtractingCLLink.CCommandExtractingCLLink(blenderName, skeleton, clInPath, dataInst.PatientID)
+                editInst.m_secondSavePath = os.path.join(userData.m_movingBlenderPath, f"Centerline_{outputFileName}.json")
                 if editInst.init(outputFullPath, commandExtractingCLLink.CCommandExtractingCLLink.MODE_VESSEL) :
                     self._generate_progress_window(editInst)
             else :

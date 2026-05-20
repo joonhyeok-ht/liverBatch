@@ -253,12 +253,12 @@ class CTabStateSkelEditLiver(tabState.CTabState) :
         line.setFrameShadow(QFrame.Shadow.Sunken)
         tabLayout.addWidget(line)
 
-        btn = QPushButton("Save Centerline")
-        btn.setStyleSheet(self.get_btn_stylesheet())
-        btn.clicked.connect(self._on_btn_save_cl)
-        tabLayout.addWidget(btn)
+        # btn = QPushButton("Save Centerline")
+        # btn.setStyleSheet(self.get_btn_stylesheet())
+        # btn.clicked.connect(self._on_btn_save_cl)
+        # tabLayout.addWidget(btn)
         
-        btn = QPushButton("Save (Graphics)")
+        btn = QPushButton("Save Centerline")
         btn.setStyleSheet(self.get_btn_stylesheet())
         btn.clicked.connect(self._on_btn_save_for_graphics)
         tabLayout.addWidget(btn)
@@ -370,6 +370,7 @@ class CTabStateSkelEditLiver(tabState.CTabState) :
         self._get_substate(self.m_state).save_cl()
     def _on_btn_save_for_graphics(self) :
         dataInst = self.get_data()
+        userData = dataInst.UserData
 
         clOutPath = dataInst.get_cl_out_path()
         clInPath = dataInst.get_cl_in_path()
@@ -384,6 +385,7 @@ class CTabStateSkelEditLiver(tabState.CTabState) :
             skeleton = dataInst.get_skeleton(clinfoIndex)
             if skeleton != None :
                 editInst = commandExtractingCLLink.CCommandExtractingCLLink(blenderName, skeleton, clInPath, dataInst.PatientID)
+                editInst.m_secondSavePath = os.path.join(userData.m_movingBlenderPath, f"Centerline_{outputFileName}.json")
                 if editInst.init(outputFullPath, commandExtractingCLLink.CCommandExtractingCLLink.MODE_VESSEL) :
                     self._generate_progress_window(editInst)
             else :

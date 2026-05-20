@@ -1171,8 +1171,6 @@ class CTabStatePatient(tabState.CTabState):
             QMessageBox.information(self.m_mediator, "Alarm", "please setting option, outputPath, patientID")
             return
 
-        userData = dataInst.UserData
-        
         blenderFullPath = os.path.join(os.path.dirname(userData.OutputReconBlenderFullPath), f"{dataInst.PatientID}_remodel.blend")
 
         if os.path.exists(blenderFullPath) == False :
@@ -1186,8 +1184,13 @@ class CTabStatePatient(tabState.CTabState):
 
         self.setui_clear_clinfo()
         iCnt = dataInst.get_skelinfo_count()
+        clInPath = dataInst.get_cl_in_path()
         for inx in range(0, iCnt) :
             skelinfo = dataInst.get_skelinfo(inx)
+            blenderName = skelinfo.BlenderName
+            vesselFullPath = os.path.join(f"{clInPath}", f"{blenderName}.stl")
+            if os.path.exists(vesselFullPath) == False :
+                continue
             self.setui_add_clinfo(inx, skelinfo)
 
         dataInst.CLInfoIndex = 0
@@ -1685,6 +1688,7 @@ class CTabStatePatient(tabState.CTabState):
         dataInst.m_clinfoIndexList = clinfoInxs
         #print(clinfoInxs, file=sys.__stdout__, flush=True)
         self.setui_check_sel_cell(False)
+        self.setui_check_sel_cell(True)
         for clinfoInx in clinfoInxs:
             self.m_mediator.ref_key_type_groupID(dataInst.s_vesselType, clinfoInx)
             skeleton = dataInst.get_skeleton(clinfoInx)
@@ -1715,8 +1719,13 @@ class CTabStatePatient(tabState.CTabState):
 
         self.setui_clear_clinfo()
         iCnt = dataInst.get_skelinfo_count()
+        clInPath = dataInst.get_cl_in_path()
         for inx in range(0, iCnt) :
             skelinfo = dataInst.get_skelinfo(inx)
+            blenderName = skelinfo.BlenderName
+            vesselFullPath = os.path.join(f"{clInPath}", f"{blenderName}.stl")
+            if os.path.exists(vesselFullPath) == False :
+                continue
             self.setui_add_clinfo(inx, skelinfo)
 
         dataInst.CLInfoIndex = 0

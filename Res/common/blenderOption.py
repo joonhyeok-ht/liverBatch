@@ -1,4 +1,6 @@
 '''
+File : blenderOption.py
+Last updated : 2026.05.13
 '''
 
 import bpy
@@ -109,18 +111,18 @@ class CBlenderScriptUtil :
     @staticmethod
     def import_stl(stlFullPath : str) :
         if os.path.exists(stlFullPath) == False :
-            print(f"failed import {stlFullPath}")
+            print(f"{stlFullPath} import failed")
             return
         bpy.ops.import_mesh.stl(filepath=f"{stlFullPath}")
-        print(f"imported {stlFullPath}")
+        print(f"{stlFullPath} imported")
     @staticmethod
     def import_obj(objFullPath : str) :
         if os.path.exists(objFullPath) == False :
-            print(f"failed import {objFullPath}")
+            print(f"{objFullPath} import failed")
             return
         
         bpy.ops.import_scene.obj(filepath=f"{objFullPath}", axis_forward='Y', axis_up='Z')
-        print(f"imported {objFullPath}")
+        print(f"{objFullPath} imported")
 
         # import된 obj는 context에 추가됨
         obj = bpy.context.selected_objects[0]
@@ -139,47 +141,6 @@ class CBlenderScriptUtil :
         mesh.calc_normals()
         if mesh.uv_layers :
             mesh.calc_tangents()
-    @staticmethod
-    def make_all_objects_visible_and_object_mode():
-        # 모든 collection 보이게
-        def enable_layer_collection(layer_collection):
-            layer_collection.exclude = False
-            layer_collection.hide_viewport = False
-            for child in layer_collection.children:
-                enable_layer_collection(child)
-
-        enable_layer_collection(bpy.context.view_layer.layer_collection)
-
-        # 모든 object 보이게 + 선택 해제
-        for obj in bpy.data.objects:
-            obj.hide_set(False)
-            obj.hide_viewport = False
-            obj.hide_render = False
-            obj.select_set(False)
-
-        # active object 찾기
-        active_obj = None
-        for obj in bpy.context.scene.objects:
-            if obj.visible_get():
-                active_obj = obj
-                break
-
-        if active_obj is None:
-            print("No visible object found.")
-            return False
-
-        active_obj.select_set(True)
-        bpy.context.view_layer.objects.active = active_obj
-
-        # object mode 전환
-        try:
-            if active_obj.mode != 'OBJECT':
-                bpy.ops.object.mode_set(mode='OBJECT')
-        except Exception as e:
-            print(f"mode_set failed: {e}")
-            return False
-
-        return True
     @staticmethod
     def _apply_all_transforms_and_shade_smooth() :
         # Object Mode로 전환 (필수)
@@ -203,6 +164,84 @@ class CBlenderScriptUtil :
                 # 선택 해제
                 obj.select_set(False)
     @staticmethod
+    def make_all_objects_visible_and_object_mode():
+        # 1. 현재 모드가 OBJECT가 아니면 먼저 OBJECT mode로 전환
+        try:
+            if bpy.context.object is not None and bpy.context.mode != 'OBJECT':
+                bpy.ops.object.mode_set(mode='OBJECT')
+        except Exception as e:
+            print(f"initial mode_set failed: {e}")
+
+        # 2. 모든 collection 보이게
+        def enable_layer_collection(layer_collection):
+            layer_collection.exclude = False
+            layer_collection.hide_viewport = False
+            for child in layer_collection.children:
+                enable_layer_collection(child)
+
+        enable_layer_collection(bpy.context.view_layer.layer_collection)
+
+        # 3. 모든 object 보이게 + 선택 해제
+        for obj in bpy.data.objects:
+            obj.hide_viewport = False
+            obj.hide_render = False
+
+            try:
+                obj.hide_set(False)
+            except Exception:
+                pass
+
+            try:
+                obj.select_set(False)
+            except Exception:
+                pass
+
+        bpy.context.view_layer.update()
+
+        # 4. active object 찾기
+        active_obj = None
+        for obj in bpy.context.scene.objects:
+            if obj.visible_get() and obj.type in {'MESH', 'CURVE', 'SURFACE', 'FONT', 'EMPTY'}:
+                active_obj = obj
+                break
+
+        if active_obj is None:
+            print("No visible object found.")
+            return False
+
+        # 5. active object 설정
+        active_obj.select_set(True)
+        bpy.context.view_layer.objects.active = active_obj
+        bpy.context.view_layer.update()
+
+        # 6. 다시 한 번 OBJECT mode 보장
+        try:
+            if bpy.context.mode != 'OBJECT':
+                bpy.ops.object.mode_set(mode='OBJECT')
+        except Exception as e:
+            print(f"final mode_set failed: {e}")
+            return False
+
+        return True
+    @staticmethod
+    def _apply_all_transforms() :
+        # Object Mode로 전환 (필수)
+        if bpy.ops.object.mode_set.poll():
+            bpy.ops.object.mode_set(mode='OBJECT')
+
+        # 모든 메시 오브젝트에 대해 처리
+        for obj in bpy.data.objects:
+            if obj.type == 'MESH':
+                # 활성화 및 선택
+                bpy.context.view_layer.objects.active = obj
+                obj.select_set(True)
+
+                # All Transforms 적용 (Location, Rotation, Scale)
+                bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+
+                # 선택 해제
+                obj.select_set(False)
+    @staticmethod
     def triangulate_all_objects_no_ops():
         for obj in bpy.data.objects:
             if obj.type != 'MESH':
@@ -220,12 +259,25 @@ class CBlenderScriptUtil :
 
             print(f"'{obj.name}' Triangulate Done.")
     @staticmethod
+    def shade_auto_smooth(objList : list, angle=30) :
+        for obj in objList :
+            radian = math.radians(angle)
+            if obj and obj.type == 'MESH':
+                bpy.ops.object.select_all(action='DESELECT')
+                obj.select_set(True)
+
+                bpy.context.view_layer.objects.active = obj
+                bpy.ops.object.shade_smooth()
+                obj.data.use_auto_smooth = True
+                obj.data.auto_smooth_angle = radian 
+        print(f"shade_auto_smooth done. (angle = {angle})")
+    @staticmethod
     def decimation_tri(meshname : str, targetTriCnt : int) :
         retListValidMeshName = CBlenderScriptUtil.parse_star_meshname(meshname)
 
         for meshname in retListValidMeshName :
             if meshname not in bpy.data.objects :
-                print(f"skipped decimation : {meshname}")
+                print(f"decimation skipped : {meshname}")
                 continue
             
             bpy.ops.object.mode_set(mode='OBJECT')
@@ -238,20 +290,24 @@ class CBlenderScriptUtil :
             srcTriangleCnt = len(obj.data.polygons)
             decimationRatio = targetTriCnt / srcTriangleCnt
 
-            # decimation을 수행한다. 
-            decimate_modifier = obj.modifiers.new(name="DecimateMod", type='DECIMATE')
-            decimate_modifier.ratio = decimationRatio
-            
-            # blender v3.6~4.1.1 까지 호환되는 함수
-            bpy.ops.object.modifier_apply(modifier=decimate_modifier.name, single_user=True) 
-            print(f"succeeded decimation : {meshname} : {targetTriCnt} : {decimationRatio}")
+            if decimationRatio < 1.0 :
+		        # decimation을 수행한다. 
+                decimate_modifier = obj.modifiers.new(name="DecimateMod", type='DECIMATE')
+                decimate_modifier.ratio = decimationRatio
+		        
+		        # blender v3.6~4.1.1 까지 호환되는 함수
+                bpy.ops.object.modifier_apply(modifier=decimate_modifier.name, single_user=True) 
+                print(f"decimation succeeded : {meshname} : {targetTriCnt} : {decimationRatio}")
+            else :
+			    # targetTriangleCnt가 원본보다 많거나 같은 경우이므로 skip
+                print(f"decimation skipped : {meshname} : {targetTriCnt} : {decimationRatio}")
     @staticmethod
     def decimation_ratio(meshname : str, ratio : int) :
         retListValidMeshName = CBlenderScriptUtil.parse_star_meshname(meshname)
 
         for meshname in retListValidMeshName :
             if meshname not in bpy.data.objects :
-                print(f"skipped decimation ratio : {meshname}")
+                print(f"decimation(ratio) skipped : {meshname}")
                 continue
             
             bpy.ops.object.mode_set(mode='OBJECT')
@@ -269,14 +325,14 @@ class CBlenderScriptUtil :
             
             # blender v3.6~4.1.1 까지 호환되는 함수
             bpy.ops.object.modifier_apply(modifier=decimate_modifier.name, single_user=True) 
-            print(f"succeeded decimation ratio : {meshname} : {decimationRatio}")
+            print(f"decimation(ratio) succeeded : {meshname} : {decimationRatio}")
     @staticmethod
     def remesh(meshname : str, voxelSize : float, targetFaceCnt : int) :
         retListValidMeshName = CBlenderScriptUtil.parse_star_meshname(meshname)
 
         for meshname in retListValidMeshName :
             if meshname not in bpy.data.objects :
-                print(f"skipped remesh : {meshname}")
+                print(f"remesh skipped : {meshname}")
                 continue
             
             bpy.ops.object.select_all(action='DESELECT')
@@ -291,14 +347,14 @@ class CBlenderScriptUtil :
             bpy.ops.object.quadriflow_remesh(target_faces=int(targetFaceCnt / 2))
             bpy.ops.object.select_all(action='DESELECT')
 
-            print(f"succeeded remesh : {meshname}")
+            print(f"remesh succeeded : {meshname}")
     @staticmethod
     def cleanup(meshname : str) :
         retListValidMeshName = CBlenderScriptUtil.parse_star_meshname(meshname)
 
         for meshname in retListValidMeshName :
             if meshname not in bpy.data.objects :
-                print(f"skipped cleanup : {meshname}")
+                print(f"cleanup skipped : {meshname}")
                 continue
             
             ret = False 
@@ -314,14 +370,14 @@ class CBlenderScriptUtil :
                     if meshErrStatus[3] == 0 and meshErrStatus[4] == 0 and meshErrStatus[5] == 0 and meshErrStatus[7] == 0 :
                         ret = True
             
-            print(f"succeeded cleanup : {meshname}")
+            print(f"cleanup succeeded : {meshname}")
     @staticmethod
     def smartuv(meshname : str) :
         retListValidMeshName = CBlenderScriptUtil.parse_star_meshname(meshname)
 
         for meshname in retListValidMeshName :
             if meshname not in bpy.data.objects :
-                print(f"skipped smartuv : {meshname}")
+                print(f"smartuv skipped : {meshname}")
                 continue
 
             if bpy.context.mode != 'OBJECT' :
@@ -330,13 +386,13 @@ class CBlenderScriptUtil :
 
             obj = bpy.data.objects[meshname]
             if obj.type != 'MESH':
-                print(f"skipped smartuv : {meshname}")
+                print(f"smartuv skipped : {meshname}")
                 continue
             
             vol = CBlenderScriptUtil.mesh_volume(obj)
             EPS = 1e-8 
             if vol < EPS:
-                print(f"- skipped smartuv : {meshname} (volume = {vol})")
+                print(f"- smartuv skipped : {meshname} (volume = {vol})")
                 continue
             
             obj.select_set(True)
@@ -348,7 +404,7 @@ class CBlenderScriptUtil :
             bpy.ops.object.mode_set(mode='OBJECT')
             bpy.ops.object.select_all(action='DESELECT')
 
-            print(f"succeeded smartuv : {meshname}")
+            print(f"smartuv succeeded : {meshname}")
 
     @staticmethod
     def triangulate_all() :
@@ -392,7 +448,7 @@ class CBlenderScriptUtil :
         bpy.ops.mesh.normals_make_consistent(inside=toInside)
         # 객체 모드로 돌아가기
         bpy.ops.object.mode_set(mode='OBJECT')
-        print(f"succeeded recalc normal() : {objName}")
+        print(f"normal recalculation succeeded : {objName}")
     @staticmethod
     def rotation_all_x(deg : float) :
         for obj in bpy.context.scene.objects:
@@ -418,7 +474,7 @@ class CBlenderScriptUtil :
             obj.select_set(True)
             bpy.context.view_layer.objects.active = obj
             obj.data.name = obj.name
-        print("checked match mesh data name")
+        print("mesh data name match checked")
     @staticmethod
     def rename_mesh(objname : str, renamed : str) :
         if objname in bpy.data.objects :
@@ -428,7 +484,7 @@ class CBlenderScriptUtil :
             bpy.context.view_layer.objects.active = obj
             obj.data.name = renamed
             obj.name = renamed
-            print(f"renamed {objname} -> {renamed}")
+            print(f"rename {objname} -> {renamed}")
     @staticmethod
     def join_objects(meshnameToken : str, joinedName : str) :
         ## keyword가 들어있는 object들을 join하여 keyword 이름으로 생성.
@@ -457,7 +513,7 @@ class CBlenderScriptUtil :
         bpy.ops.object.select_all(action='SELECT')
         bpy.ops.wm.save_mainfile()
         bpy.ops.object.select_all(action='DESELECT')
-        print(f"Saved current blend file")
+        print(f"Current .blend file saved")
     @staticmethod
     def save_as_blender(blenderFullPath : str) :
         if os.path.exists(blenderFullPath) :
@@ -507,7 +563,7 @@ class COptionInfo :
         self.m_listSamrtUV = []
     def process(self, fullPath : str) -> bool :
         if os.path.exists(fullPath) == False :
-            print(f"not valid Option_Path : {fullPath}")
+            print(f"invalid Option_Path : {fullPath}")
             return False
         # json initialize 
         with open(fullPath, 'r') as fp :
@@ -555,7 +611,6 @@ class COptionInfo :
         return list(self.m_dicRemesh.keys())
     def get_remesh_voxel(self, meshname : str) -> int :
         return self.m_dicRemesh[meshname][0]
-    
     def get_remesh_voxel_facecnt(self, meshname : str) -> int :
         return self.m_dicRemesh[meshname][1]
     

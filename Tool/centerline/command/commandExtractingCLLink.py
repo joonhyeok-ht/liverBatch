@@ -31,6 +31,7 @@ import AlgUtil.algSkeletonGraph as algSkeletonGraph
 import vtkObjGuideCL as vtkObjGuideCL
 import data as data
 import operation as operation
+import shutil
 
 
 class CCPNode :
@@ -159,6 +160,7 @@ class CCommandExtractingCLLink :
         self.m_polyData = None
         self.m_skeleton = skeleton
         self.m_saveFullPath = ""
+        self.m_secondSavePath = ""
         
         self.m_mode = 0
 
@@ -225,6 +227,8 @@ class CCommandExtractingCLLink :
         with open(self.m_saveFullPath, "w", encoding="utf-8") as fp:
             json.dump(self.m_outJson, fp, ensure_ascii=False, indent="\t")
             self.print_log(f"centerlinedata.json dump done.")
+        shutil.copy2(self.m_saveFullPath, self.m_secondSavePath)
+            
         self.progress_callback(100, "Save Centerline ...")  # For ProgressBar
         
         return True
