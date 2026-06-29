@@ -22,8 +22,11 @@ sys.path.append(fileCommonPipelinePath)
 
 import Block.niftiContainer as niftiContainer
 import Block.originOffset as originOffset
+import Block.removeStricture_wgpu as removeStricture_wgpu
 import Block.removeStricture as removeStricture
 import Block.registration as registration
+import Block.registration_wgpu as registration_wgpu
+import Block.resampling_wgpu as resampling_wgpu
 import Block.resampling as resampling
 import Block.reconstruction as reconstruction
 import Block.meshHealing as meshHealing
@@ -163,7 +166,25 @@ class CSubReconLiver(commandRecon.CCommandRecon) :
             originOffsetBlock.process()
             if not self.update_progress_value(1, "Registration..."):
                 return False
-
+            
+            
+            # start_t = time.time()
+            # registrationBlock = registration_wgpu.CRegistration()
+            # registrationBlock.InputOptionInfo = self.InputData.OptionInfo
+            # registrationBlock.InputMaskPath = maskCpyPath #self.CopiedMaskPath
+            
+            # registrationBlock.progress_callback = lambda p, s="": self.progress_callback(
+            #     self.ProgressValue + int((14 / self.TotalPatientCnt) * (p / 100.0)),
+            #     s
+            # )
+            # registrationBlock.is_interrupted = self.is_interrupted
+            # registrationBlock.process()
+            # end_t = time.time()
+            # print(f"0-1.   !!!!!!!!!!wgpu CRegistration!!!! {end_t - start_t:.5f} sec", file=sys.__stdout__, flush=True)
+            
+            
+            # start_t = time.time()
+            ###############################################################
             registrationBlock = registration.CRegistration()
             registrationBlock.InputOptionInfo = self.InputData.OptionInfo
             registrationBlock.InputMaskPath = maskCpyPath #self.CopiedMaskPath
@@ -174,9 +195,12 @@ class CSubReconLiver(commandRecon.CCommandRecon) :
             )
             registrationBlock.is_interrupted = self.is_interrupted
             registrationBlock.process()
+            ################################################################
+            end_t = time.time()
+            #print(f"0-2.   !!!!!!!!!!previous CRegistration!!!! {end_t - start_t:.5f} sec", file=sys.__stdout__, flush=True)
             
             self.ProgressValue += int(14 / self.TotalPatientCnt)
-            
+                
             self._update_phase_offset(self.InputData.OptionInfo, registrationBlock, originOffsetBlock, phase)
             fileSavePhaseInfoBlock = niftiContainer.CFileSavePhaseInfo()
             fileSavePhaseInfoBlock.InputPhase = phase
@@ -198,30 +222,59 @@ class CSubReconLiver(commandRecon.CCommandRecon) :
         resamplingToPhaseBlock.is_interrupted = self.is_interrupted
         resamplingToPhaseBlock.process()
         self.ProgressValue += int(2 / self.TotalPatientCnt)
+        
+        # start_t = time.time()
+        # resamplingToMinSpacingBlock = resampling_wgpu.CResamplingToMinSpacing()
+        # resamplingToMinSpacingBlock.InputMaskPath = maskCpyPath # self.CopiedMaskPath
+        # resamplingToMinSpacingBlock.InputOptionInfo = self.InputData.OptionInfo
+        # resamplingToMinSpacingBlock.OutputMaskPath = maskCpyPath # self.CopiedMaskPath
+        # resamplingToMinSpacingBlock.progress_callback = lambda p, s="": self.progress_callback(
+        #     self.ProgressValue + int((4 / self.TotalPatientCnt) * (p / 100.0)),
+        #     s
+        # )
+        # resamplingToMinSpacingBlock.is_interrupted = self.is_interrupted
+        
+        # resamplingToMinSpacingBlock.process()
+        # self.ProgressValue += int(4 / self.TotalPatientCnt)
+        
+        # end_t = time.time()
+        # print(f"1-1.   !!!!!!!!!!wgpu CResamplingToMinSpacing!!!! {end_t - start_t:.5f} sec", file=sys.__stdout__, flush=True)
+        
+        ##############################################################
+        start_t = time.time()
         resamplingToMinSpacingBlock = resampling.CResamplingToMinSpacing()
         resamplingToMinSpacingBlock.InputMaskPath = maskCpyPath # self.CopiedMaskPath
         resamplingToMinSpacingBlock.InputOptionInfo = self.InputData.OptionInfo
         resamplingToMinSpacingBlock.OutputMaskPath = maskCpyPath # self.CopiedMaskPath
-        resamplingToMinSpacingBlock.progress_callback = lambda p, s="": self.progress_callback(
-            self.ProgressValue + int((4 / self.TotalPatientCnt) * (p / 100.0)),
-            s
-        )
-        resamplingToMinSpacingBlock.is_interrupted = self.is_interrupted
-        
         resamplingToMinSpacingBlock.process()
-        self.ProgressValue += int(4 / self.TotalPatientCnt)
+        end_t = time.time()
+        #print(f"1-2.   !!!!!!!!!!previous CResamplingToMinSpacing!!!! {end_t - start_t:.5f} sec", file=sys.__stdout__, flush=True)
+        ##################################################################
 
+        # start_t = time.time()
+        # removeStrictureBlock = removeStricture_wgpu.CRemoveStricture()
+        # removeStrictureBlock.InputOptionInfo = self.OptionInfo
+        # removeStrictureBlock.InputMaskPath = maskCpyPath # self.CopiedMaskPath
+        # removeStrictureBlock.OutputMaskPath = maskCpyPath # self.CopiedMaskPath
+        # removeStrictureBlock.progress_callback = lambda p, s="": self.progress_callback(
+        #     self.ProgressValue + int((26 / self.TotalPatientCnt) * (p / 100.0)),
+        #     s
+        # )
+        # removeStrictureBlock.is_interrupted = self.is_interrupted
+        # removeStrictureBlock.process()
+        # self.ProgressValue += int(26 / self.TotalPatientCnt)
+        # end_t = time.time()
+        # print(f"2-1.   !!!!!!!!!!wgpu CRemoveStricture!!!! {end_t - start_t:.5f} sec", file=sys.__stdout__, flush=True)
+        ##############################################################
+        start_t = time.time()
         removeStrictureBlock = removeStricture.CRemoveStricture()
         removeStrictureBlock.InputOptionInfo = self.OptionInfo
         removeStrictureBlock.InputMaskPath = maskCpyPath # self.CopiedMaskPath
         removeStrictureBlock.OutputMaskPath = maskCpyPath # self.CopiedMaskPath
-        removeStrictureBlock.progress_callback = lambda p, s="": self.progress_callback(
-            self.ProgressValue + int((26 / self.TotalPatientCnt) * (p / 100.0)),
-            s
-        )
-        removeStrictureBlock.is_interrupted = self.is_interrupted
         removeStrictureBlock.process()
-        self.ProgressValue += int(26 / self.TotalPatientCnt)
+        end_t = time.time()
+        #print(f"2-2.   !!!!!!!!!!previous CRemoveStricture!!!! {end_t - start_t:.5f} sec", file=sys.__stdout__, flush=True)
+        ##################################################################
         
         if self.m_registrationMethod == "non-rigid":
             dataRootPath = self.m_folderInfo.DataRootPath
@@ -238,6 +291,7 @@ class CSubReconLiver(commandRecon.CCommandRecon) :
 
             # self.InputData.OptionInfo
             # self.reset_warped_mask_name()
+            
             
         reconstructionBlock = reconstruction.CReconstruction()
         reconstructionBlock.InputOptionInfo = self.InputData.OptionInfo
@@ -279,7 +333,7 @@ class CSubReconLiver(commandRecon.CCommandRecon) :
         if not self.update_progress_value(1):
             return False
 
-        removeStrictureBlock.clear()
+        #removeStrictureBlock.clear()
         reconstructionBlock.clear()
         meshHealingBlock.clear()
         meshBooleanBlock.clear()

@@ -95,8 +95,6 @@ def _reconstruction_task_worker(param: tuple):
     algVTK.CVTK.save_poly_data_stl(blenderFullPath, polydata)
     print(f"saved stl : {os.path.basename(blenderFullPath)}", file=sys.__stdout__, flush=True)
 
-
-
 class CReconstruction(multiProcessTask.CMultiProcessTaskProgress) :
     @staticmethod
     def get_meshlib(vtkMeshInst : vtk.vtkPolyData) :
@@ -264,17 +262,17 @@ class CReconstruction(multiProcessTask.CMultiProcessTaskProgress) :
             print("passed recon")
             return
         
-        for param in listParam:
-            _reconstruction_task_worker(param)
+        # for param in listParam:
+        #     _reconstruction_task_worker(param)
         
-        # super().process(
-        #     _reconstruction_task_worker,
-        #     listParam,
-        #     progress_callback=getattr(self, "progress_callback", None),
-        #     is_interrupted=getattr(self, "is_interrupted", None),
-        #     status_prefix="Reconstruction...",
-        #     chunksize=1
-        # )
+        super().process(
+            _reconstruction_task_worker,
+            listParam,
+            progress_callback=getattr(self, "progress_callback", None),
+            is_interrupted=getattr(self, "is_interrupted", None),
+            status_prefix="Reconstruction...",
+            chunksize=1
+        )
 
 
     # param (contour, gaussian, algorithm, resampling, listReconParam, maskFullPath, blenderFullPath, phaseInfo, triCnt)

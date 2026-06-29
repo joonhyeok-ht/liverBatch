@@ -243,7 +243,6 @@ class CTabStateVesselRemodeling(tabState.CTabState) :
         skeleton = dataInst.get_skeleton(clinfoInx)
         if skeleton is None :
             return 
-        
         skelinfo = dataInst.get_skelinfo(clinfoInx)
         
         opSelectionCL = self.m_opSelectionCL
@@ -272,12 +271,14 @@ class CTabStateVesselRemodeling(tabState.CTabState) :
         self._refresh_visible_vessel()
         self._refresh_visible_vessel_cl()
 
-        if self.m_state == -1 :
-            self.m_state = 0
-            self._get_substate(self.m_state).process_init()
-        else :
-            self.m_tabUI.setCurrentIndex(0)
-            self._get_substate(self.m_state).process_init()
+        if self.m_state >= 0 :
+            self._get_substate(self.m_state).process_end()
+
+        self.m_state = 0
+        self.m_tabUI.blockSignals(True)
+        self.m_tabUI.setCurrentIndex(0)
+        self.m_tabUI.blockSignals(False)
+        self._get_substate(self.m_state).process_init()
 
         self.m_mediator.update_viewer()
     def process(self) :
@@ -290,10 +291,13 @@ class CTabStateVesselRemodeling(tabState.CTabState) :
         opSelectionCL = self.m_opSelectionCL
         opSelectionCL.process_reset()
 
-        # self._get_substate(self.m_state).process_end()
-        # self.m_state = 0
+        if self.m_state >= 0:
+            self._get_substate(self.m_state).process_end()
+
+        self.m_state = -1
+        self.m_tabUI.blockSignals(True)
         self.m_tabUI.setCurrentIndex(0)
-        # self._get_substate(self.m_state).process_init()
+        self.m_tabUI.blockSignals(False)
 
         self.m_mediator.remove_key_type(subStateRemodeling.CSubStateRemodeling.s_cuttingMeshType)
         self.m_cuttedMeshID = 0

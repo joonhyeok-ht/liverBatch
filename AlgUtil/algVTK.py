@@ -522,6 +522,16 @@ class CVTK :
         npImgRet, originRet, scalingRet, directionRet, sizeRet = algImage.CAlgImage.get_np_from_sitk(sitkSrcResampled, np.uint8)
         return npImgRet
     
+    @staticmethod
+    def get_polydata_center(polyData : vtk.vtkPolyData) -> np.ndarray :
+        bounds = polyData.GetBounds()
+
+        # 중심 좌표 계산
+        center_x = (bounds[0] + bounds[1]) / 2.0
+        center_y = (bounds[2] + bounds[3]) / 2.0
+        center_z = (bounds[4] + bounds[5]) / 2.0
+        center = algLinearMath.CScoMath.to_vec3([center_x, center_y, center_z])
+        return center
 
     # triangle polydata manipulation
     @staticmethod

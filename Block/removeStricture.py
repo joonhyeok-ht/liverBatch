@@ -11,6 +11,7 @@ import AlgUtil.algImage as algImage
 
 import multiProcessTask as multiProcessTask
 import optionInfo as optionInfo
+import wgpuRS as wgpuRS
 
 
 def _remove_stricture_task_worker(param: tuple):
@@ -20,15 +21,12 @@ def _remove_stricture_task_worker(param: tuple):
 
     npImg, origin, spacing, direction, size = algImage.CAlgImage.get_np_from_nifti(inputMaskFullPath)
     vertex = algImage.CAlgImage.get_vertex_from_np(npImg, np.int32)
-
     vesselVertex = algImage.CAlgImage.get_removed_stricture_voxel_index_from_vertex(vertex, size)
     algImage.CAlgImage.set_clear(npImg, 0)
     algImage.CAlgImage.set_value(npImg, vesselVertex, 255)
     algImage.CAlgImage.save_nifti_from_np(outputMaskFullPath, npImg, origin, spacing, direction, (2, 1, 0))
 
-    print(f"completed removed stricture vessel {outputMaskFullPath}")
-
-
+    #print(f"completed removed stricture vessel {outputMaskFullPath}")
 
 class CRemoveStricture(multiProcessTask.CMultiProcessTaskProgress) :
     def __init__(self) -> None:
@@ -73,6 +71,7 @@ class CRemoveStricture(multiProcessTask.CMultiProcessTaskProgress) :
             return
         
         #super().process(self._task, listParam)
+        
         super().process(
             _remove_stricture_task_worker,
             listParam,

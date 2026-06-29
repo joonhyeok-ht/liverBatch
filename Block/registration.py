@@ -21,6 +21,8 @@ import optionInfo as optionInfo
 from collections import deque
 import multiprocessing as mp
 
+import time
+
 
 def _registration_task_worker(param: tuple):
     """
@@ -42,8 +44,6 @@ def _registration_task_worker(param: tuple):
         ctVertex, ctOrigin, ctSpacing, ctDirection, ctSize = algImage.CAlgImage.get_vertex_from_nifti(targetFullPath)
         mrVertex, mrOrigin, mrSpacing, mrDirection, mrSize = algImage.CAlgImage.get_vertex_from_nifti(srcFullPath)
 
-        # ✅ 기존 self.__get_rigid_physical_offset 의존이 문제라서
-        #    아래 3)에서 "정적 함수"로 빼서 호출하도록 함
         rigidPhysicalOffset = CRegistration.get_rigid_physical_offset(
             (ctVertex, ctOrigin, ctSpacing, ctDirection),
             (mrVertex, mrOrigin, mrSpacing, mrDirection)
@@ -72,7 +72,7 @@ def _registration_task_worker(param: tuple):
     phyOffsetV = phyOffsetV + rigidPhysicalOffset
 
     sharedList[inx] = phyOffsetV
-    print(f"completed registration {srcFullPath}")
+    #print(f"completed registration {srcFullPath}")
     return True
 
 
@@ -246,7 +246,7 @@ class CRegistration(multiProcessTask.CMultiProcessTaskProgress) :
             phyOffsetV = phyOffsetV + rigidPhysicalOffset
 
             self.m_sharedList[inx] = phyOffsetV
-            print(f"completed registration {srcFullPath}")
+            #print(f"completed registration {srcFullPath}")
 
     def __get_rigid_physical_offset(self, targetInfo : tuple, srcInfo : tuple) -> np.ndarray :
         targetVertex = targetInfo[0]

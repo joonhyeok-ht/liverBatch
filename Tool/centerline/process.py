@@ -690,9 +690,10 @@ QPushButton {
         if picker.GetActor() :
             pickedActor = picker.GetActor()
             clKey = pickedActor.GetObjectName()
-            print(f"Picked Actor: {clKey}")
+            #print(f"Picked Actor: {clKey}")
         else :
-            print("No polyData picked.")
+            pass
+            #print("No polyData picked.")
         
         for keyType in listKeyType :
             self.visibility_key_type(keyType, True)

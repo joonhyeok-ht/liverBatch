@@ -1,0 +1,341 @@
+{
+    "Version" : {
+        "Release" : "Common Pipeline v2.1",
+        "Name" : "HuLungOption_v2.0.0",
+		"Update" : "26.04.15",
+        "OperativeSide" : "Left Lung",
+        "DESC" : "apply Common Pipeline v2.1",
+		"DESC2" : "change Lobe decimation factor. Left:5000->10000, Right:3000->5000",
+		"DESC3" : "change Segment,Subsegment decimation factor. Segment:2500->5000, SubSegment:1200->2500",
+		"DESC4" : "add DecimationRemodeling key"
+    },
+  
+    "DataRootPath" : "D:/TestLung/data_remodel/common/input_lung",
+	"CL" : "%USERPROFILE%/Miniconda3/envs/py38_env/python.exe processCL.py",
+    "CL_dev" : "C:/Users/Graphics/anaconda3/Scripts/conda.exe run -n venvpy38 python processCL.py",
+	"CL_rel" : "%USERPROFILE%/Miniconda3/envs/py38_env/python.exe app_cl/processCL.pyc",
+    "CL_rel2" : "conda.exe run -n py38_env python app_cl/processCL.pyc",
+
+    "RegistrationInfo" : [
+        {"Target" : "targetMaskName", "Src" : "srcMaskName", "RigidAABB" : 1},
+        {"Target" : "targetMaskName", "Src" : "srcMaskName", "RigidAABB" : 0}
+    ],
+
+    "ResamplingToPhase" : [
+	    ["inMaskName", "outMaskName", "AP"]
+    ],
+    "ResamplingToMinSpacing" : [
+	    ["Artery_R", "Artery_R_min"],
+        ["Vein_R", "Vein_R_min"],
+        ["Bronchus", "Bronchus_min"],
+        ["Artery_L", "Artery_L_min"],
+        ["Vein_L", "Vein_L_min"]
+        
+    ],
+
+    "Stricture" : [
+        ["Artery_R_min", "Artery_R_st"],
+        ["Vein_R_min", "Vein_R_st"],
+        ["Bronchus_min", "Bronchus_st"],
+        ["Artery_L_min", "Artery_L_st"],
+        ["Vein_L_min", "Vein_L_st"]
+    ],
+
+    "Recon" : [
+	    {
+            "name" : "remodelingType",
+		    "contour" : 10,
+		    "gaussian" : 0,
+		    "algorithm" : "Marching",
+		    "resampling factor" : 1,
+		    "param" : [
+			    [80, 0.18, 0.0],
+			    [20, 0.14, 0.0]
+		    ],
+		    "List" : [
+			    ["Artery_R", "", "", -1],
+                ["Vein_R", "", "", -1],
+                ["Bronchus", "", "", -1],
+                ["Artery_L", "", "", -1],
+                ["Vein_L", "", "", -1],
+
+				["Artery_R_min", "", "", -1],
+                ["Vein_R_min", "", "", -1],
+                ["Bronchus_min", "", "", -1],
+				["Artery_L_min", "", "", -1],
+                ["Vein_L_min", "", "", -1],
+
+                ["Artery_R_st", "Artery_R", "", -1],
+                ["Vein_R_st", "Vein_R", "", -1],
+                ["Bronchus_st", "Bronchus", "", 50000],
+                ["Artery_L_st", "Artery_L", "", 70000],
+                ["Vein_L_st", "Vein_L", "", 80000],
+                
+                ["Aorta", "Artery_Aorta", "", -1],
+                ["SVC", "Vein_SVC", "", -1]
+
+		    ]
+	    },
+        {
+            "name" : "LungType",
+		    "contour" : 127,
+		    "gaussian" : 1,
+		    "algorithm" : "Flying",
+		    "resampling factor" : 1,
+		    "param" : [
+			    [16, 0.3, 0.0]
+		    ],
+		    "List" : [
+			    ["RUL", "Lung_RUL_R", "", -1],
+			    ["RML", "Lung_RML_R", "", -1],
+			    ["RLL", "Lung_RLL_R", "", -1],
+			    ["LUL", "Lung_LUL_L", "", -1],
+			    ["LLL", "Lung_LLL_L", "", -1]
+               
+		    ]
+	    },
+        {
+            "name" : "TumorType",
+		    "contour" : 10,
+		    "gaussian" : 0,
+		    "algorithm" : "Marching",
+		    "resampling factor" : 1,
+		    "param" : [
+			    [10, 0.3, 0.0]
+		    ],
+		    "List" : [
+			    ["Tumor", "Tumor", "", -1],
+			    ["Tumor_1", "Tumor_1", "", -1],
+			    ["Tumor_2", "Tumor_2", "", -1],
+			    ["Tumor_3", "Tumor_3", "", -1],
+			    ["Tumor_4", "Tumor_4", "", -1],
+			    ["Tumor_5", "Tumor_5", "", -1]
+			                   
+		    ]
+	    },
+        {
+            "name" : "DiaphragmType",
+		    "contour" : 10,
+		    "gaussian" : 1,
+		    "algorithm" : "Marching",
+		    "resampling factor" : 1,
+		    "param" : [
+			    [20, 0.5, 0.0]
+		    ],
+		    "List" : [
+			    ["Diaphragm", "Diaphragm", "", -1]			                   
+		    ]
+	    },
+        {
+            "name" : "WallType",
+		    "contour" : 10,
+		    "gaussian" : 1,
+		    "algorithm" : "Flying",
+		    "resampling factor" : 1,
+		    "param" : [
+			    [15, 0.2, 0.8]
+		    ],
+		    "List" : [
+			    ["Wall", "Wall", "", -1],			                   
+			    ["Wall_Inside", "Wall_Inside", "", -1]			                   
+		    ]
+	    },
+        {
+            "name" : "ClassicOrganType",
+		    "contour" : 10,
+		    "gaussian" : 1,
+		    "algorithm" : "Marching",
+		    "resampling factor" : 1,
+		    "param" : [
+			    [20, 0.5, 0.87]
+		    ],
+		    "List" : [
+			    ["Skin", "Skin", "", -1],			                   
+			    ["Heart", "Heart", "", -1]
+            ]
+	    },
+        {
+            "name" : "RibType",
+		    "contour" : 10,
+		    "gaussian" : 1,
+		    "algorithm" : "Marching",
+		    "resampling factor" : 1,
+		    "param" : [
+			    [20, 0.18, 0.0],
+			    [20, 0.14, 0.0]
+		    ],
+		    "List" : [
+                ["Skeleton", "Skeleton", "", 80000],
+                ["Rib_R_01", "Bone_Rib_01_R", "", 4000],			                   
+			    ["Rib_R_02", "Bone_Rib_02_R", "", 4000],			                   
+			    ["Rib_R_03", "Bone_Rib_03_R", "", 4000],			                   
+			    ["Rib_R_04", "Bone_Rib_04_R", "", 4000],			                   
+			    ["Rib_R_05", "Bone_Rib_05_R", "", 4000],			                   
+			    ["Rib_R_06", "Bone_Rib_06_R", "", 4000],			                   
+			    ["Rib_R_07", "Bone_Rib_07_R", "", 4000],			                   
+			    ["Rib_R_08", "Bone_Rib_08_R", "", 4000],
+			    ["Rib_R_09", "Bone_Rib_09_R", "", 4000],			                   
+			    ["Rib_R_10", "Bone_Rib_10_R", "", 4000],			                   
+			    ["Rib_R_11", "Bone_Rib_11_R", "", 4000],			                   
+			    ["Rib_R_12", "Bone_Rib_12_R", "", 4000],	    
+
+			    ["Rib_L_01", "Bone_Rib_01_L", "", 4000],			                   
+			    ["Rib_L_02", "Bone_Rib_02_L", "", 4000],			                   
+			    ["Rib_L_03", "Bone_Rib_03_L", "", 4000],			                   
+			    ["Rib_L_04", "Bone_Rib_04_L", "", 4000],			                   
+			    ["Rib_L_05", "Bone_Rib_05_L", "", 4000],			                   
+			    ["Rib_L_06", "Bone_Rib_06_L", "", 4000],			                   
+			    ["Rib_L_07", "Bone_Rib_07_L", "", 4000],			                   
+			    ["Rib_L_08", "Bone_Rib_08_L", "", 4000],			                   
+			    ["Rib_L_09", "Bone_Rib_09_L", "", 4000],			                   
+			    ["Rib_L_10", "Bone_Rib_10_L", "", 4000],			                   
+			    ["Rib_L_11", "Bone_Rib_11_L", "", 4000],			                   
+			    ["Rib_L_12", "Bone_Rib_12_L", "", 4000]			
+		    ]
+	    }
+    ],
+    "MeshHealing" : [
+        ["blenderName0", 0],
+        ["blenderName1", 0]
+    ],
+    "MeshBoolean" : [
+        ["subtraction", "blenderName0", "blenderName1", "blenderName"],
+        ["intersection", "blenderName0", "blenderName1", "blenderName"],
+        ["union", "blenderName0", "blenderName1", "blenderName"],
+        ["inside", "blenderName0", "blenderName1", "blenderName"],
+        ["outside", "blenderName0", "blenderName1", "blenderName"]
+    ],
+	"MeshDecimation" : [
+        ["Lung_LUL_L", 20000],
+        ["Lung_LUL_L", 10000],
+        ["Lung_LLL_L", 20000],
+        ["Lung_LLL_L", 10000],
+
+		["Lung_RUL_R", 20000],
+        ["Lung_RUL_R", 5000],
+        ["Lung_RML_R", 20000],
+        ["Lung_RML_R", 5000],
+		["Lung_RLL_R", 20000],
+        ["Lung_RLL_R", 5000],
+		["Artery_R", 50000],
+		["Artery_R", 10000],
+		["Vein_R", 50000],
+		["Vein_R", 10000],
+
+		["Wall", 80000],
+		["Wall", 40000],
+		["Skin", 80000],
+		["Skin", 20000],
+		["Heart", 40000],
+		["Heart", 5000],
+		["Diaphragm", 40000],
+		["Diaphragm", 5000],
+		["Skeleton", 20000],
+		["Skeleton", 5000]	
+    ],
+
+    "Blender" : {
+        "BlenderExe" : "blender",
+		"Comment": "Caution: Do not add vessels on the operative side to the decimation list.",
+        "Decimation" : {            
+			"Artery_R": 10000,
+            "Vein_R": 10000,
+			
+			"Lung_RLL_R": 5000,
+            "Lung_RML_R": 5000,
+            "Lung_RUL_R": 5000,
+            "Lung_LUL_L": 10000,
+            "Lung_LLL_L": 10000,            
+            
+            "XXXBronchus_P_R": 1000,
+            "XXXBronchus_P_L": 1000,
+            "Artery_Aorta": 3000,
+            "Diaphragm": 5000,
+            "Skin": 20000,
+            "Wall": 40000,
+            "Vein_SVC": 2000,
+            "Heart": 5000,
+			"Tumor*": 400,
+            "Skeleton": 5000,
+			"Bone_Rib_*": 1000,
+            "TP_R*": 500,
+            "TP_L*": 500
+            
+        },
+        "DecimationByRatio" : {
+            "XXXArtery_L": 20,
+            "XXXVein_L": 20,
+            "XXXBronchus": 20
+        },
+        "Remesh" : {
+            "blenderName0" : [1, 4000],
+            "blenderName1" : [2, 20000]
+        },
+        "MeshCleanUp" : [
+            "Artery_R",
+            "Artery_L",
+			"Vein_R",
+			"Vein_L",
+			"Bronchus",
+            "Wall",
+            "Wall_Inside",
+            "Wall_Inner",
+			"Bone_Rib_*",
+            "Skeleton"			
+        ],
+        "SmartUV" : [
+            "Bronchus_P*",
+            "Lung_RLL_R",
+            "Lung_RML_R",
+            "Lung_RUL_R",
+            "Lung_LUL_L",
+            "Lung_LLL_L",      
+            "Bone_Rib_*",
+            "Diaphragm",
+			
+			"Tumor*"
+        ],
+        "ProjectUV" : [
+            "Wall",
+            "Wall_Inner",
+            "Wall_Inside"			
+        ],
+		"DecimationRemodeling" : {
+			"Artery_L" : 30000,
+			"Vein_L" : 30000,
+			"Bronchus" : 40000
+		},
+		"BlenderTerritory" : {
+			"Segment" : {
+				"DecimType" : "Fixed",
+				"DecimFactor" : 5000,
+				"UVMap" : "SmartUV"
+			},
+			"SubSegment" : {
+				"DecimType" : "Fixed",
+				"DecimFactor" : 2500,
+				"UVMap" : "SmartUV"
+			}
+		}
+        
+    },
+
+    "Centerline" : [
+        {
+		    "advancementRatio" : 1.001,
+		    "resamplingLength" : 1.0,
+		    "smoothingIter" : 10,
+		    "smoothingFactor" : 0.1,
+		    "List" : [
+			    ["Artery_L", "Artery_L"],
+                ["Bronchus_L", "Bronchus_L"],
+                ["Vein_L", "Vein_L"],
+                ["Bronchus", "Bronchus"]
+		    ]
+        }
+    ],
+    "TargetTerritoryList" : [
+        "Lung_LUL_L",
+        "Lung_LLL_L"
+    ]
+}

@@ -89,6 +89,7 @@ import state.project.common.tabStateVesselRemodeling as tabStateVesselRemodeling
 import state.project.liver.tabStatePatientLiver as tabStatePatientLiver
 import state.project.liver.tabStateSkelEditLiver as tabStateSkelEditLiver
 import state.project.liver.tabStateSkelLabelingLiver as tabStateSkelLabelingLiver
+import state.project.liver.tabStateLiverVesselLabeling as tabStateLiverVesselLabeling
 
 import state.project.userData as userData
 import state.project.common.userDataCommon as userDataCommon
@@ -98,6 +99,8 @@ import state.project.common.userDataCommon as userDataCommon
 import state.project.liver.userDataLiver as userDataLiver
 # import state.project.colon.userDataColon as userDataColon
 import ui.uiDragDrop as uiDragDrop
+
+import ReconWholePatient as RWP
 
 class COutputRedirector :
     def __init__(self, listWidget) :
@@ -561,7 +564,7 @@ QPushButton {
                 obj.Color = color
     def get_cl_color(self, clName) :
         if clName == '' :
-            color = self.m_data.m_clColor
+            color = self.m_data.s_clColor
         else :
             # name을 가지고 있는 경우 해당 색상 부여, name이 없으면 디폴트색
             if clName not in self.m_clColorDic.keys() :
@@ -808,9 +811,10 @@ QPushButton {
         if picker.GetActor() :
             pickedActor = picker.GetActor()
             clKey = pickedActor.GetObjectName()
-            print(f"Picked Actor: {clKey}")
+            #print(f"Picked Actor: {clKey}")
         else :
-            print("No polyData picked.")
+            pass
+            #print("No polyData picked.")
         
         for keyType in listKeyType :
             self.visibility_key_type(keyType, True)
@@ -1306,6 +1310,7 @@ QPushButton {
         self.get_tab_state(self.m_tabIndex).key_press_with_ctrl(keyCode)
 
 def run():
+    #RWP.run()
     multiprocessing.freeze_support()
 
     app = QApplication(sys.argv)
@@ -1325,6 +1330,7 @@ def run():
 
 if __name__ == '__main__' :
     run()
+    #RWP.run()
 
 # print ("ok ..")
 

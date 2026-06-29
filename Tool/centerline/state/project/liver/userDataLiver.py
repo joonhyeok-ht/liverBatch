@@ -40,12 +40,94 @@ import userData as userData
 
 import command.commandRecon as commandRecon
 import commandReconCommon as commandReconCommon
+import command.commandVesselKnife as commandVesselKnife
+from collections import deque
+from collections import defaultdict
 
 import liver.subDetectOverlap.subDetectOverlapLiver as detectOverlap
+
+import vtkObjInterface as vtkObjInterface
+
+import graphVessel
+
+class CTPVessel :
+    s_tpVesselKeyType = "TPVessel"
+    s_tpRadius = 1.6
+
+
+    def __init__(self, groupID : int, id : int, label : str, pos : np.ndarray, color : np.ndarray) :
+        tpPolyData = algVTK.CVTK.create_poly_data_sphere(
+        algLinearMath.CScoMath.to_vec3([0.0, 0.0, 0.0]), 
+        CTPVessel.s_tpRadius
+                )
+        
+        keyType = CTPVessel.s_tpVesselKeyType
+        key = data.CData.make_key(keyType, groupID, id)
+
+        self.m_tpVesselObj = vtkObjInterface.CVTKObjInterface()
+        self.m_tpVesselObj.KeyType = keyType
+        self.m_tpVesselObj.Key = key
+        self.m_tpVesselObj.Color = color
+        self.m_tpVesselObj.Opacity = 0.5
+        self.m_tpVesselObj.PolyData = tpPolyData
+        self.m_tpVesselObj.Pos = pos
+
+        self.m_label = label
+        self.m_id = id
+    def clear(self) :
+        self.m_label = ""
+        self.m_tpVesselObj.clear()
+        self.m_tpVesselObj = None
+        self.m_id = -1
+
+    @property
+    def TPVesselObj(self) -> vtkObjInterface.CVTKObjInterface :
+        return self.m_tpVesselObj
+    @property
+    def Label(self) -> str :
+        return self.m_label
+    @property
+    def ID(self) -> int :
+        return self.m_id
+
 
 class CUserDataLiver(userData.CUserData) :
     s_userDataKey = "Liver"
     s_intermediatePathAlias = "OutTemp"
+    
+    s_tpClinfoIdxMapper = {
+        "TP_S1":0,
+        "TP_S2":0,
+        "TP_S3":0,
+        "TP_S4":0,
+        "TP_S23":0,
+        "TP_S34":0,
+        "TP_S24":0,
+        "TP_S234":0,
+        "TP_S5":0,
+        "TP_S6":0,
+        "TP_S7":0,
+        "TP_S8":0,
+        "TP_S56":0,
+        "TP_S57":0,
+        "TP_S58":0,
+        "TP_S67":0,
+        "TP_S68":0,
+        "TP_S78":0,
+        "TP_S567":0,
+        "TP_S568":0,
+        "TP_S578":0,
+        "TP_S678":0,
+        "TP_S5678":0,
+        "TP_LPV":0,
+        "TP_RPV":0,
+        "TP_RHV":1,
+        "TP_LHV":1,
+        "TP_MHV":1,
+        "TP_IHV":1,
+        "TP_CA":2,
+        "TP_CD":3
+    }
 
     def __init__(self, data : data.CData, mediator):
         super().__init__(data, CUserDataLiver.s_userDataKey)
@@ -68,6 +150,8 @@ class CUserDataLiver(userData.CUserData) :
         self.m_outputCleanBlenderFullPath = ""
         self.m_registrationMethod = ""
         self.m_tumorSegSet = set()
+        self.m_listTPBlenderName = defaultdict(list)
+        self.m_listTPVesselGroup = []
         
         try:
             # PyInstaller로 패키징된 실행 파일의 경우
@@ -102,6 +186,8 @@ class CUserDataLiver(userData.CUserData) :
         self.m_tumorSegSet = set()
 
         self.m_makeInputFolder.clear()
+        self.m_listTPBlenderName.clear()
+        self.m_listTPVesselGroup = []
 
         super().clear()
         
@@ -398,7 +484,7 @@ class CUserDataLiver(userData.CUserData) :
             dicParam = {
                 "StlPath" : reconStlPath,
                 "SaveFullPath" : remodelBlenderPath,
-                "OverWriteFlag" : str(0)
+                "OverWriteFlag" : str(1)
             }
 
         scriptFullPath = self.m_remodelingSaveScriptFullPath
@@ -510,8 +596,124 @@ class CUserDataLiver(userData.CUserData) :
 
         optioninfo.process_phase_alignment()
         
+    def get_tp_vessel_count(self, groupID : int) -> int :
+        tpVesselGroup = self.get_tp_vessel_group(groupID)
+        return len(tpVesselGroup)
+    def find_tp_vessel_by_key(self, groupID : int, tpVesselObjKey : str) -> CTPVessel :
+        tpVesselGroup = self.get_tp_vessel_group(groupID)
+        for key, tpVessel in tpVesselGroup.items() :
+            if key == tpVesselObjKey :
+                return tpVessel
+        return None
+
+    def get_tp_vessel_group(self, groupID : int) -> dict :
+        '''
+        key : tpObjKey
+        value : CTPVessel
+        '''
+        if len(self.m_listTPVesselGroup) > groupID:
+            return self.m_listTPVesselGroup[groupID]
+        else:
+            for inx in range(0, groupID+1) :
+                self.m_listTPVesselGroup.append({})
+            return
+
+    def _find_TP_blender_name(self) :
+        dataInst = self.Data
+        stlPath = os.path.join(dataInst.OutputPatientPath, "Result")
+        
+        for fileName in os.listdir(stlPath):
+            blenderName = os.path.splitext(fileName)[0]
+            #if tokens[-1] == "TPa" :
+            if blenderName in self.s_tpClinfoIdxMapper.keys():
+                self.m_listTPBlenderName[self.s_tpClinfoIdxMapper[blenderName]].append(blenderName)
+        
     def override_load_centerline(self) :
-        pass
+        self._find_TP_blender_name()
+
+        iCnt = self.Data.get_skelinfo_count()
+        if iCnt == 0 :
+            return 
+        for inx in range(0, iCnt) :
+            self.m_listTPVesselGroup.append({})
+            self._create_tp_vessel_obj(inx, self.m_listTPBlenderName[inx])
+            
+        return True
+    
+    def add_tp_vessel(self, groupID : int, index : int, label : str, pos : np.ndarray, color : np.ndarray) -> CTPVessel : 
+        tpVesselGroup = self.m_listTPVesselGroup[groupID]
+        tpVessel = CTPVessel(groupID, index, label, pos, color)
+        key = tpVessel.TPVesselObj.Key
+        tpVesselGroup[key] = tpVessel
+        
+        self.Data.add_vtk_obj(tpVessel.TPVesselObj)
+        return tpVessel
+    
+    def _create_tp_vessel_obj(self, groupID : int, listTPBlenderName : str) :
+        self.m_listTPVesselGroup[groupID].clear()
+        dataInst = self.Data
+        stlPath = os.path.join(dataInst.OutputPatientPath, "Result")
+        index = 0
+        
+        skeleton = self.Data.get_skeleton(groupID)
+        graphvessel = graphVessel.CNodeGraph(skeleton)
+        if skeleton:
+            graphvessel.build_graph()
+        
+        if len(graphvessel.m_IDtoNode.keys()) > 1 and skeleton != None:
+            visitedNodeID = set()
+            visitedNodeID.add(graphvessel.m_startNode.ID)
+            nodeQueue = deque([graphvessel.m_startNode])
+            
+            while nodeQueue:
+                node = nodeQueue.popleft()
+                
+                for clID in node.m_seedCLID:
+                #clID = node.m_listCLID[0]
+                    cl = skeleton.get_centerline(clID)
+                    vertexInx = int(cl.get_vertex_count() / 2)
+                    pos = cl.get_vertex(vertexInx)
+                    color = self.m_mediator.get_cl_color(node.Name)
+                    label = node.Name
+                    self.add_tp_vessel(groupID, index, label, pos, color)
+                    index += 1
+                
+                for adjNodeID in graphvessel.m_graph[node.ID]:
+                    if adjNodeID in visitedNodeID:
+                        continue
+                    adjNode = graphvessel.m_IDtoNode[adjNodeID]
+                    nodeQueue.append(adjNode)
+                    visitedNodeID.add(adjNodeID)
+            
+        else:
+            label_to_color = {}
+            for tpBlenderName in listTPBlenderName :
+                tpFullPath = os.path.join(stlPath, f"{tpBlenderName}.stl")
+                if os.path.exists(tpFullPath) == False :
+                    continue
+                
+
+                polyData = algVTK.CVTK.load_poly_data_stl(tpFullPath)
+                listPolyData = algVTK.CVTK.get_sub_polydata(polyData)
+                
+                if "START" in tpBlenderName:
+                    tpBlenderName = "_".join(tpBlenderName.split("_")[-2:])
+                else:
+                    tpBlenderName = tpBlenderName.split("_")[-1]
+                    
+                label = tpBlenderName
+                for subPolyData in listPolyData :
+                    pos = algVTK.CVTK.get_polydata_center(subPolyData)
+                    if label not in label_to_color.keys():
+                        color = np.array(self.m_mediator.m_colorList[index]).reshape(-1, 3)
+                        label_to_color[label] = color
+                    else:
+                        color = label_to_color[label]
+                    #color = self.get_color(index)
+                    self.add_tp_vessel(groupID, index, label, pos, color)
+                    index += 1
+    
+    
     def override_individual_recon(self, phaseinfo : dict) :
         dataInst = self.Data
         optioninfo = dataInst.OptionInfo

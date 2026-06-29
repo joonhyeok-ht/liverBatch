@@ -746,7 +746,8 @@ class CTabStateSkelLabelingLiver(tabState.CTabState) :
         result = dialog.exec()
         dataInst = self.get_data()
         userdata = dataInst.UserData
-
+        userdata.m_tumorSegSet.clear()
+        
         if result == QDialog.Accepted:
             selectedNames = dialog.get_selected_box_names()
             for selectedSegment in selectedNames:

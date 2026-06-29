@@ -14,20 +14,37 @@
     ],
 
     "ResamplingToPhase" : [
+         ["Artery", "Artery_PP", "PP"]
     ],
     "ResamplingToMinSpacing" : [
+        ["MPV_CT_PP", "MPV_CT_PP_min"],
+        ["MPV_CT_AP", "MPV_CT_AP_min"],
+        ["MPV_CT_DP", "MPV_CT_DP_min"], 
+        ["MPV_MR_HBP", "MPV_MR_HBP_min"],
+        ["Artery", "Artery_min"],
+        ["Portal", "Portal_min"],
+        ["Vein", "Vein_min"],
+        ["Duct", "Duct_min"]
     ],
 
     "Stricture" : [
+        ["MPV_CT_PP_min", "MPV_CT_PP_st"],
+        ["MPV_CT_AP_min", "MPV_CT_AP_st"],
+        ["MPV_CT_DP_min", "MPV_CT_DP_st"], 
+        ["MPV_MR_HBP_min", "MPV_MR_HBP_st"],
+        ["Artery_min", "Artery_st"],
+        ["Portal_min", "Portal_st"],
+        ["Vein_min", "Vein_st"],
+        ["Duct_min", "Duct_st"]
     ],
 
     "Recon" : [
 	    {
-            "name" : "remodelingType",
+            "name" : "VesselType",
 		    "contour" : 10,
 		    "gaussian" : 0,
 		    "algorithm" : "Marching",
-		    "resampling factor" : 2,
+		    "resampling factor" : 1,
 		    "param" : [
 			    [80, 0.18, 0.0],
 			    [20, 0.14, 0.0]
@@ -36,9 +53,60 @@
 			    ["MPV_CT_PP", "", "PP", -1],
                 ["MPV_CT_AP", "", "AP", -1],
                 ["MPV_CT_DP", "", "DP", -1], 
-                ["Artery", "Artery", "AP", 20000],
-                ["Vein", "60000", "DP", 60000],
-                ["Portal", "60000", "PP", 60000]
+                ["MPV_MR_HBP", "", "MR", -1], 
+			    ["MPV_CT_PP_min", "", "PP", -1],
+                ["MPV_CT_AP_min", "", "AP", -1],
+                ["MPV_CT_DP_min", "", "DP", -1], 
+                ["MPV_MR_HBP_min", "", "MR", -1], 
+			    ["MPV_CT_PP_st", "MPV_CT_PP", "PP", 5000],
+                ["MPV_CT_AP_st", "MPV_CT_AP", "AP", 5000],
+                ["MPV_CT_DP_st", "MPV_CT_DP", "DP", 5000], 
+                ["MPV_MR_HBP_st", "MPV_MR_HBP", "MR", 5000], 
+                ["Artery", "", "AP", -1],
+                ["Vein", "", "DP", -1],
+                ["Portal", "", "PP", -1],
+                ["Duct", "", "MR", -1],
+                ["Artery_min", "", "AP", -1],
+                ["Vein_min", "", "DP", -1],
+                ["Portal_min", "", "PP", -1],
+                ["Duct_min", "", "MR", -1],
+                ["Artery_st", "Artery", "AP", 7000],
+                ["Vein_st", "Vein", "DP", 40000],
+                ["Portal_st", "Portal", "PP", 40000],
+                ["Duct_st", "Duct", "MR", 2500]
+		    ]
+	    },
+        {
+            "name" : "OrganType",
+		    "contour" : 10,
+		    "gaussian" : 1,
+		    "algorithm" : "Marching",
+		    "resampling factor" : 1,
+		    "param" : [
+			    [20, 0.5, 0.87]
+		    ],
+		    "List" : [
+                ["Abdominal_wall_liver", "Abdominal_wall_liver", "DP", -1],
+                ["Skin", "Skin", "DP", -1],
+                ["Liver", "Liver", "PP", 20000],
+                ["Gallbladder", "Gallbladder", "PP", 1000],
+                ["Tumor", "Tumor", "PP", 1000],
+                ["Tumor_DP", "Tumor_DP", "DP", 1000],
+                ["Cyst", "Cyst", "PP", 1000]
+		    ]
+	    },
+        {
+            "name" : "RibType",
+		    "contour" : 10,
+		    "gaussian" : 1,
+		    "algorithm" : "Marching",
+		    "resampling factor" : 1,
+		    "param" : [
+			    [20, 0.18, 0.0],
+			    [20, 0.14, 0.0]
+		    ],
+		    "List" : [
+                ["Rib", "Rib", "DP", 80000]
 		    ]
 	    }
     ],
@@ -56,8 +124,10 @@
         ["outside", "blenderName0", "blenderName1", "blenderName"]
     ],
     "MeshDecimation" : [
-        ["blenderName0", 10000],
-        ["blenderName1", 10000]
+        ["Abdominal_wall_liver", 20000],
+        ["Skin", 12000],
+		["Rib", 20000],
+        ["Rib", 10000]
     ],
 
     "Blender" : {
@@ -76,12 +146,25 @@
         },
         "MeshCleanUp" : [
             "Portal",
+            "Portal_m",
             "Vein",
-            "Artery"
+            "Vein_m",
+            "Artery",
+            "Liver",
+            "Gallbladder",
+            "Duct",
+            "Rib",
+            "Tumor",
+            "Tumor_DP",
+            "Cyst"
         ],
         "SmartUV" : [
-            "blenderName0",
-            "blenderName1"
+            "Abdominal_wall_liver",
+            "Gallbladder",
+            "Liver",
+            "Tumor",
+            "Tumor_DP",
+            "Cyst"
         ]
     },
 
@@ -94,7 +177,8 @@
 		    "List" : [
 			    ["Portal", "Portal"],
                 ["Vein", "Vein"],
-                ["Artery", "Artery"]
+                ["Artery", "Artery"],
+                ["Duct", "Duct"]
 		    ]
         }
     ],

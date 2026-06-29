@@ -98,7 +98,6 @@ class CResamplingToPhase(multiProcessTask.CMultiProcessTaskProgress) :
                 continue
 
             listParam.append((inMaskFullPath, outMaskFullPath, srcPhaseInfo, targetPhaseInfo))
-        
         if len(listParam) > 0 :
             #super().process(self._task, listParam)
             super().process(
@@ -179,8 +178,8 @@ def _resampling_to_min_spacing_task_worker(param: tuple):
         npImg, origin, spacing, direction, size = algImage.CAlgImage.get_np_from_sitk(sitkImg, np.uint8)
 
         algImage.CAlgImage.save_nifti_from_np(outMaskFullPath, npImg, origin, spacing, direction, (2, 1, 0))
-        print(f"pre resampled mask: {inMaskFullPath}", file=sys.__stdout__, flush=True)
-        print(f"completed resampling to min spacing {os.path.basename(outMaskFullPath)}", file=sys.__stdout__, flush=True)
+        #print(f"pre resampled mask: {inMaskFullPath}", file=sys.__stdout__, flush=True)
+        #print(f"completed resampling to min spacing {os.path.basename(outMaskFullPath)}", file=sys.__stdout__, flush=True)
 
 
 
@@ -227,7 +226,6 @@ class CResamplingToMinSpacing(multiProcessTask.CMultiProcessTaskProgress) :
             listParam.append((inMaskFullPath, outMaskFullPath))
         
         if len(listParam) > 0 :
-            #super().process(self._task, listParam)
             super().process(
                 _resampling_to_min_spacing_task_worker,
                 listParam,

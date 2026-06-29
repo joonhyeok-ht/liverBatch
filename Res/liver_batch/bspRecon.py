@@ -34,6 +34,12 @@ class CBSPRecon(blenderOption.CBlenderScriptBase) :
             print("blender script Recon error : not found option")
             return False
         
+        scene = bpy.context.scene
+
+        scene.unit_settings.system = 'METRIC'
+        scene.unit_settings.scale_length = 0.001
+        scene.unit_settings.length_unit = 'MILLIMETERS'
+        
         blenderOption.CBlenderScriptUtil._enable_add_on()
         blenderOption.CBlenderScriptUtil.delete_all_object()
         blenderOption.CBlenderScriptUtil.delete_etc_objects()
@@ -87,6 +93,33 @@ class CBSPRecon(blenderOption.CBlenderScriptBase) :
     # protected
     def _import_stl(self) -> bool :
         inputPath = self.OptionInfo.get_user_value("InputPath")
+        segmentedSet = set(["S1",
+        "S2",
+        "S3",
+        "S4",
+        "S23",
+        "S34",
+        "S24",
+        "S234",
+        "S5",
+        "S6",
+        "S7",
+        "S8",
+        "S56",
+        "S57",
+        "S58",
+        "S67",
+        "S68",
+        "S78",
+        "S567",
+        "S568",
+        "S578",
+        "S678",
+        "S5678",
+        "LPV",
+        "RPV"])
+
+        
         if inputPath is None or inputPath == "" :
             return False
         if os.path.exists(inputPath) == False : 
@@ -98,7 +131,11 @@ class CBSPRecon(blenderOption.CBlenderScriptBase) :
             return False
         
         for stlName in listStlName :
-            ext = stlName.split('.')[-1]
+            name, ext = stlName.split('.')
+            if "TP" in stlName and "Duct" not in stlName:
+                continue
+            if name in segmentedSet:
+                continue
             if ext != "stl" :
                  continue
             stlFullPath = os.path.join(inputPath, stlName)

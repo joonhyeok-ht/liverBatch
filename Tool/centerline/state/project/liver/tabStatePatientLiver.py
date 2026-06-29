@@ -1124,6 +1124,8 @@ class CTabStatePatient(tabState.CTabState):
         
         if preSkeleton != None:
             self.copy_skeleton_cl_label(skeleton, preSkeleton)
+        elif clinfoinx == 0:
+            self.labeling_centerline_based_on_mask(skeleton)
             
         ketList = dataInst.find_key_list_by_type_groupID(dataInst.s_skelTypeCenterline, clinfoinx)
         self.m_opSelectionCL._color_setting(ketList, dataInst.s_rootCLColor, dataInst.s_clColor)
@@ -1158,12 +1160,132 @@ class CTabStatePatient(tabState.CTabState):
         for ci in range(skeleton.get_centerline_count()):
             enCL = skeleton.get_centerline(ci)
             enCL.Name = Counter(clNearestCount[enCL.ID]).most_common(1)[0][0]
+            
+    def labeling_centerline_based_on_mask(self, skeleton):
+        dataInst = self.get_data()
+        currPatientID = self.getui_edit_huid_path()
         
+        stlPath = os.path.join(dataInst.OutputPath, currPatientID, "Result")
+        segmentedList = ["S1",
+        "S2",
+        "S3",
+        "S4",
+        "S23",
+        "S34",
+        "S24",
+        "S234",
+        "S5",
+        "S6",
+        "S7",
+        "S8",
+        "S56",
+        "S57",
+        "S58",
+        "S67",
+        "S68",
+        "S78",
+        "S567",
+        "S568",
+        "S578",
+        "S678",
+        "S5678",
+        "LPV",
+        "RPV"]
+
+        if skeleton is None:
+            print("labeling centerline based on mask : skeleton is None")
+            return False
+
+        labelArrayName = "SegmentLabelIndex"
+        loadedLabelNames = []
+        appendFilter = vtk.vtkAppendPolyData()
+
+        for labelInx, labelName in enumerate(segmentedList):
+            stlFullPath = os.path.join(stlPath, f"{labelName}.stl")
+            polyData = algVTK.CVTK.load_poly_data_stl(stlFullPath)
+            if polyData is None or polyData.GetNumberOfCells() == 0:
+                continue
+
+            loadedLabelInx = len(loadedLabelNames)
+            loadedLabelNames.append(labelName)
+
+            labelArray = vtk.vtkIntArray()
+            labelArray.SetName(labelArrayName)
+            labelArray.SetNumberOfComponents(1)
+            labelArray.SetNumberOfTuples(polyData.GetNumberOfCells())
+            for cellInx in range(polyData.GetNumberOfCells()):
+                labelArray.SetValue(cellInx, loadedLabelInx)
+
+            polyData.GetCellData().AddArray(labelArray)
+            polyData.GetCellData().SetActiveScalars(labelArrayName)
+            appendFilter.AddInputData(polyData)
+
+        if len(loadedLabelNames) == 0:
+            print(f"labeling centerline based on mask : not found segmented stl in {stlPath}")
+            return False
+
+        appendFilter.Update()
+        mergedPolyData = appendFilter.GetOutput()
+        segmentLabelArray = mergedPolyData.GetCellData().GetArray(labelArrayName)
+        if segmentLabelArray is None or mergedPolyData.GetNumberOfCells() == 0:
+            print("labeling centerline based on mask : failed to build merged segment mesh")
+            return False
+
+        locator = vtk.vtkStaticCellLocator()
+        locator.SetDataSet(mergedPolyData)
+        locator.BuildLocator()
+
+        closestPoint = [0.0, 0.0, 0.0]
+        cellId = vtk.mutable(0)
+        subId = vtk.mutable(0)
+        dist2 = vtk.mutable(0.0)
+
+        def _find_nearest_mesh_label(vertex):
+            point = vertex.reshape(-1).astype(float)
+            locator.FindClosestPoint(
+                point.tolist(),
+                closestPoint,
+                cellId,
+                subId,
+                dist2
+            )
+
+            labelInx = int(segmentLabelArray.GetValue(int(cellId)))
+            return loadedLabelNames[labelInx], labelInx, float(dist2)
+
+        for ci in range(skeleton.get_centerline_count()):
+            enCL = skeleton.get_centerline(ci)
+            if enCL.Vertex is None or enCL.Vertex.shape[0] == 0:
+                continue
+
+            voteCounter = Counter()
+            distSum = {}
+            orderMap = {}
+
+            for vertex in enCL.Vertex:
+                labelName, labelOrder, labelDist2 = _find_nearest_mesh_label(vertex)
+                voteCounter[labelName] += 1
+                distSum[labelName] = distSum.get(labelName, 0.0) + labelDist2
+                orderMap[labelName] = labelOrder
+
+            if len(voteCounter) == 0:
+                continue
+
+            enCL.Name = min(
+                voteCounter.keys(),
+                key=lambda labelName: (
+                    -voteCounter[labelName],
+                    distSum[labelName],
+                    orderMap[labelName]
+                )
+            )
+
+        return True
         
     def _command_import_remodeling(self):
         dataInst = self.get_data()
-        userdata = dataInst.UserData
-        userdata.clean_remodel_blender()
+        userData = dataInst.UserData
+        userData.clean_remodel_blender()
         
         self._clear_centerline()
         dataInst = self.get_data()
@@ -1483,11 +1605,13 @@ class CTabStatePatient(tabState.CTabState):
 
         def _predict_navel_position(self) -> int:
             unzipPath = self.m_editUnzipPath.text()
-            DicomPPPath = os.path.join(
-                unzipPath, self.getui_edit_huid_path(), "01_DICOM", "PP"
+            DicomDPPath = os.path.join(
+                unzipPath, self.getui_edit_huid_path(), "01_DICOM", "DP"
             )
+            if not os.path.exists(DicomDPPath):
+                return 0
             try:
-                shape, spacing, origin, ct = predictNavel.ctLoader(DicomPPPath,returnImage=True)
+                shape, spacing, origin, ct = predictNavel.ctLoader(DicomDPPath,returnImage=True)
                 predicted, method, score, ct = predictNavel.predictNavel(ct, spacing, "both")
                 navelZID = predicted[2]
             except:
