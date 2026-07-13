@@ -481,11 +481,26 @@ class CUserDataLiver(userData.CUserData) :
             }
             
         else:
-            dicParam = {
-                "StlPath" : reconStlPath,
-                "SaveFullPath" : remodelBlenderPath,
-                "OverWriteFlag" : str(1)
-            }
+            msg = QMessageBox()
+            msg.setWindowTitle("Save Remodel Blender")
+            msg.setText(f"이미 {saveName}.blend 가 존재합니다. 새로 remodeling된 혈관으로 덮어씌우겠습니까?")
+            msg.setStandardButtons(QMessageBox.Ok | QMessageBox.No)
+            msg.setDefaultButton(QMessageBox.Ok)
+
+            result = msg.exec()
+
+            if result == QMessageBox.Ok:
+                dicParam = {
+                    "StlPath" : reconStlPath,
+                    "SaveFullPath" : remodelBlenderPath,
+                    "OverWriteFlag" : str(1)
+                }
+            elif result == QMessageBox.No:
+                dicParam = {
+                    "StlPath" : reconStlPath,
+                    "SaveFullPath" : remodelBlenderPath,
+                    "OverWriteFlag" : str(0)
+                }
 
         scriptFullPath = self.m_remodelingSaveScriptFullPath
         optionFullPath = self._blender_script_param(dicParam)

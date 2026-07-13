@@ -246,7 +246,13 @@ class CSubReconLiver(commandRecon.CCommandRecon) :
         resamplingToMinSpacingBlock.InputMaskPath = maskCpyPath # self.CopiedMaskPath
         resamplingToMinSpacingBlock.InputOptionInfo = self.InputData.OptionInfo
         resamplingToMinSpacingBlock.OutputMaskPath = maskCpyPath # self.CopiedMaskPath
+        resamplingToMinSpacingBlock.progress_callback = lambda p, s="": self.progress_callback(
+            self.ProgressValue + int((4 / self.TotalPatientCnt) * (p / 100.0)),
+            s
+        )
+        resamplingToMinSpacingBlock.is_interrupted = self.is_interrupted
         resamplingToMinSpacingBlock.process()
+        self.ProgressValue += int(4 / self.TotalPatientCnt)
         end_t = time.time()
         #print(f"1-2.   !!!!!!!!!!previous CResamplingToMinSpacing!!!! {end_t - start_t:.5f} sec", file=sys.__stdout__, flush=True)
         ##################################################################
@@ -271,7 +277,13 @@ class CSubReconLiver(commandRecon.CCommandRecon) :
         removeStrictureBlock.InputOptionInfo = self.OptionInfo
         removeStrictureBlock.InputMaskPath = maskCpyPath # self.CopiedMaskPath
         removeStrictureBlock.OutputMaskPath = maskCpyPath # self.CopiedMaskPath
+        removeStrictureBlock.progress_callback = lambda p, s="": self.progress_callback(
+            self.ProgressValue + int((26 / self.TotalPatientCnt) * (p / 100.0)),
+            s
+        )
+        removeStrictureBlock.is_interrupted = self.is_interrupted
         removeStrictureBlock.process()
+        self.ProgressValue += int(26 / self.TotalPatientCnt)
         end_t = time.time()
         #print(f"2-2.   !!!!!!!!!!previous CRemoveStricture!!!! {end_t - start_t:.5f} sec", file=sys.__stdout__, flush=True)
         ##################################################################

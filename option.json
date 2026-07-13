@@ -84,8 +84,8 @@
                 ["CD", "CD", "MR", 2000],
                 ["Duct_min", "", "MR", -1],
                 ["Artery_st", "Artery", "AP", 7000],
-                ["Vein_st", "Vein", "DP", 40000],
-                ["Portal_st", "Portal", "PP", 40000],
+                ["Vein_st", "Vein", "DP", 50000],
+                ["Portal_st", "Portal", "PP", 50000],
                 ["Duct_st", "Duct", "MR", 2500]
 		    ]
 	    },
@@ -191,7 +191,9 @@
 			    ["Portal", "Portal"],
                 ["Vein", "Vein"],
                 ["Artery", "Artery"],
-                ["Duct", "Duct"]
+                ["Duct", "Duct"],
+                ["Portal_m", "Portal_m"],
+                ["Vein_m", "Vein_m"]
 		    ]
         }
     ],

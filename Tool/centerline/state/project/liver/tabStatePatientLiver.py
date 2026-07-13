@@ -80,6 +80,43 @@ import AlgUtil.algSkeletonGraph as algSkeletonGraph
 import dlgCommon as dlgCommon
 from pathlib import Path
 
+
+class CheckBoxWindow(QDialog):
+    def __init__(self, mediator, dataInst):
+        super().__init__(mediator)
+        self.setWindowFlag(Qt.Window, True)
+        self.m_data = dataInst
+        self.checkedItems = []
+        self.setWindowTitle("Reset Centerlines")
+        self.resize(420, 220)
+        layout = QVBoxLayout()
+        label = QLabel("Remodeling 혈관을 로딩 합니다. Centerline을 새로 추출할 혈관을 선택해주세요.")
+
+        iCnt = dataInst.get_skelinfo_count()
+        self.checkBoxDict = {}
+        for inx in range(0, iCnt) :
+            skelinfo = dataInst.get_skelinfo(inx)
+            blenderName = skelinfo.BlenderName
+            self.checkBoxDict[inx] = QCheckBox(f"{inx}. {blenderName}")
+            self.checkBoxDict[inx].setChecked(True)
+
+        self.ok_button = QPushButton("OK")
+        self.ok_button.clicked.connect(self.on_ok_clicked)
+
+        layout.addWidget(label)
+        for inx in range(0, iCnt) :
+            layout.addWidget(self.checkBoxDict[inx])
+
+        layout.addWidget(self.ok_button)
+        self.setLayout(layout)
+
+    def on_ok_clicked(self):
+        self.checkedItems.clear()
+        for i in range(len(self.checkBoxDict.keys())):
+            if self.checkBoxDict[i].isChecked():
+                self.checkedItems.append(i)
+        self.accept()
+
 class LoadingWorkerThread(QThread):
     result_ready = Signal(object)
 
@@ -585,10 +622,10 @@ class CTabStatePatient(tabState.CTabState):
         # input_advancementRatio.textChanged.connect(self.on_advancement_ratio_changed)
         # tabLayout.addWidget(input_advancementRatio)
         
-        btn = QPushButton("Delete Centerline")
-        btn.setStyleSheet(self.get_btn_stylesheet())
-        btn.clicked.connect(self._on_btn_delete_centerline)
-        tabLayout.addWidget(btn)
+        # btn = QPushButton("Delete Centerline")
+        # btn.setStyleSheet(self.get_btn_stylesheet())
+        # btn.clicked.connect(self._on_btn_delete_centerline)
+        # tabLayout.addWidget(btn)
 
         btn = QPushButton("Extraction Centerline")
         btn.setStyleSheet(self.get_btn_stylesheet())
@@ -1284,16 +1321,23 @@ class CTabStatePatient(tabState.CTabState):
         
     def _command_import_remodeling(self):
         dataInst = self.get_data()
-        userData = dataInst.UserData
-        userData.clean_remodel_blender()
+        userdata = dataInst.UserData
+        userdata.clean_remodel_blender()
         
         self._clear_centerline()
         dataInst = self.get_data()
+        
         if dataInst.Ready == False :
             QMessageBox.information(self.m_mediator, "Alarm", "please setting option, outputPath, patientID")
             return
 
+        userData = dataInst.UserData
+        
         blenderFullPath = os.path.join(os.path.dirname(userData.OutputReconBlenderFullPath), f"{dataInst.PatientID}_remodel.blend")
+        
+        if dataInst.Ready == False :
+            QMessageBox.information(self.m_mediator, "Alarm", "please setting option, outputPath, patientID")
+            return
 
         if os.path.exists(blenderFullPath) == False :
             QMessageBox.information(self.m_mediator, "Alarm", f"not found {os.path.basename(blenderFullPath)}")
@@ -1303,6 +1347,8 @@ class CTabStatePatient(tabState.CTabState):
         cmd.InputData = dataInst
         cmd.PatientBlenderFullPath = blenderFullPath
         cmd.process()
+
+        self.m_checkBoxWindow = CheckBoxWindow(self.m_mediator, dataInst)
 
         self.setui_clear_clinfo()
         iCnt = dataInst.get_skelinfo_count()
@@ -1321,8 +1367,16 @@ class CTabStatePatient(tabState.CTabState):
 
         fullPath = os.path.join(dataInst.OutputPatientPath, f"{data.CData.s_fileName}.json")
         dataInst.save(fullPath)
-        self.m_mediator.remove_key_type(dataInst.s_skelTypeCenterline)
-        self.m_mediator.update_viewer()
+        #self.m_mediator.remove_key_type(dataInst.s_skelTypeCenterline)
+        if self.m_checkBoxWindow.exec() != QDialog.Accepted:
+            self.m_mediator.get_viewercl_renderer().ResetCameraClippingRange()
+            self.m_mediator.update_viewer()
+            return
+        else:
+            for inx in self.m_checkBoxWindow.checkedItems:
+                self.m_mediator.remove_key_type_groupID(dataInst.s_skelTypeCenterline, inx)
+            self.m_mediator.get_viewercl_renderer().ResetCameraClippingRange()
+            self.m_mediator.update_viewer()
 
 
     def _changed_unzip_path(self, option_path, data_root_path) -> str:
@@ -1858,6 +1912,8 @@ class CTabStatePatient(tabState.CTabState):
 
         fullPath = os.path.join(dataInst.OutputPatientPath, f"{data.CData.s_fileName}.json")
         dataInst.save(fullPath)
+        
+        self.m_mediator.get_viewercl_renderer().ResetCameraClippingRange()
         self.m_mediator.update_viewer()
         #self.m_btnCL.setEnabled(False)
 

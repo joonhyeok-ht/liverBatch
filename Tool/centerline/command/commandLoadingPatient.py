@@ -71,8 +71,7 @@ class CCommandLoadingPatient(commandInterface.CCommand) :
         userdata = self.InputData.UserData
         if userdata is not None :
             userdata.override_load_centerline()
-
-    
+            
     def _check_saved_data(self) -> bool :
         # loading CLDataInfo
         outputPatientPath = self.InputData.OutputPatientPath
@@ -114,6 +113,9 @@ class CCommandLoadingPatient(commandInterface.CCommand) :
             terriInfo = data.CTerritoryInfo()
             terriInfo.BlenderName = blenderName
             dataInst.add_terriinfo(terriInfo)
+            
+            
+            
         
         # export
         self._export_data()

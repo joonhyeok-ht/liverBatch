@@ -51,7 +51,7 @@ class CBSPClean(blenderOption.CBlenderScriptBase) :
         blenderOption.CBlenderScriptUtil.triangulate_all_objects_no_ops()
         blenderOption.CBlenderScriptUtil._apply_all_transforms_and_shade_smooth()
         
-        self.flip_mesh_normals("Abdominal_wall_liver")
+        self.make_open_cylinder_normals_inward("Abdominal_wall_liver")
 
         # smartUV
         iCnt = self.m_optionInfo.get_smartuv_meshname_count()
@@ -113,8 +113,68 @@ class CBSPClean(blenderOption.CBlenderScriptBase) :
         bpy.ops.object.mode_set(mode='OBJECT')
 
         print(f"Flipped normals: {obj_name}")
-        return True                        
-    
+        return True
+
+    def make_open_cylinder_normals_inward(self, obj_name: str) -> bool:
+        """
+        위/아래가 열린 원기둥형 mesh의 normal을 연속적인 방향으로 정렬한 뒤,
+        가능한 두 방향 중 inward를 더 많이 향하는 방향을 선택한다.
+        """
+        obj = bpy.data.objects.get(obj_name)
+        if obj is None:
+            print(f"Object not found: {obj_name}")
+            return False
+        if obj.type != 'MESH':
+            print(f"Object is not a mesh: {obj_name} (type={obj.type})")
+            return False
+
+        if bpy.context.object is not None and bpy.context.object.mode != 'OBJECT':
+            bpy.ops.object.mode_set(mode='OBJECT')
+
+        mesh = obj.data
+        if len(mesh.vertices) == 0:
+            print(f"Object has no vertices: {obj_name}")
+            return False
+
+        center_x = sum(v.co.x for v in mesh.vertices) / len(mesh.vertices)
+        center_y = sum(v.co.y for v in mesh.vertices) / len(mesh.vertices)
+
+        bm = bmesh.new()
+        try:
+            bm.from_mesh(mesh)
+            bm.faces.ensure_lookup_table()
+
+            bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+            bm.normal_update()
+
+            inward_count = 0
+            outward_count = 0
+            for face in bm.faces:
+                face_center = face.calc_center_median()
+                radial_x = face_center.x - center_x
+                radial_y = face_center.y - center_y
+                radial_len_sq = radial_x * radial_x + radial_y * radial_y
+                if radial_len_sq <= 1.0e-12:
+                    continue
+
+                dot = face.normal.x * radial_x + face.normal.y * radial_y
+                if dot < 0.0:
+                    inward_count += 1
+                elif dot > 0.0:
+                    outward_count += 1
+
+            if outward_count > inward_count:
+                bmesh.ops.reverse_faces(bm, faces=bm.faces[:])
+                bm.normal_update()
+
+            bm.to_mesh(mesh)
+            mesh.update()
+        finally:
+            bm.free()
+
+        print(f"Made continuous inward normals: {obj_name}")
+        return True
+
 
     # kidney,stomach 공통
     def _switch_to_collection(self) :
