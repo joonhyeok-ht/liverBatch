@@ -72,7 +72,7 @@ def _registration_task_worker(param: tuple):
     phyOffsetV = phyOffsetV + rigidPhysicalOffset
 
     sharedList[inx] = phyOffsetV
-    #print(f"completed registration {srcFullPath}")
+    print(f"completed registration {srcFullPath}" ,file=sys.__stdout__, flush=True)
     return True
 
 

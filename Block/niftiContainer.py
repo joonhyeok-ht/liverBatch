@@ -198,7 +198,7 @@ class CFileLoadPhaseInfo :
             phaseinfo.Offset = algLinearMath.CScoMath.to_vec3([offset[0], offset[1], offset[2]])
             phaseInst.add_phaseinfo(phaseinfo)
             
-        print(f"file load phaseInfo : completed loading {self.InputFileName}")
+        print(f"file load phaseInfo : completed loading {self.InputFileName}", file=sys.__stdout__, flush=True)
         return phaseInst
 
 

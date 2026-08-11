@@ -68,7 +68,7 @@ class CMeshHealing() :
             mesh = algMeshLib.CMeshLib.meshlib_healing(mesh, bFill)
             algMeshLib.CMeshLib.meshlib_save_stl(stlFullPath, mesh)
 
-            #print(f"completed healing : {stlName}")
+            print(f"completed healing : {stlName}", file=sys.__stdout__, flush=True)
 
 
     @property

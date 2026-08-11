@@ -13,9 +13,10 @@ sys.path.append(solutionPath)
 class CMultiProcessTask : 
     def __init__(self) -> None :
         self.m_cpuCnt = multiprocessing.cpu_count()
+        #self.m_cpuCnt = 5
         self.m_listTargetIndex = []
         self.m_sharedList = None
-        print(f"multi-process cpu count : {self.m_cpuCnt}")
+        print(f"multi-process cpu count : {self.m_cpuCnt}", file=sys.__stdout__, flush=True)
     def process(self, task, listParam : list) :
         # mputil.log_to_stderr(None)  # 디버그 출력 비활성화
         processPool = multiprocessing.Pool(processes=self.m_cpuCnt)

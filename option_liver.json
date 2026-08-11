@@ -14,28 +14,20 @@
     ],
 
     "ResamplingToPhase" : [
-         ["Artery", "Artery_PP", "PP"]
+
     ],
     "ResamplingToMinSpacing" : [
-        ["MPV_CT_PP", "MPV_CT_PP_min"],
-        ["MPV_CT_AP", "MPV_CT_AP_min"],
-        ["MPV_CT_DP", "MPV_CT_DP_min"], 
-        ["MPV_MR_HBP", "MPV_MR_HBP_min"],
-        ["Artery", "Artery_min"],
-        ["Portal", "Portal_min"],
-        ["Vein", "Vein_min"],
-        ["Duct", "Duct_min"]
     ],
 
     "Stricture" : [
-        ["MPV_CT_PP_min", "MPV_CT_PP_st"],
-        ["MPV_CT_AP_min", "MPV_CT_AP_st"],
-        ["MPV_CT_DP_min", "MPV_CT_DP_st"], 
-        ["MPV_MR_HBP_min", "MPV_MR_HBP_st"],
-        ["Artery_min", "Artery_st"],
-        ["Portal_min", "Portal_st"],
-        ["Vein_min", "Vein_st"],
-        ["Duct_min", "Duct_st"]
+        ["MPV_CT_PP", "MPV_CT_PP_st"],
+        ["MPV_CT_AP", "MPV_CT_AP_st"],
+        ["MPV_CT_DP", "MPV_CT_DP_st"], 
+        ["MPV_MR_HBP", "MPV_MR_HBP_st"],
+        ["Artery", "Artery_st"],
+        ["Portal", "Portal_st"],
+        ["Vein", "Vein_st"],
+        ["Duct", "Duct_st"]
     ],
 
     "Recon" : [
@@ -54,10 +46,6 @@
                 ["MPV_CT_AP", "", "AP", -1],
                 ["MPV_CT_DP", "", "DP", -1], 
                 ["MPV_MR_HBP", "", "MR", -1], 
-			    ["MPV_CT_PP_min", "", "PP", -1],
-                ["MPV_CT_AP_min", "", "AP", -1],
-                ["MPV_CT_DP_min", "", "DP", -1], 
-                ["MPV_MR_HBP_min", "", "MR", -1], 
 			    ["MPV_CT_PP_st", "MPV_CT_PP", "PP", 5000],
                 ["MPV_CT_AP_st", "MPV_CT_AP", "AP", 5000],
                 ["MPV_CT_DP_st", "MPV_CT_DP", "DP", 5000], 
@@ -66,13 +54,37 @@
                 ["Vein", "", "DP", -1],
                 ["Portal", "", "PP", -1],
                 ["Duct", "", "MR", -1],
-                ["Artery_min", "", "AP", -1],
-                ["Vein_min", "", "DP", -1],
-                ["Portal_min", "", "PP", -1],
+                ["S1", "S1", "PP", 2000],
+                ["S2", "S2", "PP", 2000],
+                ["S3", "S3", "PP", 2000],
+                ["S4", "S4", "PP", 2000],
+                ["S23", "S23", "PP", 2000],
+                ["S34", "S34", "PP", 2000],
+                ["S24", "S24", "PP", 2000],
+                ["S234", "S234", "PP", 2000],
+                ["S5", "S5", "PP", 2000],
+                ["S6", "S6", "PP", 2000],
+                ["S7", "S7", "PP", 2000],
+                ["S8", "S8", "PP", 2000],
+                ["S56", "S56", "PP", 2000],
+                ["S57", "S57", "PP", 2000],
+                ["S58", "S58", "PP", 2000],
+                ["S67", "S67", "PP", 2000],
+                ["S68", "S68", "PP", 2000],
+                ["S78", "S78", "PP", 2000],
+                ["S567", "S567", "PP", 2000],
+                ["S568", "S568", "PP", 2000],
+                ["S578", "S578", "PP", 2000],
+                ["S678", "S678", "PP", 2000],
+                ["S5678", "S5678", "PP", 2000],
+                ["LPV", "LPV", "PP", 2000],
+                ["RPV", "RPV", "PP", 2000],
+                ["CA", "CA", "AP", 2000],
+                ["CD", "CD", "MR", 2000],
                 ["Duct_min", "", "MR", -1],
                 ["Artery_st", "Artery", "AP", 7000],
-                ["Vein_st", "Vein", "DP", 40000],
-                ["Portal_st", "Portal", "PP", 40000],
+                ["Vein_st", "Vein", "DP", 50000],
+                ["Portal_st", "Portal", "PP", 50000],
                 ["Duct_st", "Duct", "MR", 2500]
 		    ]
 	    },
@@ -178,7 +190,9 @@
 			    ["Portal", "Portal"],
                 ["Vein", "Vein"],
                 ["Artery", "Artery"],
-                ["Duct", "Duct"]
+                ["Duct", "Duct"],
+                ["Portal_m", "Portal_m"],
+                ["Vein_m", "Vein_m"]
 		    ]
         }
     ],

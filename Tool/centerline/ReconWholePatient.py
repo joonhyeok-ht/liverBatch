@@ -209,6 +209,54 @@ def _command_extraction_cl(skelInfoPath, stlPath , dataInst) :
 #     algImage.CAlgImage.save_nifti_from_np(outMaskFullPath, npImgRet, originRet, scalingRet, directionRet, (2, 1, 0))
 #     print(f"completed resampling to phase {os.path.basename(outMaskFullPath)}", file=sys.__stdout__, flush=True)
 
+
+def blender_process(optioninfo, blenderFullPath : str, scriptFullPath : str, optionFullPath : str, bBackground : bool = False) :
+    '''
+    Desc
+        - blender script를 통해 blender를 실행한다.
+    Input 
+        - blenderFullPath : 로딩 할 blend 파일의 fullpath, None or ""인 경우 New로 blender를 실행한다.
+        - scriptFullPath : blender가 실행해야 할 scirpt fullpath, None or ""인 경우 script 없이 실행한다.
+        - optionFullPath : option.json의 fullpath, None or ""인 경우 option file의 경로를 지정하지 않는다. 
+                            optionFullPath가 지정된 경우, 함수 내부에서 모든 처리 후 자동 삭제 된다. 
+        - bBackground : blender를 background로 실행 시킬 여부 지정 
+    '''
+    if optioninfo is None :
+        return
+
+    parts = []
+    parts.append(f"{optioninfo.BlenderExe} ")
+
+    if bBackground == True :
+        parts.append("-b ")
+
+    if blenderFullPath is not None and blenderFullPath != "" :
+        if os.path.exists(blenderFullPath) == False :
+            print("not found blender file")
+            return
+        parts.append(f"{blenderFullPath} ")
+    
+    if scriptFullPath is not None and scriptFullPath != "" :
+        if os.path.exists(scriptFullPath) == False :
+            print(f"not found script file : {os.path.basename(scriptFullPath)}")
+            return
+        parts.append(f"--python {scriptFullPath} ")
+    
+    if optionFullPath is not None and optionFullPath != "" :
+        if os.path.exists(optionFullPath) == False :
+            print(f"not found option file : {os.path.basename(optionFullPath)}")
+            return
+        parts.append(f"-- --optionFullPath {optionFullPath}")
+    
+    cmd = "".join(parts)
+    os.system(cmd)
+
+    # clear
+    if optionFullPath and os.path.exists(optionFullPath) :
+        os.remove(optionFullPath)
+
+
+
 def run():
     '''
     mask 정합, resample하여 저장하는 코드는 removestricture 끄고 non rigid registration (NRR) 켜서 NRR 코드에서 저장하도록 되어있음
@@ -216,69 +264,92 @@ def run():
     blender, centerline 만드는 코드는 removestructre 키고 non rigid 끄고 해야 됨 그리고 main 코드 아래 blender scipt 관련된 코드 주석 풀어야 함
     '''
     
-    directory_path = "./test"
-    option_path = "./option.json"
-    #m_optionInfo = optionInfo.COptionInfoSingle(option_path)
+    directory_path = "C:/Users/hutom/Desktop/jh_test/data/liver/ct_mr_registration"
+    option_path = "C:/Users/hutom/Desktop/jh_test/jh_algorithm/COMMONPIPELINE_LIVER/latest_batch/LiverReconTool_v1.0.3/option_temp.json"
+    optionInfoInst = optionInfo.COptionInfo(option_path)
     huID_set = set()
-
-
-    
-    for item in ["SCH"]:
+    for item in os.listdir(directory_path):
+    #for item in ["0058"]:
+        if item == "0058":
+            continue
         t0 = time.time()
         huID = item
         huID_path = os.path.join(directory_path, huID)
-        
-        rootpath = ""
-        huid = ""
-        
+    
         mkInputFold = makeInputFolder.CMakeInputFolder()
         mkInputFold.ZipPath = huID_path  # "D:\\jys\\StomachKidney_newfolder\\zippath"
         m_data = data.CData()
         
         
-        optionInfoInst = optionInfo.COptionInfo(option_path)
-        m_data.OptionInfo = optionInfoInst
         m_data.UserData  = userDataLiver.CUserDataLiver(m_data, None)
         userdata = m_data.UserData
+        m_data.OptionInfo = optionInfoInst
         userdata.set_patient_zippath(huID_path)
         
         result = mkInputFold.process()
         
+        
+        
+        
         if os.path.isdir(huID_path) and str(huID) != "__pycache__":
             # huID_set.add(huID)
-            m_outputPath = os.path.join(huID_path, "OutTemp")
-            
-            # temp_path = os.path.join(os.path.dirname(option_path), "tmp.json")
-            # target_str = '"DataRootPath"'
-            # new_data_root_path = root_path.replace("\\", "\\\\").replace("/", "\\\\")
-            # m_optionInfo.m_dataRootPath = new_data_root_path
-            # with open(option_path, "r", encoding="utf-8") as org_file, open(
-            #     temp_path, "w", encoding="utf-8"
-            # ) as temp_file:
-            #     for line in org_file:
-            #         # DataRootPath 부분 찾아서 새로운 패스로 바꿈
-            #         if target_str in line:
-            #             # line = line.replace(target_str, replacement_string)
-            #             line = f'\t"DataRootPath" : "{new_data_root_path}",\n'
-            #         temp_file.write(line)
-
-            # os.replace(temp_path, option_path)
-            
-            # if os.path.exists(m_outputPath):
-            #     pass
-            # else:
-            #     os.makedirs(m_outputPath)
-
             print(f"start recon {huID}")
+            
+            m_outputPath = os.path.join(huID_path, "OutTemp")
+            OutputTempPatientPath = os.path.join(m_outputPath, huID)
+            reconstructedPath = os.path.join(OutputTempPatientPath, "Result")
+
             
             reconInst = reconLiver.CSubReconLiver() 
             reconInst.InputSliceID = 400
             reconInst.PatientID = huID
             reconInst.m_folderInfo = mkInputFold
             reconInst.InputData = m_data
-            reconInst.IntermediateDataPath = m_outputPath
+            reconInst.IntermediateDataPath = OutputTempPatientPath
 
             success = reconInst.process()
+                
+            saveName = f"{huID}_recon"
+                
+            # blender 수행 
+            '''
+            param
+                - "InputPath"       : import 할 mesh file들이 있는 folder  
+                - "SaveFullPath"    : 저장 할 blend 파일명의 전체 경로
+            '''
+            
+            m_localReconBlenderFullPath = os.path.join(OutputTempPatientPath, f"{saveName}.blend")
+            
+            
+            dicParam = {
+                "InputPath" : reconstructedPath,
+                "SaveFullPath" : m_localReconBlenderFullPath
+            }
+            optionFullPath = userdata._blender_script_param(dicParam)
+            scriptFullPath = userdata.m_reconScriptFullPath
+
+            # blenderExe = optioninfo.BlenderExe
+            
+            #self.m_reconScriptFullPath = os.path.join(self.fileAbsPath, 'blenderScriptLiver.py')
+            # saveName = os.path.basename(self.m_localReconBlenderFullPath)
+            # saveName = saveName.split('.')[0]
+            #userData.CUserData.blender_process(blenderExe, scriptFullPath, dataInst.PatientID, "Basic", optioninfo.m_jsonPath, reconStlPath, blendSavePath, saveName, False)
+            #userData.CUserData.blender_process(blenderExe, scriptFullPath, dataInst.PatientID, "Basic", optioninfo.m_jsonPath, reconStlPath, blendSavePath, saveName, False)
+            blender_process(optionInfoInst, None, scriptFullPath, optionFullPath, True)
+
+            # save blender folder로 move 
+            if userdata.m_movingBlenderPath:
+                src = userdata.m_localReconBlenderFullPath
+                dst_dir = userdata.m_movingBlenderPath
+                os.makedirs(dst_dir, exist_ok=True)
+                dst = os.path.join(dst_dir, os.path.basename(src))
+                try:
+                    os.replace(src, dst)
+                except OSError:
+                    shutil.move(src, dst)
+            
+            
+            
             
 
 # print ("ok ..")

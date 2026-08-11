@@ -7,8 +7,6 @@ import subprocess
 import copy
 import SimpleITK as sitk
 from pathlib import Path
-import subRecon.subReconLiver as reconLiver
-import progressWindow as PW
 from PySide6.QtWidgets import QDialog, QMessageBox
 
 fileAbsPath = os.path.abspath(os.path.dirname(__file__))
@@ -45,6 +43,9 @@ from collections import deque
 from collections import defaultdict
 
 import liver.subDetectOverlap.subDetectOverlapLiver as detectOverlap
+import liver.subRecon.subReconLiver as reconLiver
+import liver.progressWindow as PW
+
 
 import vtkObjInterface as vtkObjInterface
 

@@ -1,0 +1,233 @@
+{
+    "Version" : {
+        "Release" : "Common Pipeline v2.1",
+        "DESC": "Solution Common Pipeline"
+    },
+  
+	"DataRootPath" : "C:\\Users\\hutom\\Desktop\\jh_test\\data\\stomach\\025aa387360cef31_ug22\\dataRoot_stomach_0407_165250",
+   "CL"  : "../app_cl/processCL.bat",
+
+    "RegistrationInfo" : [
+        {"Target" : "VA", "Src" : "CT", "RigidAABB" : 0}
+    ],
+
+    "ResamplingToPhase" : [
+    ],
+    "ResamplingToMinSpacing" : [
+    ],
+
+    "Stricture" : [
+    ],
+
+    "Recon" : [
+	    {
+            "name" : "remodelingType",
+		    "contour" : 10,
+		    "gaussian" : 0,
+		    "algorithm" : "Marching",
+		    "resampling factor" : 2,
+		    "param" : [
+			    [80, 0.18, 0.0],
+			    [20, 0.14, 0.0]
+		    ],
+		    "List" : [
+                ["Whole_Artery", "Whole_Artery", "AP", -1],
+                ["CT", "anatomy_artery_CT", "AP", -1],
+                ["Whole_Vein", "Whole_Vein", "PP", -1],
+                ["VA", "anatomy_vein_00_AORTA", "PP", -1]
+		    ]
+	    },
+	    {
+            "name" : "TPType",
+		    "contour" : 10,
+		    "gaussian" : 1,
+		    "algorithm" : "Marching",
+		    "resampling factor" : 1,
+		    "param" : [
+			    [20, 0.5, 0.87]
+		    ],
+		    "List" : [
+        ["TPa_0____Aorta", "TPa_Aorta", "AP", -1],
+        ["TPa_0____CT", "TPa_CT", "AP", -1],
+        ["TPa_0____SA", "TPa_SA", "AP", -1],
+        ["TPa_0____SA", "anatomy_artery_25_TP_SA_START", "AP", -1],
+        ["TPa_0____CHA", "TPa_CHA", "AP", -1],
+        ["TPa_0____SMA", "TPa_SMA", "AP", -1],
+        ["TPa_0____CSB", "anatomy_artery_17_TP_CSB_BRANCH", "AP", -1],
+        ["TPa_1____LGA", "anatomy_artery_20_TP_LGA_START", "AP", -1],
+        ["TPa_1____LGA", "TPa_LGA", "AP", -1],
+        ["TPa_1____SupPolarA", "TPa_SupPolarA", "AP", -1],
+        ["TPa_1____PGA", "TPa_PGA", "AP", -1],
+        ["TPa_1____SGA", "TPa_SGA", "AP", -1],
+        ["TPa_1____LGEA", "anatomy_artery_21_TP_LGEA_START", "AP", -1],
+        ["TPa_1____LGEA", "TPa_LGEA", "AP", -1],
+        ["TPa_1____OmentalBr", "TPa_OmentalBr", "AP", -1],
+        ["TPa_2____PHA", "TPa_PHA", "AP", -1],
+        ["TPa_2____PHA", "anatomy_artery_34_TP_PHA_START", "AP", -1],
+        ["TPa_2____RGA", "TPa_RGA", "AP", -1],
+        ["TPa_2____RGA", "anatomy_artery_23_TP_RGA_START", "AP", -1],
+        ["TPa_2____RHA", "TPa_RHA", "AP", -1],
+        ["TPa_2____LHA", "TPa_LHA", "AP", -1],
+        ["TPa_2____LHA", "anatomy_artery_22_TP_LHA_START", "AP", -1],
+        ["TPa_3____GDA", "TPa_GDA", "AP", -1],
+        ["TPa_3____RGEA", "TPa_RGEA", "AP", -1],
+        ["TPa_3____RGEA", "anatomy_artery_24_TP_RGEA_START", "AP", -1],
+        ["TPa_3____ASPDA", "TPa_ASPDA", "AP", -1],
+        ["TPa_3____ASPDA", "anatomy_artery_35_TP_ASPDA_START", "AP", -1],
+        ["TPa_3____IPA", "TPa_IPA", "AP", -1],
+        ["TPa_3____IPA", "anatomy_artery_19_TP_IPA_START", "AP", -1],
+        ["TPa_4____CardiacBr", "TPa_CardiacBr", "AP", -1],
+        ["TPa_4____AHA", "TPa_AHA", "AP", -1],
+        ["TPa_4____AHA", "anatomy_artery_29_TP_LGA1ST_BRANCH", "AP", -1],
+        ["TPa_4____AccLGA", "TPa_AccLGA", "AP", -1],
+        ["TPa_5____Extra_Artery", "TPa_Extra_Artery", "AP", -1],
+        ["TPa_5____RGA1", "TPa_RGA1", "AP", -1],
+        ["TPa_5____RGA1", "anatomy_artery_23_TP_RGA1_START", "AP", -1],
+        ["TPa_5____RGA2", "TPa_RGA2", "AP", -1],
+        ["TPa_5____RGA2", "anatomy_artery_23_TP_RGA2_START", "AP", -1],
+        ["TPa_5____IPA1", "TPa_IPA1", "AP", -1],
+        ["TPa_5____IPA1", "anatomy_artery_19_TP_IPA1_START", "AP", -1],
+        ["TPa_5____IPA2", "TPa_IPA2", "AP", -1],
+        ["TPa_5____IPA2", "anatomy_artery_19_TP_IPA2_START", "AP", -1],
+        ["TPa_5____CHA_DISTAL", "anatomy_artery_32_TP_CHA_DISTAL", "AP", -1],
+        ["TPa_6____TP_ETC_IPA", "anatomy_artery_30_TP_ETC_IPA", "AP", -1],
+        ["TPa_6____TP_ETC_RGA", "anatomy_artery_31_TP_ETC_RGA", "AP", -1],
+        ["TPv_0____PV", "TPv_PV", "PP", -1],
+        ["TPv_0____SV", "TPv_SV", "PP", -1],
+        ["TPv_0____LGV", "TPv_LGV", "PP", -1],
+        ["TPv_0____LGV_DRAINAGE", "anatomy_vein_18_TP_LGV_DRAINAGE", "PP", -1],
+        ["TPv_0____RGV", "TPv_RGV", "PP", -1],
+        ["TPv_0____SMV", "TPv_SMV", "PP", -1],
+        ["TPv_1____SupPolarV", "TPv_SupPolarV", "PP", -1],
+        ["TPv_1____LGEV", "TPv_LGEV", "PP", -1],
+        ["TPv_1____SGV", "TPv_SGV", "PP", -1],
+        ["TPv_2____RGEV", "TPv_RGEV", "PP", -1],
+        ["TPv_2____GCT", "TPv_GCT", "PP", -1],
+        ["TPv_2____GCT", "anatomy_vein_15_TP_GCT_DRAINAGE", "PP", -1],
+        ["TPv_3____ARCV", "TPv_ARCV", "PP", -1],
+        ["TPv_3____ASPDV", "TPv_ASPDV", "PP", -1],
+        ["TPv_3____IPV", "TPv_IPV", "PP", -1],
+        ["TPv_4____Extra_Vein", "TPv_Extra_Vein", "PP", -1],
+        ["TPv_4____ETC_LGV", "anatomy_vein_21_TP_ETC_LGV", "PP", -1],
+        ["TP_UMBILICUS", "TP_UMBILICUS", "PP", -1],
+        ["TP_XIPHOID", "TP_XIPHOID", "PP", -1]
+		    ]
+	    },
+        	    {
+            "name" : "OrganType",
+		    "contour" : 10,
+		    "gaussian" : 1,
+		    "algorithm" : "Marching",
+		    "resampling factor" : 1,
+		    "param" : [
+			    [20, 0.5, 0.87]
+		    ],
+		    "List" : [
+        ["Gallbladder", "anatomy_gallbladder", "AP", -1],
+        ["Liver", "anatomy_liver", "AP", -1],
+        ["Pancreas", "anatomy_pancreas", "AP", -1],
+        ["Spleen", "anatomy_spleen", "AP", -1],
+        ["Skin", "anatomy_skin", "PP", -1],
+        ["Abdominal_wall", "anatomy_abdominal", "PP", -1],
+        ["Stomach", "anatomy_stomach", "AP", -1],
+        ["Diaphragm", "Diaphragm", "PP", -1]
+		    ]
+	    },
+        {
+            "name" : "RibType",
+		    "contour" : 10,
+		    "gaussian" : 1,
+		    "algorithm" : "Marching",
+		    "resampling factor" : 1,
+		    "param" : [
+			    [20, 0.18, 0.0],
+			    [20, 0.14, 0.0]
+		    ],
+		    "List" : [
+                ["Rib", "anatomy_rib", "PP", 80000]
+		    ]
+	    }
+    ],
+
+    "MeshHealing" : [
+        ["Diaphragm", 0],
+        ["blenderName0", 0]
+    ],
+    
+    "MeshBoolean" : [
+        ["subtraction", "blenderName0", "blenderName1", "blenderName"],
+        ["intersection", "blenderName0", "blenderName1", "blenderName"],
+        ["union", "blenderName0", "blenderName1", "blenderName"],
+        ["inside", "blenderName0", "blenderName1", "blenderName"],
+        ["outside", "blenderName0", "blenderName1", "blenderName"]
+    ],
+    "MeshDecimation" : [
+        ["anatomy_artery_01_AORTA", 20000],
+        ["anatomy_vein_00_AORTA", 10000],
+        ["anatomy_artery_CT", 10000],
+        ["Whole_Artery", 60000],
+        ["Whole_Vein", 60000],
+        ["VA", 20000],
+        ["anatomy_abdominal", 20000],
+        ["anatomy_skin", 12000],
+        ["anatomy_liver", 10000],
+        ["anatomy_gallbladder", 2000],
+        ["anatomy_pancreas", 2000],
+        ["anatomy_spleen", 2000],
+        ["anatomy_stomach", 6000],
+		["anatomy_rib", 20000]
+    ],
+
+    "Blender" : {
+        "BlenderExe" : "Blender",
+        "Decimation" : {
+            "blenderName0" : 20000,
+            "blenderName1" : 60000
+        },
+        "DecimationByRatio" : {
+            "blenderName0" : 20,
+            "blenderName1" : 20
+        },
+        "Remesh" : {
+            "blenderName0" : [1, 4000],
+            "blenderName1" : [2, 20000]
+        },
+        "MeshCleanUp" : [
+            "Whole_Vein",
+            "Whole_Artery",
+            "anatomy_gallbladder",
+            "anatomy_liver",
+            "anatomy_pancreas",
+            "anatomy_spleen"
+        ],
+        "SmartUV" : [
+            "anatomy_abdominal",
+            "anatomy_gallbladder",
+            "anatomy_liver",
+            "anatomy_pancreas",
+            "anatomy_spleen",
+            "anatomy_stomach",
+            "Diaphragm"
+        ]
+    },
+
+    "Centerline" : [
+        {
+		    "advancementRatio" : 1.001,
+		    "resamplingLength" : 1.0,
+		    "smoothingIter" : 10,
+		    "smoothingFactor" : 0.1,
+		    "List" : [
+			    ["Whole_Artery", "Whole_Artery"],
+                ["Whole_Vein", "Whole_Vein"],
+                ["anatomy_vein_17_RGV", "anatomy_vein_17_RGV"],
+                ["anatomy_vein_08_LGV", "anatomy_vein_08_LGV"]
+		    ]
+        }
+    ],
+    "TargetTerritoryList" : [
+        "blenderName0",
+        "blenderName1"
+    ]
+}
+

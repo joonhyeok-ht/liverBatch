@@ -29,6 +29,7 @@ from skimage.exposure import match_histograms
 #import trimesh
 import sys, tempfile, shutil
 import json
+import time
 
 from collections import defaultdict
 
@@ -191,6 +192,8 @@ class CNonRigidRegistration(multiProcessTask.CMultiProcessTask):
         phaseToWarpedPaths = self.write_resampled_mask(targetPhaseInfo)
         #self.set_src_phaseinfo_to_target_phase(targetPhaseInfo)
         #self.write_target_dicom_to_nifti(targetPhaseInfo.Phase)
+        print("!!!!!!!!!!!phaseToWarpedPaths Done", file=sys.__stdout__, flush=True)
+        
         
         iPhaseCnt = self.InputPhase.get_phaseinfo_count()
         for inx in range(0, iPhaseCnt) :
@@ -198,8 +201,8 @@ class CNonRigidRegistration(multiProcessTask.CMultiProcessTask):
             
             phase = phaseInfo.Phase
             
-            if phase == "MR" or phase == targetPhaseInfo.Phase:
-                continue
+            # if phase == "MR" or phase == targetPhaseInfo.Phase:
+            #     continue
             
             if phase not in phaseToWarpedPaths.keys():
                 continue
@@ -262,8 +265,8 @@ class CNonRigidRegistration(multiProcessTask.CMultiProcessTask):
                 maskName, blenderName, phase, triCnt = self.InputOptionInfo.get_recon_list(ri, rli)
                 if phase == targetPhaseInfo.Phase:
                     continue
-                if phase == "MR":
-                    continue
+                # if phase == "MR":
+                #     continue
                 if blenderName == "":
                     continue
                 if maskName == "Skin" or maskName == "Abdominal_wall_liver":
@@ -337,8 +340,8 @@ class CNonRigidRegistration(multiProcessTask.CMultiProcessTask):
             
             phase = phaseInfo.Phase
             
-            if phase == "MR":
-                continue
+            # if phase == "MR":
+            #     continue
             
             targetOrigin = targetPhaseInfo.Origin
             targetDirection = targetPhaseInfo.Direction
@@ -407,14 +410,16 @@ class CNonRigidRegistration(multiProcessTask.CMultiProcessTask):
             print("-" * 30)
             print(f"not found registration files")
             if os.path.exists(srcDicomPath) == False:
-                print(f"src dicom path : {srcDicomPath}")
+                print(f"src dicom path : {srcDicomPath}", file=sys.__stdout__, flush=True)
             if os.path.exists(targetDicomPath) == False:
-                print(f"target dicom path : {targetDicomPath}")
+                print(f"target dicom path : {targetDicomPath}", file=sys.__stdout__, flush=True)
             print("-" * 30)
         else:
 
             targetDicomImageItk = itk.imread(targetDicomPath, itk.F)
             srcDicomImageItk = itk.imread(srcDicomPath, itk.F)
+            
+            print(f"start !!! src dicom path : {srcDicomPath}", file=sys.__stdout__, flush=True)
 
             # parameter_object = itk.ParameterObject.New()
             # bspline_map = parameter_object.GetDefaultParameterMap('bspline')
@@ -440,8 +445,6 @@ class CNonRigidRegistration(multiProcessTask.CMultiProcessTask):
             # bspline_map["NumberOfHistogramBins"] = ["150"]
             # # bspline_map["ResultImagePixelType"] = ["float"]
             # # bspline_map["FinalBSplineInterpolationOrder"] = ["1"]
-            
-
 
             #parameter_object.AddParameterMap(bspline_map)
             parameter_object = build_parameter_object()
